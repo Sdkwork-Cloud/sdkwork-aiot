@@ -175,3 +175,25 @@ fn protocol_catalog_distinguishes_native_protocols_from_bridge_integrations() {
         .capability_bridges
         .contains(&CapabilityBridge::MatterCluster));
 }
+
+#[test]
+fn mqtt_standard_adapters_use_rmqtt_as_the_single_broker_reference() {
+    let catalog = standard_protocol_catalog();
+
+    for protocol_id in ["mqtt.v3_1_1", "mqtt.v5"] {
+        let mqtt = catalog
+            .iter()
+            .find(|protocol| protocol.protocol_id == protocol_id)
+            .unwrap_or_else(|| panic!("missing {protocol_id}"));
+
+        assert_eq!(
+            mqtt.reference_projects,
+            vec!["rmqtt"],
+            "{protocol_id} must use rmqtt as the only MQTT broker/server implementation reference"
+        );
+        assert!(mqtt.transports.contains(&TransportBinding::Mqtt));
+        assert!(mqtt
+            .capability_bridges
+            .contains(&CapabilityBridge::MqttTopic));
+    }
+}

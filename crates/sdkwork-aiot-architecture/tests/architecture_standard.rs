@@ -110,6 +110,25 @@ fn local_component_specs_exist_for_sdkwork_discovery() {
 }
 
 #[test]
+fn external_mqtt_broker_reference_is_rmqtt_only() {
+    let root = workspace_root();
+    let gitmodules = fs::read_to_string(root.join(".gitmodules")).expect(".gitmodules");
+
+    assert!(
+        gitmodules.contains(r#"[submodule "external/rmqtt"]"#),
+        "rmqtt must be the canonical MQTT broker/server external implementation"
+    );
+    assert!(gitmodules.contains("https://github.com/rmqtt/rmqtt.git"));
+
+    for removed in ["external/emqx", "external/mosquitto", "external/vernemq"] {
+        assert!(
+            !gitmodules.contains(removed),
+            "{removed} must not remain as a MQTT broker external implementation"
+        );
+    }
+}
+
+#[test]
 fn sdk_families_have_openapi_sources_and_generation_manifests() {
     let root = workspace_root();
 

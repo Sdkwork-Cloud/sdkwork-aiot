@@ -22,7 +22,7 @@ Current implementation scope after this design is approved:
 Out of current scope:
 
 - Full frontend product UI.
-- Reimplementing MQTT brokers, LoRaWAN network servers, Matter controllers, Zigbee coordinators, or industrial protocol stacks where stable bridge/plugin integration is more appropriate.
+- Reimplementing MQTT brokers, LoRaWAN network servers, Matter controllers, Zigbee coordinators, or industrial protocol stacks where stable direct integration or bridge/plugin integration is more appropriate.
 - Storing raw audio/media frames by default.
 
 ## 2. Standards Baseline
@@ -669,7 +669,7 @@ The platform should learn from existing projects but not become coupled to them.
 | ChirpStack | LoRaWAN network server bridge. |
 | open62541/libmodbus | OPC UA nodes/methods/subscriptions and Modbus registers/function codes. |
 | hawkBit | Firmware rollout, deployment, artifact lifecycle. |
-| EMQX/Mosquitto/VerneMQ | Broker, MQTT auth/ACL/hook/session/offline queue integration. |
+| RMQTT | Canonical MQTT broker/server integration, Rust-native MQTT auth/ACL/hook/session/offline queue extension point. |
 
 Design decision:
 
@@ -677,7 +677,7 @@ Design decision:
 - EdgeX-like device resource and command concepts are adopted into `CapabilityModel`.
 - Ditto/KubeEdge desired/reported twin concepts are adopted.
 - ThingsBoard telemetry/latest/attribute/OTA ideas are adopted.
-- MQTT broker, LoRaWAN server, Zigbee bridge, Matter stack, Modbus library, and OPC UA stack should be integrated or bridged, not rewritten in v1.
+- MQTT broker/server should directly integrate RMQTT. LoRaWAN server, Zigbee bridge, Matter stack, Modbus library, and OPC UA stack should be integrated or bridged, not rewritten in v1.
 
 ## 9. Product And Functional Plan
 

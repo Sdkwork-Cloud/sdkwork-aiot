@@ -16,9 +16,6 @@
 [submodule "external/edgex-go"]
 	path = external/edgex-go
 	url = https://github.com/edgexfoundry/edgex-go.git
-[submodule "external/emqx"]
-	path = external/emqx
-	url = https://github.com/emqx/emqx.git
 [submodule "external/esphome"]
 	path = external/esphome
 	url = https://github.com/esphome/esphome.git
@@ -49,9 +46,6 @@
 [submodule "external/magistrala"]
 	path = external/magistrala
 	url = https://github.com/absmach/magistrala.git
-[submodule "external/mosquitto"]
-	path = external/mosquitto
-	url = https://github.com/eclipse-mosquitto/mosquitto.git
 [submodule "external/nuttx"]
 	path = external/nuttx
 	url = https://github.com/apache/nuttx.git
@@ -76,9 +70,6 @@
 [submodule "external/thingsboard"]
 	path = external/thingsboard
 	url = https://github.com/thingsboard/thingsboard.git
-[submodule "external/vernemq"]
-	path = external/vernemq
-	url = https://github.com/vernemq/vernemq.git
 [submodule "external/xiaozhi-esp32"]
 	path = external/xiaozhi-esp32
 	url = https://github.com/78/xiaozhi-esp32.git
@@ -88,3 +79,6 @@
 [submodule "external/zigbee2mqtt"]
 	path = external/zigbee2mqtt
 	url = https://github.com/Koenkk/zigbee2mqtt.git
+[submodule "external/rmqtt"]
+	path = external/rmqtt
+	url = https://github.com/rmqtt/rmqtt.git

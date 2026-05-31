@@ -499,15 +499,11 @@ pub fn standard_protocol_catalog() -> Vec<ProtocolCatalogEntry> {
         )
         .with_transport(TransportBinding::Mqtt)
         .with_capability_bridge(CapabilityBridge::MqttTopic)
-        .with_reference_project("emqx")
-        .with_reference_project("mosquitto")
-        .with_reference_project("vernemq"),
+        .with_reference_project("rmqtt"),
         ProtocolCatalogEntry::new("mqtt.v5", "MQTT 5", ProtocolPluginScope::StandardAdapter)
             .with_transport(TransportBinding::Mqtt)
             .with_capability_bridge(CapabilityBridge::MqttTopic)
-            .with_reference_project("emqx")
-            .with_reference_project("thingsboard")
-            .with_reference_project("hono"),
+            .with_reference_project("rmqtt"),
         ProtocolCatalogEntry::new(
             "coap.lwm2m",
             "CoAP LwM2M",
