@@ -128,6 +128,7 @@ fn standard_protocol_catalog_covers_major_iot_ecosystems_without_core_coupling()
         "opcua.bridge",
         "esphome.native",
         "tasmota.mqtt",
+        "wled.mqtt",
         "openbeken.mqtt",
     ] {
         assert!(
@@ -195,5 +196,28 @@ fn mqtt_standard_adapters_use_rmqtt_as_the_single_broker_reference() {
         assert!(mqtt
             .capability_bridges
             .contains(&CapabilityBridge::MqttTopic));
+    }
+}
+
+#[test]
+fn protocol_catalog_reference_projects_are_curated_external_baselines() {
+    let catalog = standard_protocol_catalog();
+    let allowed = [
+        "xiaozhi-esp32",
+        "rmqtt",
+        "esphome",
+        "tasmota",
+        "zigbee2mqtt",
+        "wled",
+    ];
+
+    for protocol in catalog {
+        for reference_project in protocol.reference_projects {
+            assert!(
+                allowed.contains(&reference_project),
+                "{} references non-curated external project {reference_project}",
+                protocol.protocol_id
+            );
+        }
     }
 }

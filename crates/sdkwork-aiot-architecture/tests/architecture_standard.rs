@@ -129,6 +129,38 @@ fn external_mqtt_broker_reference_is_rmqtt_only() {
 }
 
 #[test]
+fn external_submodules_are_curated_high_signal_iot_references() {
+    let root = workspace_root();
+    let gitmodules = fs::read_to_string(root.join(".gitmodules")).expect(".gitmodules");
+
+    let mut paths = gitmodules
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("path = "))
+        .collect::<Vec<_>>();
+    paths.sort_unstable();
+
+    let mut expected = vec![
+        "external/arduino-esp32",
+        "external/esp-idf",
+        "external/esphome",
+        "external/micropython",
+        "external/rmqtt",
+        "external/tasmota",
+        "external/thingsboard",
+        "external/wled",
+        "external/xiaozhi-esp32",
+        "external/zephyr",
+        "external/zigbee2mqtt",
+    ];
+    expected.sort_unstable();
+
+    assert_eq!(
+        paths, expected,
+        "external submodules must stay focused on high-star smart-hardware references plus the explicit rmqtt MQTT implementation"
+    );
+}
+
+#[test]
 fn sdk_families_have_openapi_sources_and_generation_manifests() {
     let root = workspace_root();
 

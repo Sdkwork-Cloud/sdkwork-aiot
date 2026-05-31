@@ -656,28 +656,26 @@ The platform should learn from existing projects but not become coupled to them.
 
 | Project | Useful abstraction |
 | --- | --- |
-| Eclipse Hono | Tenant, credentials, protocol adapters, telemetry, event, command routing. |
-| ThingsBoard | Device profile, attributes, telemetry, RPC, OTA package, queue/rule concepts. |
-| EdgeX/device-sdk-go | ProtocolDriver, DeviceProfile, DeviceResource, DeviceCommand, ProvisionWatcher. |
-| Eclipse Ditto | Digital twin, Thing, Feature, Attributes, Policy, Connectivity. |
-| KubeEdge | DeviceModel, Device, PropertyVisitor, mapper, desired/reported twin. |
-| ESPHome | Component model, YAML-driven hardware capabilities, ESP/RP2040/LibreTiny/Zephyr support. |
-| Tasmota/OpenBeken | MQTT topic command model, templates/modules, non-ESP chip compatibility. |
-| Leshan/LwM2M | Object, instance, resource, observe, write, execute. |
-| Matter | Endpoint, cluster, attribute, command, event. |
-| Zigbee2MQTT | Zigbee bridge and MQTT topic mapping. |
-| ChirpStack | LoRaWAN network server bridge. |
-| open62541/libmodbus | OPC UA nodes/methods/subscriptions and Modbus registers/function codes. |
-| hawkBit | Firmware rollout, deployment, artifact lifecycle. |
+| Xiaozhi ESP32 | AI hardware bootstrapping, WebSocket/MQTT+UDP compatibility, OTA activation, MCP-style interaction. |
 | RMQTT | Canonical MQTT broker/server integration, Rust-native MQTT auth/ACL/hook/session/offline queue extension point. |
+| ESPHome | Component model, YAML-driven hardware capabilities, ESP/RP2040/LibreTiny/Zephyr support. |
+| Tasmota | MQTT topic command model, templates/modules, non-ESP chip compatibility. |
+| Zigbee2MQTT | Zigbee bridge and MQTT topic mapping. |
+| WLED | Smart lighting firmware, MQTT/JSON control surface, device effects/state model. |
+| ESP-IDF | Espressif chip SDK, task/runtime, networking, OTA, peripheral capability baseline. |
+| Arduino-ESP32 | Arduino-compatible ESP32 hardware runtime, board/package model. |
+| MicroPython | Microcontroller runtime, firmware scripting, board and peripheral abstraction. |
+| Zephyr | RTOS, device tree, driver model, portable embedded hardware abstraction. |
+| ThingsBoard | Device profile, attributes, telemetry, RPC, OTA package, queue/rule concepts. |
 
 Design decision:
 
-- Hono-like protocol adapter model is adopted.
-- EdgeX-like device resource and command concepts are adopted into `CapabilityModel`.
-- Ditto/KubeEdge desired/reported twin concepts are adopted.
+- Hono-like protocol adapter ideas are adopted as a pattern, but Hono is not kept as an external submodule.
+- EdgeX-like device resource and command concepts are adopted into `CapabilityModel`, without keeping EdgeX source as a submodule.
+- Ditto/KubeEdge desired/reported twin concepts are adopted as model inspiration, without keeping their source as submodules.
 - ThingsBoard telemetry/latest/attribute/OTA ideas are adopted.
 - MQTT broker/server should directly integrate RMQTT. LoRaWAN server, Zigbee bridge, Matter stack, Modbus library, and OPC UA stack should be integrated or bridged, not rewritten in v1.
+- `external/` is limited to high-star, high-signal smart-hardware references plus explicit platform anchors such as Xiaozhi and RMQTT.
 
 ## 9. Product And Functional Plan
 

@@ -510,16 +510,14 @@ pub fn standard_protocol_catalog() -> Vec<ProtocolCatalogEntry> {
             ProtocolPluginScope::BridgeAdapter,
         )
         .with_transport(TransportBinding::Coap)
-        .with_capability_bridge(CapabilityBridge::Lwm2mObject)
-        .with_reference_project("leshan"),
+        .with_capability_bridge(CapabilityBridge::Lwm2mObject),
         ProtocolCatalogEntry::new(
             "matter.bridge",
             "Matter Bridge",
             ProtocolPluginScope::BridgeAdapter,
         )
         .with_transport(TransportBinding::Tcp)
-        .with_capability_bridge(CapabilityBridge::MatterCluster)
-        .with_reference_project("connectedhomeip"),
+        .with_capability_bridge(CapabilityBridge::MatterCluster),
         ProtocolCatalogEntry::new(
             "zigbee2mqtt.bridge",
             "Zigbee2MQTT Bridge",
@@ -535,8 +533,7 @@ pub fn standard_protocol_catalog() -> Vec<ProtocolCatalogEntry> {
         )
         .with_transport(TransportBinding::Mqtt)
         .with_transport(TransportBinding::Http)
-        .with_capability_bridge(CapabilityBridge::LorawanPayloadCodec)
-        .with_reference_project("chirpstack"),
+        .with_capability_bridge(CapabilityBridge::LorawanPayloadCodec),
         ProtocolCatalogEntry::new(
             "modbus.bridge",
             "Modbus Bridge",
@@ -544,16 +541,14 @@ pub fn standard_protocol_catalog() -> Vec<ProtocolCatalogEntry> {
         )
         .with_transport(TransportBinding::Tcp)
         .with_transport(TransportBinding::Serial)
-        .with_capability_bridge(CapabilityBridge::RegisterMap)
-        .with_reference_project("libmodbus"),
+        .with_capability_bridge(CapabilityBridge::RegisterMap),
         ProtocolCatalogEntry::new(
             "opcua.bridge",
             "OPC UA Bridge",
             ProtocolPluginScope::BridgeAdapter,
         )
         .with_transport(TransportBinding::Tcp)
-        .with_capability_bridge(CapabilityBridge::OpcUaNode)
-        .with_reference_project("open62541"),
+        .with_capability_bridge(CapabilityBridge::OpcUaNode),
         ProtocolCatalogEntry::new(
             "esphome.native",
             "ESPHome Native API",
@@ -571,12 +566,21 @@ pub fn standard_protocol_catalog() -> Vec<ProtocolCatalogEntry> {
         .with_capability_bridge(CapabilityBridge::MqttTopic)
         .with_reference_project("tasmota"),
         ProtocolCatalogEntry::new(
+            "wled.mqtt",
+            "WLED MQTT and JSON",
+            ProtocolPluginScope::CompatibilityPlugin,
+        )
+        .with_transport(TransportBinding::Mqtt)
+        .with_transport(TransportBinding::Http)
+        .with_capability_bridge(CapabilityBridge::MqttTopic)
+        .with_capability_bridge(CapabilityBridge::StandardCapability)
+        .with_reference_project("wled"),
+        ProtocolCatalogEntry::new(
             "openbeken.mqtt",
             "OpenBeken MQTT",
             ProtocolPluginScope::CompatibilityPlugin,
         )
         .with_transport(TransportBinding::Mqtt)
-        .with_capability_bridge(CapabilityBridge::MqttTopic)
-        .with_reference_project("openbeken"),
+        .with_capability_bridge(CapabilityBridge::MqttTopic),
     ]
 }

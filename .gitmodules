@@ -1,69 +1,6 @@
-[submodule "external/FreeRTOS-Kernel"]
-	path = external/FreeRTOS-Kernel
-	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
-[submodule "external/chirpstack"]
-	path = external/chirpstack
-	url = https://github.com/chirpstack/chirpstack.git
-[submodule "external/connectedhomeip"]
-	path = external/connectedhomeip
-	url = https://github.com/project-chip/connectedhomeip.git
-[submodule "external/device-sdk-go"]
-	path = external/device-sdk-go
-	url = https://github.com/edgexfoundry/device-sdk-go.git
-[submodule "external/ditto"]
-	path = external/ditto
-	url = https://github.com/eclipse-ditto/ditto.git
-[submodule "external/edgex-go"]
-	path = external/edgex-go
-	url = https://github.com/edgexfoundry/edgex-go.git
 [submodule "external/esphome"]
 	path = external/esphome
 	url = https://github.com/esphome/esphome.git
-[submodule "external/hawkbit"]
-	path = external/hawkbit
-	url = https://github.com/eclipse-hawkbit/hawkbit.git
-[submodule "external/hono"]
-	path = external/hono
-	url = https://github.com/eclipse-hono/hono.git
-[submodule "external/kaa"]
-	path = external/kaa
-	url = https://github.com/kaaproject/kaa.git
-[submodule "external/kapua"]
-	path = external/kapua
-	url = https://github.com/eclipse-kapua/kapua.git
-[submodule "external/kubeedge"]
-	path = external/kubeedge
-	url = https://github.com/kubeedge/kubeedge.git
-[submodule "external/kura"]
-	path = external/kura
-	url = https://github.com/eclipse-kura/kura.git
-[submodule "external/leshan"]
-	path = external/leshan
-	url = https://github.com/eclipse-leshan/leshan.git
-[submodule "external/libmodbus"]
-	path = external/libmodbus
-	url = https://github.com/stephane/libmodbus.git
-[submodule "external/magistrala"]
-	path = external/magistrala
-	url = https://github.com/absmach/magistrala.git
-[submodule "external/nuttx"]
-	path = external/nuttx
-	url = https://github.com/apache/nuttx.git
-[submodule "external/open62541"]
-	path = external/open62541
-	url = https://github.com/open62541/open62541.git
-[submodule "external/openbeken"]
-	path = external/openbeken
-	url = https://github.com/openshwprojects/OpenBK7231T_App.git
-[submodule "external/openremote"]
-	path = external/openremote
-	url = https://github.com/openremote/openremote.git
-[submodule "external/openthread"]
-	path = external/openthread
-	url = https://github.com/openthread/openthread.git
-[submodule "external/riot"]
-	path = external/riot
-	url = https://github.com/RIOT-OS/RIOT.git
 [submodule "external/tasmota"]
 	path = external/tasmota
 	url = https://github.com/arendst/Tasmota.git
@@ -82,3 +19,15 @@
 [submodule "external/rmqtt"]
 	path = external/rmqtt
 	url = https://github.com/rmqtt/rmqtt.git
+[submodule "external/esp-idf"]
+	path = external/esp-idf
+	url = https://github.com/espressif/esp-idf.git
+[submodule "external/arduino-esp32"]
+	path = external/arduino-esp32
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "external/micropython"]
+	path = external/micropython
+	url = https://github.com/micropython/micropython.git
+[submodule "external/wled"]
+	path = external/wled
+	url = https://github.com/wled/WLED.git
