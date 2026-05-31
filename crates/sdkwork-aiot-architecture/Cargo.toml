@@ -1,0 +1,16 @@
+[package]
+name = "sdkwork-aiot-architecture"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+sdkwork-aiot-adapter-xiaozhi = { path = "../sdkwork-aiot-adapter-xiaozhi" }
+sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }
+sdkwork-aiot-http-api = { path = "../sdkwork-aiot-http-api" }
+sdkwork-aiot-protocol = { path = "../sdkwork-aiot-protocol" }
+sdkwork-aiot-runtime = { path = "../sdkwork-aiot-runtime" }
+sdkwork-aiot-storage = { path = "../sdkwork-aiot-storage" }
+sdkwork-aiot-transport = { path = "../sdkwork-aiot-transport" }

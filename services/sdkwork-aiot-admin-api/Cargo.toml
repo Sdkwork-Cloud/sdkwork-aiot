@@ -1,0 +1,9 @@
+[package]
+name = "sdkwork-aiot-admin-api"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-http-api = { path = "../../crates/sdkwork-aiot-http-api" }
+sdkwork-aiot-runtime = { path = "../../crates/sdkwork-aiot-runtime" }

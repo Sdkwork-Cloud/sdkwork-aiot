@@ -1,0 +1,15 @@
+{
+  "workspace": "sdkwork-aiot-app-sdk",
+  "title": "SDKWork AIoT App API SDK",
+  "apiVersion": "0.1.0",
+  "standardProfile": "sdkwork-v3",
+  "authoritySpec": "openapi/sdkwork-aiot-app-sdk.openapi.json",
+  "generationInputSpec": "openapi/sdkwork-aiot-app-sdk.openapi.json",
+  "outputPackage": "sdkwork-aiot-app-sdk-typescript",
+  "packageName": "@sdkwork/aiot-app-sdk",
+  "apiPrefix": "/app/v3/api/iot",
+  "generatedProtocols": ["http"],
+  "resourceStyleOperationIds": true,
+  "authHeaders": ["Authorization", "Access-Token"],
+  "problemDetails": "application/problem+json"
+}

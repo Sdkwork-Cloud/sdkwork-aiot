@@ -1,0 +1,11 @@
+{
+  "name": "@sdkwork/aiot-backend-sdk",
+  "version": "0.1.0",
+  "generated": true,
+  "source": "../openapi/sdkwork-aiot-backend-sdk.openapi.json",
+  "standardProfile": "sdkwork-v3",
+  "apiPrefix": "/backend/v3/api/iot",
+  "primaryClient": "SdkworkAiotBackendClient",
+  "resourceStyle": true,
+  "authHeaders": ["Authorization", "Access-Token"]
+}

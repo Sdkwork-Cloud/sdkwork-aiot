@@ -1,0 +1,11 @@
+{
+  "name": "@sdkwork/aiot-app-sdk",
+  "version": "0.1.0",
+  "generated": true,
+  "source": "../openapi/sdkwork-aiot-app-sdk.openapi.json",
+  "standardProfile": "sdkwork-v3",
+  "apiPrefix": "/app/v3/api/iot",
+  "primaryClient": "SdkworkAiotAppClient",
+  "resourceStyle": true,
+  "authHeaders": ["Authorization", "Access-Token"]
+}

@@ -1,0 +1,10 @@
+[package]
+name = "sdkwork-aiot-gateway"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-runtime = { path = "../../crates/sdkwork-aiot-runtime" }
+sdkwork-aiot-adapter-xiaozhi = { path = "../../crates/sdkwork-aiot-adapter-xiaozhi" }
+sdkwork-aiot-transport = { path = "../../crates/sdkwork-aiot-transport" }

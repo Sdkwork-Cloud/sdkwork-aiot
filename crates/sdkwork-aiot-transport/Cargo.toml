@@ -1,0 +1,13 @@
+[package]
+name = "sdkwork-aiot-transport"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }
+sdkwork-aiot-protocol = { path = "../sdkwork-aiot-protocol" }
+sdkwork-aiot-runtime = { path = "../sdkwork-aiot-runtime" }
+
+[dev-dependencies]
+sdkwork-aiot-storage = { path = "../sdkwork-aiot-storage" }

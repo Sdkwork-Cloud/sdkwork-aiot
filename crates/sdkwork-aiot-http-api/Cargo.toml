@@ -1,0 +1,10 @@
+[package]
+name = "sdkwork-aiot-http-api"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }
+sdkwork-aiot-runtime = { path = "../sdkwork-aiot-runtime" }
+sdkwork-aiot-transport = { path = "../sdkwork-aiot-transport" }

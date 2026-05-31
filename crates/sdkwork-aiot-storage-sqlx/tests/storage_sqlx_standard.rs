@@ -1,0 +1,1044 @@
+use sdkwork_aiot_storage::{table_contract, IOT_TABLES};
+use sdkwork_aiot_storage::{
+    AiotOutboxWriteIntent, AiotProtocolDeadLetterIntent, AiotProtocolIngestUnitOfWork,
+    AiotProtocolStorageCommand, AiotStorageAssociation, AiotStorageWriteKind,
+};
+use sdkwork_aiot_storage_sqlx::{
+    initial_migration_sql, migration_catalog, schema_version, InMemorySqlStatementExecutor,
+    SqlBindValue, SqlDialect, SqlProtocolIngestPlanner, SqlStatementBatch, SqlStatementExecutor,
+    SqlStatementPlan, SqlTransactionFailurePolicy, SqlTransactionOutcome, SqlTransactionPlan,
+    SqlxProtocolIngestUnitOfWork,
+};
+use std::collections::BTreeSet;
+use std::sync::{Arc, Mutex};
+
+#[test]
+fn migration_catalog_declares_standard_iot_tables() {
+    let sql = initial_migration_sql();
+
+    assert_eq!(schema_version(), "0.1.0");
+    assert!(sql.contains("CREATE TABLE iot_device"));
+    assert!(sql.contains("tenant_id"));
+    assert!(sql.contains("organization_id"));
+    assert!(sql.contains("CREATE TABLE iot_outbox_event"));
+}
+
+#[test]
+fn initial_migration_contains_core_constraints_and_no_iam_tables() {
+    let sql = initial_migration_sql();
+
+    for expected in [
+        "owner_type",
+        "owner_id",
+        "created_by",
+        "updated_by",
+        "CONSTRAINT uk_iot_device_uuid",
+        "CONSTRAINT uk_iot_device_tenant_device_key",
+        "CREATE INDEX idx_iot_device_tenant_product_status",
+        "CREATE TABLE iot_device_session",
+        "CREATE TABLE iot_command",
+        "CREATE TABLE iot_device_twin_property",
+        "CREATE TABLE iot_telemetry_latest",
+        "CREATE TABLE iot_firmware_artifact",
+        "CREATE TABLE iot_protocol_message_dead_letter",
+    ] {
+        assert!(sql.contains(expected), "migration missing {expected}");
+    }
+
+    for forbidden in ["CREATE TABLE iam_", "REFERENCES iam_"] {
+        assert!(
+            !sql.contains(forbidden),
+            "AIoT migration must not own or hard-FK IAM tables"
+        );
+    }
+}
+
+#[test]
+fn migration_catalog_is_versioned_and_ordered() {
+    let catalog = migration_catalog();
+
+    assert_eq!(catalog[0].version, "0001");
+    assert_eq!(catalog[0].name, "aiot_core_schema");
+    assert_eq!(catalog[0].schema_version, schema_version());
+    assert!(catalog[0].sql.contains("CREATE TABLE iot_device"));
+}
+
+#[test]
+fn initial_migration_declares_every_standard_iot_table() {
+    let sql = initial_migration_sql();
+
+    for table in IOT_TABLES {
+        assert!(
+            sql.contains(&format!("CREATE TABLE {}", table.name)),
+            "initial migration missing {}",
+            table.name
+        );
+    }
+}
+
+#[test]
+fn initial_migration_matches_table_contract_common_association_columns() {
+    let sql = initial_migration_sql();
+
+    for table in IOT_TABLES {
+        let contract = table_contract(table.name).expect("table contract");
+        let definition = table_definition(sql, table.name);
+
+        for column in ["tenant_id", "organization_id", "data_scope"] {
+            if contract.required_columns.contains(&column) {
+                assert!(
+                    definition.contains(column),
+                    "{} DDL missing required association column {}",
+                    table.name,
+                    column
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn initial_migration_declares_protocol_ingest_runtime_columns_and_indexes() {
+    let sql = initial_migration_sql();
+    let outbox = table_definition(sql, "iot_outbox_event");
+
+    for expected in [
+        "CREATE TABLE iot_protocol_message_dead_letter",
+        "protocol_id VARCHAR(128) NOT NULL",
+        "adapter_id VARCHAR(128) NOT NULL",
+        "reason_code VARCHAR(128) NOT NULL",
+        "payload_ref VARCHAR(512)",
+        "CREATE INDEX idx_iot_protocol_dead_letter_tenant_created",
+        "CREATE TABLE iot_outbox_event",
+        "next_attempt_at TIMESTAMP",
+        "attempt_count INTEGER NOT NULL DEFAULT 0",
+        "CREATE INDEX idx_iot_outbox_event_status_next_attempt",
+    ] {
+        assert!(sql.contains(expected), "migration missing {expected}");
+    }
+
+    assert!(
+        outbox.contains("data_scope INTEGER NOT NULL DEFAULT 0"),
+        "iot_outbox_event must carry data_scope for SDKWork tenant association"
+    );
+}
+
+#[test]
+fn initial_migration_declares_protocol_ingest_idempotency_and_trace_columns() {
+    let sql = initial_migration_sql();
+
+    for expected in [
+        "message_id VARCHAR(128)",
+        "correlation_id VARCHAR(128)",
+        "idempotency_key VARCHAR(256)",
+        "trace_id VARCHAR(128)",
+        "CONSTRAINT uk_iot_protocol_ingest_tenant_idempotency",
+        "CREATE INDEX idx_iot_protocol_ingest_tenant_message",
+    ] {
+        assert!(sql.contains(expected), "migration missing {expected}");
+    }
+}
+
+#[test]
+fn sqlx_protocol_uow_builds_transactional_primary_write_and_outbox_plan() {
+    let executor = InMemorySqlStatementExecutor::new();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let command = AiotProtocolStorageCommand::new(
+        "xiaozhi.websocket",
+        "xiaozhi",
+        "device-001",
+        AiotStorageWriteKind::OpenSession,
+        "iot_device_session",
+    )
+    .with_session_id("session-001")
+    .with_message_id("msg-001")
+    .with_correlation_id("corr-001")
+    .with_trace_id("trace-001")
+    .with_idempotency_key("idem-001")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.device.session.started",
+        "device_session",
+        "session-001",
+        "iot.protocol.ingested",
+    ));
+
+    let receipt = uow.execute_protocol_command(&command);
+    let executed = executor.executed_statements();
+
+    assert!(receipt.accepted);
+    assert!(!receipt.duplicate);
+    assert_eq!(executed.len(), 3);
+    assert_eq!(executed[0].statement_kind, "idempotency_guard");
+    assert_eq!(executed[1].statement_kind, "primary_write");
+    assert_eq!(executed[1].table, "iot_protocol_ingest_record");
+    assert_eq!(executed[2].statement_kind, "outbox_write");
+    assert_eq!(executed[2].table, "iot_outbox_event");
+    assert!(executed[0]
+        .sql
+        .contains("INSERT INTO iot_protocol_ingest_record"));
+    assert!(executed[1]
+        .sql
+        .contains("UPDATE iot_protocol_ingest_record"));
+    assert!(executed[2].sql.contains("INSERT INTO iot_outbox_event"));
+    assert!(executed[0].sql.contains("message_id"));
+    assert!(executed[0].sql.contains("correlation_id"));
+    assert!(executed[0].sql.contains("trace_id"));
+    assert!(executed[1].sql.contains("idempotency_key"));
+    assert_eq!(command.primary_table, "iot_device_session");
+}
+
+#[test]
+fn sql_protocol_ingest_plan_never_inserts_columns_missing_from_target_ddl() {
+    let command = AiotProtocolStorageCommand::new(
+        "xiaozhi.websocket",
+        "xiaozhi",
+        "device-001",
+        AiotStorageWriteKind::OpenSession,
+        "iot_device_session",
+    )
+    .with_session_id("session-001")
+    .with_message_id("msg-001")
+    .with_correlation_id("corr-001")
+    .with_trace_id("trace-001")
+    .with_idempotency_key("idem-001")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.device.session.started",
+        "device_session",
+        "session-001",
+        "iot.protocol.ingested",
+    ));
+
+    let plan = SqlProtocolIngestPlanner::standard()
+        .try_plan_protocol_command(&command)
+        .expect("valid plan");
+
+    let mut statements = vec![plan.guard.clone()];
+    statements.extend(plan.write_batch.statements.iter().cloned());
+
+    for statement in statements
+        .iter()
+        .filter(|statement| statement.sql.starts_with("INSERT INTO "))
+    {
+        let ddl = table_definition(initial_migration_sql(), statement.table);
+        for column in insert_columns(&statement.sql) {
+            assert!(
+                ddl_declares_column(ddl, &column),
+                "{} inserts undeclared column {} into {}",
+                statement.statement_kind,
+                column,
+                statement.table
+            );
+        }
+    }
+}
+
+#[test]
+fn sqlx_protocol_uow_treats_duplicate_idempotency_key_as_accepted_noop() {
+    let executor = InMemorySqlStatementExecutor::new();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let command = AiotProtocolStorageCommand::new(
+        "xiaozhi.websocket",
+        "xiaozhi",
+        "device-001",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_idempotency_key("idem-telemetry-001")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.telemetry.received",
+        "device",
+        "device-001",
+        "iot.protocol.ingested",
+    ));
+
+    let first = uow.execute_protocol_command(&command);
+    let second = uow.execute_protocol_command(&command);
+    let executed = executor.executed_statements();
+
+    assert!(first.accepted);
+    assert!(!first.duplicate);
+    assert!(second.accepted);
+    assert!(second.duplicate);
+    assert_eq!(
+        executed
+            .iter()
+            .filter(|statement| statement.statement_kind == "primary_write")
+            .count(),
+        1
+    );
+    assert_eq!(
+        executed
+            .iter()
+            .filter(|statement| statement.statement_kind == "outbox_write")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn sqlx_protocol_uow_records_dead_letter_statement_without_raw_payload() {
+    let executor = InMemorySqlStatementExecutor::new();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let intent = AiotProtocolDeadLetterIntent::from_protocol_error(
+        "xiaozhi.websocket",
+        "xiaozhi",
+        "xiaozhi.message_type.unsupported",
+        "object-store://payloads/msg-002",
+    )
+    .with_device_id("device-001")
+    .with_trace_id("trace-002");
+
+    let receipt = uow.record_dead_letter(&intent);
+    let executed = executor.executed_statements();
+
+    assert!(!receipt.accepted);
+    assert_eq!(
+        receipt.dead_letter_reason.as_deref(),
+        Some("xiaozhi.message_type.unsupported")
+    );
+    assert_eq!(executed.len(), 1);
+    assert_eq!(executed[0].statement_kind, "dead_letter_write");
+    assert_eq!(executed[0].table, "iot_protocol_message_dead_letter");
+    assert!(executed[0]
+        .sql
+        .contains("INSERT INTO iot_protocol_message_dead_letter"));
+    assert!(executed[0].sql.contains("payload_ref"));
+    assert!(!executed[0].sql.contains("raw_payload"));
+}
+
+#[derive(Debug, Clone, Default)]
+struct RecordingSqlStatementExecutor {
+    state: Arc<Mutex<RecordingSqlStatementExecutorState>>,
+}
+
+#[derive(Debug, Default)]
+struct RecordingSqlStatementExecutorState {
+    claimed_keys: BTreeSet<String>,
+    batches: Vec<SqlStatementBatch>,
+}
+
+impl RecordingSqlStatementExecutor {
+    fn batches(&self) -> Vec<SqlStatementBatch> {
+        self.state
+            .lock()
+            .expect("recording sql executor poisoned")
+            .batches
+            .clone()
+    }
+}
+
+impl SqlStatementExecutor for RecordingSqlStatementExecutor {
+    fn execute_idempotency_guard(&self, key: &str, statement: SqlStatementPlan) -> bool {
+        let mut state = self.state.lock().expect("recording sql executor poisoned");
+        state
+            .batches
+            .push(SqlStatementBatch::single("idempotency_guard", statement));
+        state.claimed_keys.insert(key.to_string())
+    }
+
+    fn execute_batch(&self, batch: SqlStatementBatch) {
+        self.state
+            .lock()
+            .expect("recording sql executor poisoned")
+            .batches
+            .push(batch);
+    }
+}
+
+#[test]
+fn sqlx_protocol_uow_is_generic_over_executor_port_and_ordered_batches() {
+    let executor = RecordingSqlStatementExecutor::default();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let command = AiotProtocolStorageCommand::new(
+        "mqtt.v5",
+        "mqtt",
+        "device-002",
+        AiotStorageWriteKind::ApplyDesiredTwin,
+        "iot_device_twin_property",
+    )
+    .with_message_id("msg-002")
+    .with_correlation_id("corr-002")
+    .with_trace_id("trace-002")
+    .with_idempotency_key("idem-002")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.device.property.reported",
+        "device",
+        "device-002",
+        "iot.protocol.ingested",
+    ));
+
+    let first = uow.execute_protocol_command(&command);
+    let second = uow.execute_protocol_command(&command);
+    let batches = executor.batches();
+
+    assert!(first.accepted);
+    assert!(!first.duplicate);
+    assert!(second.accepted);
+    assert!(second.duplicate);
+    assert_eq!(batches.len(), 3);
+    assert_eq!(batches[0].batch_kind, "idempotency_guard");
+    assert_eq!(batches[0].statements[0].statement_kind, "idempotency_guard");
+    assert_eq!(batches[1].batch_kind, "protocol_ingest_write");
+    assert_eq!(
+        batches[1]
+            .statements
+            .iter()
+            .map(|statement| statement.statement_kind)
+            .collect::<Vec<_>>(),
+        vec!["primary_write", "outbox_write"]
+    );
+    assert_eq!(batches[2].batch_kind, "idempotency_guard");
+    assert_eq!(batches[2].statements.len(), 1);
+}
+
+#[test]
+fn sqlx_protocol_uow_dead_letter_uses_executor_batch_boundary() {
+    let executor = RecordingSqlStatementExecutor::default();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let intent = AiotProtocolDeadLetterIntent::from_protocol_error(
+        "mqtt.v5",
+        "mqtt",
+        "mqtt.topic.unsupported",
+        "object-store://payloads/msg-003",
+    );
+
+    let receipt = uow.record_dead_letter(&intent);
+    let batches = executor.batches();
+
+    assert!(!receipt.accepted);
+    assert_eq!(batches.len(), 1);
+    assert_eq!(batches[0].batch_kind, "dead_letter_write");
+    assert_eq!(batches[0].statements.len(), 1);
+    assert_eq!(
+        batches[0].statements[0].table,
+        "iot_protocol_message_dead_letter"
+    );
+}
+
+#[test]
+fn sql_statement_plans_use_bind_values_instead_of_interpolating_runtime_values() {
+    let executor = InMemorySqlStatementExecutor::new();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let suspicious_device_id = "device-' OR '1'='1";
+    let command = AiotProtocolStorageCommand::new(
+        "xiaozhi.websocket",
+        "xiaozhi",
+        suspicious_device_id,
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_message_id("msg-'quoted")
+    .with_correlation_id("corr-004")
+    .with_trace_id("trace-004")
+    .with_idempotency_key("idem-004");
+
+    let receipt = uow.execute_protocol_command(&command);
+    let executed = executor.executed_statements();
+
+    assert!(receipt.accepted);
+    assert_eq!(executed.len(), 2);
+
+    for statement in &executed {
+        assert!(
+            statement.sql.contains('?') || statement.sql.contains("$1"),
+            "statement must use bind placeholders: {}",
+            statement.sql
+        );
+        assert!(
+            !statement.sql.contains(suspicious_device_id),
+            "runtime value leaked into SQL text: {}",
+            statement.sql
+        );
+        assert!(
+            statement
+                .binds
+                .contains(&SqlBindValue::Text(suspicious_device_id.to_string())),
+            "runtime value missing from bind list: {:?}",
+            statement.binds
+        );
+    }
+
+    assert_eq!(executed[0].statement_kind, "idempotency_guard");
+    assert_eq!(executed[0].binds[0], SqlBindValue::Int64(0));
+    assert_eq!(executed[0].binds[1], SqlBindValue::Int64(0));
+    assert_eq!(executed[0].binds[2], SqlBindValue::Int64(0));
+    assert_eq!(
+        executed[0].binds[3],
+        SqlBindValue::Text("xiaozhi.websocket".to_string())
+    );
+    assert_eq!(
+        executed[0].binds[4],
+        SqlBindValue::Text("xiaozhi".to_string())
+    );
+    assert_eq!(
+        executed[0].binds[5],
+        SqlBindValue::Text(suspicious_device_id.to_string())
+    );
+    assert_eq!(executed[0].binds.last(), Some(&SqlBindValue::Int64(0)));
+
+    assert_eq!(executed[1].statement_kind, "primary_write");
+    assert_eq!(executed[1].binds[0], SqlBindValue::Int64(1));
+    assert_eq!(executed[1].binds[1], SqlBindValue::Int64(0));
+    assert_eq!(executed[1].binds[2], SqlBindValue::Int64(0));
+    assert_eq!(executed[1].binds[3], SqlBindValue::Int64(0));
+    assert_eq!(
+        executed[1].binds[4],
+        SqlBindValue::Text("xiaozhi.websocket".to_string())
+    );
+    assert_eq!(
+        executed[1].binds[5],
+        SqlBindValue::Text("xiaozhi".to_string())
+    );
+    assert_eq!(
+        executed[1].binds[6],
+        SqlBindValue::Text(suspicious_device_id.to_string())
+    );
+    assert_eq!(
+        executed[1].binds.last(),
+        Some(&SqlBindValue::Text("idem-004".to_string()))
+    );
+}
+
+#[test]
+fn sql_protocol_ingest_planner_separates_statement_generation_from_execution() {
+    let planner = SqlProtocolIngestPlanner::standard();
+    let command = AiotProtocolStorageCommand::new(
+        "coap.lwm2m",
+        "lwm2m",
+        "device-005",
+        AiotStorageWriteKind::KeepAlive,
+        "iot_device_online_lease",
+    )
+    .with_message_id("msg-005")
+    .with_trace_id("trace-005")
+    .with_idempotency_key("idem-005");
+
+    let ingest_plan = planner.plan_protocol_command(&command);
+
+    assert_eq!(ingest_plan.idempotency_key, "idem-005");
+    assert_eq!(ingest_plan.guard.statement_kind, "idempotency_guard");
+    assert_eq!(ingest_plan.write_batch.batch_kind, "protocol_ingest_write");
+    assert_eq!(ingest_plan.write_batch.statements.len(), 1);
+    assert_eq!(
+        ingest_plan.write_batch.statements[0].table,
+        "iot_protocol_ingest_record"
+    );
+    assert_eq!(command.primary_table, "iot_device_online_lease");
+    assert!(ingest_plan.write_batch.statements[0]
+        .sql
+        .contains("UPDATE iot_protocol_ingest_record"));
+    assert!(ingest_plan
+        .guard
+        .binds
+        .contains(&SqlBindValue::Text("idem-005".to_string())));
+    assert!(ingest_plan.write_batch.statements[0]
+        .binds
+        .contains(&SqlBindValue::Text("idem-005".to_string())));
+
+    let dead_letter = planner.plan_dead_letter(&AiotProtocolDeadLetterIntent::from_protocol_error(
+        "coap.lwm2m",
+        "lwm2m",
+        "decode.invalid_frame",
+        "object-store://payloads/msg-005",
+    ));
+
+    assert_eq!(dead_letter.batch_kind, "dead_letter_write");
+    assert_eq!(dead_letter.statements.len(), 1);
+    assert_eq!(
+        dead_letter.statements[0].table,
+        "iot_protocol_message_dead_letter"
+    );
+}
+
+#[test]
+fn sql_protocol_ingest_planner_renders_postgres_and_sqlite_dialects() {
+    let command = AiotProtocolStorageCommand::new(
+        "matter.1.2",
+        "matter",
+        "device-007",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_message_id("msg-007")
+    .with_correlation_id("corr-007")
+    .with_trace_id("trace-007")
+    .with_idempotency_key("idem-007");
+
+    let postgres = SqlProtocolIngestPlanner::standard().plan_protocol_command(&command);
+    let sqlite =
+        SqlProtocolIngestPlanner::for_dialect(SqlDialect::Sqlite).plan_protocol_command(&command);
+
+    assert_eq!(
+        SqlProtocolIngestPlanner::standard().dialect(),
+        SqlDialect::Postgres
+    );
+    assert_eq!(postgres.guard.dialect, SqlDialect::Postgres);
+    assert_eq!(sqlite.guard.dialect, SqlDialect::Sqlite);
+    assert!(postgres.guard.sql.contains("$1, $2, $3"));
+    assert!(!postgres.guard.sql.contains('?'));
+    assert!(postgres.write_batch.statements[0].sql.contains("$1"));
+    assert!(sqlite.guard.sql.contains("?, ?, ?"));
+    assert!(!sqlite.guard.sql.contains("$1"));
+    assert!(postgres.guard.sql.contains("ON CONFLICT DO NOTHING"));
+    assert!(sqlite.guard.sql.contains("ON CONFLICT DO NOTHING"));
+    assert_eq!(postgres.guard.binds, sqlite.guard.binds);
+}
+
+#[test]
+fn sql_protocol_ingest_planner_writes_appbase_association_fields() {
+    let command = AiotProtocolStorageCommand::new(
+        "mqtt.v5",
+        "mqtt",
+        "device-008",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_association(AiotStorageAssociation::tenant_org(10001, 20001).with_data_scope(7))
+    .with_message_id("msg-008")
+    .with_trace_id("trace-008")
+    .with_idempotency_key("idem-008")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.telemetry.received",
+        "device",
+        "device-008",
+        "iot.protocol.ingested",
+    ));
+
+    let plan = SqlProtocolIngestPlanner::standard().plan_protocol_command(&command);
+    let primary = &plan.write_batch.statements[0];
+    let outbox = &plan.write_batch.statements[1];
+
+    for statement in [&plan.guard, primary, outbox] {
+        assert!(
+            statement.sql.contains("tenant_id"),
+            "{} missing tenant_id",
+            statement.statement_kind
+        );
+        assert!(
+            statement.sql.contains("organization_id"),
+            "{} missing organization_id",
+            statement.statement_kind
+        );
+        assert!(
+            statement.binds.contains(&SqlBindValue::Int64(10001)),
+            "{} missing tenant bind",
+            statement.statement_kind
+        );
+        assert!(
+            statement.binds.contains(&SqlBindValue::Int64(20001)),
+            "{} missing organization bind",
+            statement.statement_kind
+        );
+    }
+
+    assert!(plan.guard.sql.contains("data_scope"));
+    assert!(primary.sql.contains("data_scope"));
+    assert!(outbox.sql.contains("data_scope"));
+    assert!(plan.guard.binds.contains(&SqlBindValue::Int64(7)));
+    assert!(primary.binds.contains(&SqlBindValue::Int64(7)));
+    assert!(outbox.binds.contains(&SqlBindValue::Int64(7)));
+}
+
+#[test]
+fn sql_protocol_ingest_planner_rejects_unknown_primary_tables_before_rendering_sql() {
+    let command = AiotProtocolStorageCommand::new(
+        "mqtt.v5",
+        "mqtt",
+        "device-010",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event; DROP TABLE iot_device",
+    )
+    .with_idempotency_key("idem-010");
+
+    let error = SqlProtocolIngestPlanner::standard()
+        .try_plan_protocol_command(&command)
+        .expect_err("unknown or unsafe table must fail closed");
+
+    assert_eq!(error.code, "storage.sql.primary_table.unsupported");
+    assert_eq!(
+        error.table.as_deref(),
+        Some("iot_telemetry_event; DROP TABLE iot_device")
+    );
+}
+
+#[test]
+fn sqlx_protocol_uow_rejects_unknown_primary_tables_without_executing_sql() {
+    let executor = InMemorySqlStatementExecutor::new();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let command = AiotProtocolStorageCommand::new(
+        "mqtt.v5",
+        "mqtt",
+        "device-011",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event; DROP TABLE iot_device",
+    )
+    .with_idempotency_key("idem-011");
+
+    let receipt = uow.execute_protocol_command(&command);
+
+    assert!(!receipt.accepted);
+    assert_eq!(
+        receipt.dead_letter_reason.as_deref(),
+        Some("storage.sql.primary_table.unsupported")
+    );
+    assert!(executor.executed_statements().is_empty());
+}
+
+#[derive(Debug, Clone, Default)]
+struct FailingTransactionExecutor {
+    state: Arc<Mutex<Vec<SqlTransactionPlan>>>,
+}
+
+impl FailingTransactionExecutor {
+    fn transactions(&self) -> Vec<SqlTransactionPlan> {
+        self.state
+            .lock()
+            .expect("failing transaction executor poisoned")
+            .clone()
+    }
+}
+
+impl SqlStatementExecutor for FailingTransactionExecutor {
+    fn execute_idempotency_guard(&self, _key: &str, _statement: SqlStatementPlan) -> bool {
+        true
+    }
+
+    fn execute_batch(&self, _batch: SqlStatementBatch) {}
+
+    fn execute_transaction(&self, transaction: SqlTransactionPlan) -> SqlTransactionOutcome {
+        self.state
+            .lock()
+            .expect("failing transaction executor poisoned")
+            .push(transaction);
+        SqlTransactionOutcome::rolled_back("storage.sql.transaction_rolled_back")
+    }
+}
+
+#[test]
+fn sqlx_protocol_uow_maps_transaction_rollback_to_dead_letter_receipt() {
+    let executor = FailingTransactionExecutor::default();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let command = AiotProtocolStorageCommand::new(
+        "mqtt.v5",
+        "mqtt",
+        "device-013",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_idempotency_key("idem-013");
+
+    let receipt = uow.execute_protocol_command(&command);
+    let transactions = executor.transactions();
+
+    assert!(!receipt.accepted);
+    assert!(!receipt.duplicate);
+    assert_eq!(
+        receipt.dead_letter_reason.as_deref(),
+        Some("storage.sql.transaction_rolled_back")
+    );
+    assert_eq!(transactions.len(), 1);
+    assert_eq!(
+        transactions[0].failure_policy,
+        SqlTransactionFailurePolicy::RollbackAll
+    );
+}
+
+#[test]
+fn sql_statement_plans_validate_placeholder_count_matches_bind_count() {
+    let command = AiotProtocolStorageCommand::new(
+        "mqtt.v5",
+        "mqtt",
+        "device-012",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_idempotency_key("idem-012")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.telemetry.received",
+        "device",
+        "device-012",
+        "iot.protocol.ingested",
+    ));
+
+    let plan = SqlProtocolIngestPlanner::standard()
+        .try_plan_protocol_command(&command)
+        .expect("valid plan");
+
+    plan.validate().expect("generated plan must be valid");
+    assert_eq!(plan.guard.placeholder_count(), plan.guard.binds.len());
+    for statement in &plan.write_batch.statements {
+        assert_eq!(statement.placeholder_count(), statement.binds.len());
+    }
+
+    let invalid = SqlStatementPlan::new(
+        "invalid",
+        "iot_telemetry_event",
+        "INSERT INTO iot_telemetry_event (tenant_id, organization_id) VALUES ($1, $2)",
+    )
+    .with_binds(vec![SqlBindValue::Int64(10001)]);
+    let error = invalid
+        .validate()
+        .expect_err("placeholder/bind mismatch must fail");
+    assert_eq!(error.code, "storage.sql.bind_count_mismatch");
+}
+
+#[test]
+fn sql_statement_plan_validation_rejects_columns_missing_from_target_ddl() {
+    let invalid_insert = SqlStatementPlan::new(
+        "invalid_insert",
+        "iot_telemetry_event",
+        "INSERT INTO iot_telemetry_event (tenant_id, missing_column) VALUES ($1, $2)",
+    )
+    .with_binds(vec![SqlBindValue::Int64(10001), SqlBindValue::Int64(1)]);
+    let insert_error = invalid_insert
+        .validate()
+        .expect_err("insert column missing from DDL must fail");
+
+    assert_eq!(insert_error.code, "storage.sql.column.unsupported");
+    assert_eq!(insert_error.table.as_deref(), Some("iot_telemetry_event"));
+    assert_eq!(insert_error.column.as_deref(), Some("missing_column"));
+
+    let invalid_update = SqlStatementPlan::new(
+        "invalid_update",
+        "iot_protocol_ingest_record",
+        "UPDATE iot_protocol_ingest_record SET missing_column = $1 WHERE tenant_id = $2",
+    )
+    .with_binds(vec![SqlBindValue::Int64(1), SqlBindValue::Int64(10001)]);
+    let update_error = invalid_update
+        .validate()
+        .expect_err("update column missing from DDL must fail");
+
+    assert_eq!(update_error.code, "storage.sql.column.unsupported");
+    assert_eq!(
+        update_error.table.as_deref(),
+        Some("iot_protocol_ingest_record")
+    );
+    assert_eq!(update_error.column.as_deref(), Some("missing_column"));
+}
+
+#[test]
+fn sql_statement_batch_and_transaction_validation_reject_invalid_nested_statements() {
+    let invalid_statement = SqlStatementPlan::new(
+        "invalid_update",
+        "iot_protocol_ingest_record",
+        "UPDATE iot_protocol_ingest_record SET missing_column = $1 WHERE tenant_id = $2",
+    )
+    .with_binds(vec![SqlBindValue::Int64(1), SqlBindValue::Int64(10001)]);
+    let batch = SqlStatementBatch::single("invalid_batch", invalid_statement.clone());
+    let batch_error = batch
+        .validate()
+        .expect_err("batch validation must fail on invalid statement");
+
+    assert_eq!(batch_error.code, "storage.sql.column.unsupported");
+    assert_eq!(batch_error.column.as_deref(), Some("missing_column"));
+
+    let transaction = SqlTransactionPlan::new(
+        "invalid_transaction",
+        "idem-invalid",
+        idempotency_guard_for_test(),
+        batch,
+    );
+    let transaction_error = transaction
+        .validate()
+        .expect_err("transaction validation must fail on invalid nested statement");
+
+    assert_eq!(transaction_error.code, "storage.sql.column.unsupported");
+    assert_eq!(
+        transaction_error.statement_kind,
+        Some(invalid_statement.statement_kind)
+    );
+}
+
+#[test]
+fn sql_protocol_dead_letter_planner_exposes_validated_safe_batch_entrypoint() {
+    let intent = AiotProtocolDeadLetterIntent::from_protocol_error(
+        "mqtt.v5",
+        "mqtt",
+        "decode.invalid_frame",
+        "object-store://payloads/msg-014",
+    )
+    .with_device_id("device-014")
+    .with_trace_id("trace-014");
+
+    let batch = SqlProtocolIngestPlanner::standard()
+        .try_plan_dead_letter(&intent)
+        .expect("dead-letter batch must validate");
+
+    assert_eq!(batch.batch_kind, "dead_letter_write");
+    assert_eq!(batch.statements.len(), 1);
+    batch.validate().expect("safe dead-letter batch");
+}
+
+#[test]
+fn sql_protocol_dead_letter_plan_writes_appbase_association_fields() {
+    let intent = AiotProtocolDeadLetterIntent::from_protocol_error(
+        "mqtt.v5",
+        "mqtt",
+        "decode.invalid_frame",
+        "object-store://payloads/msg-009",
+    )
+    .with_association(AiotStorageAssociation::tenant_org(10001, 20001).with_data_scope(7))
+    .with_device_id("device-009")
+    .with_trace_id("trace-009");
+
+    let batch = SqlProtocolIngestPlanner::standard().plan_dead_letter(&intent);
+    let statement = &batch.statements[0];
+
+    assert_eq!(batch.batch_kind, "dead_letter_write");
+    assert!(statement.sql.contains("tenant_id"));
+    assert!(statement.sql.contains("organization_id"));
+    assert!(statement.sql.contains("data_scope"));
+    assert!(statement.binds.contains(&SqlBindValue::Int64(10001)));
+    assert!(statement.binds.contains(&SqlBindValue::Int64(20001)));
+    assert!(statement.binds.contains(&SqlBindValue::Int64(7)));
+    assert!(statement
+        .binds
+        .contains(&SqlBindValue::Text("decode.invalid_frame".to_string())));
+}
+
+fn table_definition<'a>(sql: &'a str, table: &str) -> &'a str {
+    let marker = format!("CREATE TABLE {table}");
+    let start = sql
+        .find(&marker)
+        .unwrap_or_else(|| panic!("missing table definition for {table}"));
+    let rest = &sql[start + marker.len()..];
+    let end = rest.find("\nCREATE TABLE ").unwrap_or(rest.len());
+
+    &sql[start..start + marker.len() + end]
+}
+
+fn insert_columns(sql: &str) -> Vec<String> {
+    let Some(start) = sql.find('(') else {
+        return Vec::new();
+    };
+    let Some(end) = sql[start + 1..].find(')') else {
+        return Vec::new();
+    };
+
+    sql[start + 1..start + 1 + end]
+        .split(',')
+        .map(|column| column.trim().to_string())
+        .filter(|column| !column.is_empty())
+        .collect()
+}
+
+fn ddl_declares_column(ddl: &str, column: &str) -> bool {
+    ddl.lines()
+        .map(str::trim)
+        .any(|line| line.starts_with(&format!("{column} ")))
+}
+
+fn idempotency_guard_for_test() -> SqlStatementPlan {
+    SqlStatementPlan::new(
+        "idempotency_guard",
+        "iot_protocol_ingest_record",
+        "INSERT INTO iot_protocol_ingest_record (tenant_id, organization_id, data_scope, protocol_id, adapter_id, device_id, idempotency_key, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING",
+    )
+    .with_binds(vec![
+        SqlBindValue::Int64(10001),
+        SqlBindValue::Int64(20001),
+        SqlBindValue::Int64(7),
+        SqlBindValue::Text("mqtt.v5".to_string()),
+        SqlBindValue::Text("mqtt".to_string()),
+        SqlBindValue::Text("device-014".to_string()),
+        SqlBindValue::Text("idem-invalid".to_string()),
+        SqlBindValue::Int64(0),
+    ])
+}
+
+#[derive(Debug, Clone, Default)]
+struct RecordingTransactionExecutor {
+    state: Arc<Mutex<RecordingTransactionExecutorState>>,
+}
+
+#[derive(Debug, Default)]
+struct RecordingTransactionExecutorState {
+    claimed_keys: BTreeSet<String>,
+    transactions: Vec<SqlTransactionPlan>,
+}
+
+impl RecordingTransactionExecutor {
+    fn transactions(&self) -> Vec<SqlTransactionPlan> {
+        self.state
+            .lock()
+            .expect("recording transaction executor poisoned")
+            .transactions
+            .clone()
+    }
+}
+
+impl SqlStatementExecutor for RecordingTransactionExecutor {
+    fn execute_idempotency_guard(&self, key: &str, _statement: SqlStatementPlan) -> bool {
+        self.state
+            .lock()
+            .expect("recording transaction executor poisoned")
+            .claimed_keys
+            .insert(key.to_string())
+    }
+
+    fn execute_batch(&self, _batch: SqlStatementBatch) {}
+
+    fn execute_transaction(&self, transaction: SqlTransactionPlan) -> SqlTransactionOutcome {
+        let mut state = self
+            .state
+            .lock()
+            .expect("recording transaction executor poisoned");
+        let accepted = state
+            .claimed_keys
+            .insert(transaction.idempotency_key.clone());
+        state.transactions.push(transaction);
+
+        if accepted {
+            SqlTransactionOutcome::Committed
+        } else {
+            SqlTransactionOutcome::Duplicate
+        }
+    }
+}
+
+#[test]
+fn sqlx_protocol_uow_executes_protocol_ingest_as_explicit_transaction_plan() {
+    let executor = RecordingTransactionExecutor::default();
+    let uow = SqlxProtocolIngestUnitOfWork::new(executor.clone());
+    let command = AiotProtocolStorageCommand::new(
+        "matter.1.2",
+        "matter",
+        "device-006",
+        AiotStorageWriteKind::RecordTelemetry,
+        "iot_telemetry_event",
+    )
+    .with_message_id("msg-006")
+    .with_trace_id("trace-006")
+    .with_idempotency_key("idem-006")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.telemetry.received",
+        "device",
+        "device-006",
+        "iot.protocol.ingested",
+    ));
+
+    let first = uow.execute_protocol_command(&command);
+    let second = uow.execute_protocol_command(&command);
+    let transactions = executor.transactions();
+
+    assert!(first.accepted);
+    assert!(!first.duplicate);
+    assert!(second.accepted);
+    assert!(second.duplicate);
+    assert_eq!(transactions.len(), 2);
+    assert_eq!(transactions[0].transaction_kind, "protocol_ingest");
+    assert_eq!(
+        transactions[0].failure_policy,
+        SqlTransactionFailurePolicy::RollbackAll
+    );
+    assert_eq!(transactions[0].idempotency_key, "idem-006");
+    assert_eq!(transactions[0].guard.statement_kind, "idempotency_guard");
+    assert_eq!(
+        transactions[0]
+            .ordered_statements()
+            .iter()
+            .map(|statement| statement.statement_kind)
+            .collect::<Vec<_>>(),
+        vec!["idempotency_guard", "primary_write", "outbox_write"]
+    );
+}

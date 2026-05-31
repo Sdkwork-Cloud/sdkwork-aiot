@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-aiot-server",
+    "displayName": "SDKWork AIoT Server",
+    "version": "0.1.0",
+    "type": "rust-crate",
+    "root": "skdwork-aiot-server",
+    "domain": "iot",
+    "capability": "aiot-runtime",
+    "languages": ["rust"],
+    "generated": false,
+    "manifests": ["Cargo.toml"]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "API_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/API_SPEC.md",
+      "purpose": "SDKWork v3 HTTP API prefixes, operationIds, OpenAPI, Problem Details, and generated SDK source-of-truth rules."
+    },
+    {
+      "file": "SDK_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/SDK_SPEC.md",
+      "purpose": "Generated SDK package, auth header, resource-style client surface, and no raw HTTP fallback rules."
+    },
+    {
+      "file": "DOMAIN_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/DOMAIN_SPEC.md",
+      "purpose": "Canonical domain naming, bounded context, capability ownership, and cross-domain references."
+    },
+    {
+      "file": "DATABASE_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/DATABASE_SPEC.md",
+      "purpose": "Database prefix, table contract, tenant isolation, ownership, audit, and schema evolution rules."
+    },
+    {
+      "file": "COMPONENT_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/COMPONENT_SPEC.md",
+      "purpose": "Local component manifest, public entrypoints, integration boundaries, and verification requirements."
+    },
+    {
+      "file": "SECURITY_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/SECURITY_SPEC.md",
+      "purpose": "Dual-token app/backend security, device auth separation, authorization, logging, and abuse protection."
+    },
+    {
+      "file": "OBSERVABILITY_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/OBSERVABILITY_SPEC.md",
+      "purpose": "Trace, metric, structured logging, audit correlation, and sensitive data redaction rules."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../spring-ai-plus/spring-ai-plus-business/specs/TEST_SPEC.md",
+      "purpose": "Contract, architecture, integration, and verification standards."
+    }
+  ],
+  "contracts": {
+    "publicExports": [
+      "crates/sdkwork-aiot-contract",
+      "crates/sdkwork-aiot-core",
+      "crates/sdkwork-aiot-protocol",
+      "crates/sdkwork-aiot-runtime",
+      "crates/sdkwork-aiot-storage",
+      "crates/sdkwork-aiot-security",
+      "crates/sdkwork-aiot-observability",
+      "crates/sdkwork-aiot-adapter-xiaozhi",
+      "crates/sdkwork-aiot-http-api"
+    ],
+    "runtimeEntrypoints": [
+      "sdkwork_aiot_runtime::AiotRuntime::builder",
+      "sdkwork_aiot_runtime::standard_aiot_runtime",
+      "services/sdkwork-aiot-gateway",
+      "services/sdkwork-aiot-admin-api",
+      "services/sdkwork-aiot-app-api"
+    ],
+    "sdkClients": [
+      "@sdkwork/aiot-app-sdk",
+      "@sdkwork/aiot-backend-sdk"
+    ],
+    "events": [
+      "iot.device.registered",
+      "iot.device.connected",
+      "iot.command.created",
+      "iot.twin.reported.updated",
+      "iot.telemetry.received",
+      "iot.security.deviceAuthFailed"
+    ],
+    "configKeys": [
+      "AiotConfig",
+      "AiotRuntimeBuilder",
+      "RuntimeServicePlan"
+    ]
+  },
+  "protocolPluginStandard": {
+    "manifest": "sdkwork_aiot_protocol::ProtocolAdapterManifest",
+    "requiredFields": [
+      "scope",
+      "protocol_ids",
+      "transports",
+      "codecs",
+      "session_policies",
+      "capability_bridges",
+      "security_modes",
+      "hardware_families",
+      "runtime_profiles",
+      "firmware_profiles"
+    ],
+    "routeContract": "sdkwork_aiot_runtime::AiotProtocolRoute",
+    "envelopeContract": "sdkwork_aiot_protocol::ProtocolEnvelope",
+    "ingestContract": "sdkwork_aiot_core::ProtocolIngestRecord",
+    "firstPlugin": "xiaozhi"
+  },
+  "boundaries": {
+    "externalSharedKernels": ["sdkwork-appbase.iam"],
+    "forbiddenComponents": ["sdkwork-aiot-iam"],
+    "forbiddenTables": [
+      "iam_tenant",
+      "iam_organization",
+      "iam_user",
+      "iam_role",
+      "iam_permission",
+      "iam_policy",
+      "iam_credential"
+    ],
+    "deviceProtocolBasePaths": ["/iot/xiaozhi"],
+    "apiPrefixes": ["/app/v3/api/iot", "/backend/v3/api/iot"]
+  },
+  "verification": {
+    "commands": [
+      "cargo fmt --all -- --check",
+      "cargo test --workspace",
+      "cargo check --workspace"
+    ]
+  }
+}

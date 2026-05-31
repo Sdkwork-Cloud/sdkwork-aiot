@@ -1,0 +1,579 @@
+{
+  "openapi": "3.1.2",
+  "info": {
+    "title": "SDKWork AIoT App API",
+    "version": "0.1.0",
+    "description": "SDKWork AIoT app API contract. OpenAPI is the source of truth for generated app SDKs."
+  },
+  "servers": [
+    {
+      "url": "/app/v3/api/iot"
+    }
+  ],
+  "tags": [
+    {
+      "name": "iot",
+      "description": "User-facing AIoT device control and state APIs."
+    }
+  ],
+  "paths": {
+    "/app/v3/api/iot/devices": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SdkworkTenantId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkOrganizationId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkUserId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkDataScope"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkPermissionScope"
+        }
+      ],
+      "get": {
+        "tags": ["iot"],
+        "operationId": "devices.list",
+        "x-sdkwork-required-permission": "iot.devices.read",
+        "summary": "List user-visible AIoT devices",
+        "security": [
+          {
+            "Authorization": [],
+            "Access-Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device collection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiotDeviceListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/app/v3/api/iot/devices/{deviceId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SdkworkTenantId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkOrganizationId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkUserId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkDataScope"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkPermissionScope"
+        }
+      ],
+      "get": {
+        "tags": ["iot"],
+        "operationId": "devices.retrieve",
+        "x-sdkwork-required-permission": "iot.devices.read",
+        "summary": "Retrieve one AIoT device",
+        "security": [
+          {
+            "Authorization": [],
+            "Access-Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DeviceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiotDeviceResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/app/v3/api/iot/devices/{deviceId}/commands": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SdkworkTenantId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkOrganizationId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkUserId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkDataScope"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkPermissionScope"
+        }
+      ],
+      "post": {
+        "tags": ["iot"],
+        "operationId": "devices.commands.create",
+        "x-sdkwork-required-permission": "iot.commands.execute",
+        "summary": "Create a device command",
+        "security": [
+          {
+            "Authorization": [],
+            "Access-Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DeviceId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiotCommandCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Command accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiotCommandResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/app/v3/api/iot/devices/{deviceId}/twin": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SdkworkTenantId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkOrganizationId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkUserId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkDataScope"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkPermissionScope"
+        }
+      ],
+      "get": {
+        "tags": ["iot"],
+        "operationId": "devices.twin.retrieve",
+        "x-sdkwork-required-permission": "iot.twins.read",
+        "summary": "Retrieve device twin",
+        "security": [
+          {
+            "Authorization": [],
+            "Access-Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DeviceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Twin resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiotTwinResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/app/v3/api/iot/devices/{deviceId}/events": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/SdkworkTenantId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkOrganizationId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkUserId"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkDataScope"
+        },
+        {
+          "$ref": "#/components/parameters/SdkworkPermissionScope"
+        }
+      ],
+      "get": {
+        "tags": ["iot"],
+        "operationId": "devices.events.list",
+        "x-sdkwork-required-permission": "iot.devices.read",
+        "summary": "List device events",
+        "security": [
+          {
+            "Authorization": [],
+            "Access-Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DeviceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device events.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiotEventListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "Authorization": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authorization: Bearer <auth_token>"
+      },
+      "Access-Token": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Access-Token",
+        "description": "SDKWork canonical access token header."
+      }
+    },
+    "parameters": {
+      "SdkworkTenantId": {
+        "name": "X-Sdkwork-Tenant-Id",
+        "in": "header",
+        "required": true,
+        "description": "Resolved tenant id provided by sdkwork-appbase IAM context.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      },
+      "SdkworkOrganizationId": {
+        "name": "X-Sdkwork-Organization-Id",
+        "in": "header",
+        "required": true,
+        "description": "Resolved organization id provided by sdkwork-appbase IAM context.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      },
+      "SdkworkUserId": {
+        "name": "X-Sdkwork-User-Id",
+        "in": "header",
+        "required": false,
+        "description": "Optional resolved user id provided by sdkwork-appbase IAM context.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        }
+      },
+      "SdkworkDataScope": {
+        "name": "X-Sdkwork-Data-Scope",
+        "in": "header",
+        "required": false,
+        "description": "Optional resolved SDKWork data-scope integer.",
+        "schema": {
+          "type": "string",
+          "pattern": "^-?[0-9]+$"
+        }
+      },
+      "SdkworkPermissionScope": {
+        "name": "X-Sdkwork-Permission-Scope",
+        "in": "header",
+        "required": true,
+        "description": "Comma-separated permissions resolved by sdkwork-appbase IAM context.",
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "DeviceId": {
+        "name": "deviceId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "responses": {
+      "Problem": {
+        "description": "Problem details.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "AiotDevice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "tenantId", "organizationId", "deviceId", "displayName", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable int64 identifier serialized as a string."
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AiotDeviceListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "data"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiotDevice"
+            }
+          }
+        }
+      },
+      "AiotDeviceResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "data"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AiotDevice"
+          }
+        }
+      },
+      "AiotCommandCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capabilityName", "commandName", "payload"],
+        "properties": {
+          "capabilityName": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "commandName": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        }
+      },
+      "AiotCommandResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "data"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["commandId", "status"],
+            "properties": {
+              "commandId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "AiotTwinResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "data"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        }
+      },
+      "AiotEventListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "data"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            }
+          }
+        }
+      },
+      "JsonValue": {
+        "description": "Arbitrary JSON value constrained by use-case validation.",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": true
+          },
+          {
+            "type": "array"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["type", "title", "status"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

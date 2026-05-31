@@ -1,0 +1,14 @@
+{
+  "name": "@sdkwork/aiot-app-sdk",
+  "version": "0.1.0",
+  "description": "SDKWork AIoT app API generated SDK boundary.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "generate": "sdkwork-sdk-generate --manifest ../openapi/sdkwork-aiot-app-sdk.sdkgen.json",
+    "typecheck": "tsc --noEmit"
+  }
+}

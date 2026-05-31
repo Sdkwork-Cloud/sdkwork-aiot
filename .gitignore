@@ -1,0 +1,6 @@
+/target/
+.codex-gitdir/
+*.log
+.env
+.env.*
+!.env.example

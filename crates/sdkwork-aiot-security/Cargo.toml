@@ -1,0 +1,8 @@
+[package]
+name = "sdkwork-aiot-security"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }

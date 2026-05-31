@@ -1,0 +1,24 @@
+[workspace]
+members = [
+    "crates/sdkwork-aiot-contract",
+    "crates/sdkwork-aiot-core",
+    "crates/sdkwork-aiot-protocol",
+    "crates/sdkwork-aiot-runtime",
+    "crates/sdkwork-aiot-storage",
+    "crates/sdkwork-aiot-storage-sqlx",
+    "crates/sdkwork-aiot-security",
+    "crates/sdkwork-aiot-observability",
+    "crates/sdkwork-aiot-adapter-xiaozhi",
+    "crates/sdkwork-aiot-transport",
+    "crates/sdkwork-aiot-http-api",
+    "crates/sdkwork-aiot-architecture",
+    "services/sdkwork-aiot-gateway",
+    "services/sdkwork-aiot-admin-api",
+    "services/sdkwork-aiot-app-api",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "Apache-2.0"
