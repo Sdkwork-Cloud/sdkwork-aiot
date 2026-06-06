@@ -7,52 +7,76 @@
     "version": "0.1.0",
     "type": "rust-crate",
     "root": "skdwork-aiot-server",
-    "domain": "iot",
+    "domain": "device",
     "capability": "aiot-runtime",
-    "languages": ["rust"],
+    "languages": [
+      "rust"
+    ],
     "generated": false,
-    "manifests": ["Cargo.toml"]
+    "manifests": [
+      "Cargo.toml"
+    ]
   },
   "canonicalSpecs": [
     {
       "file": "API_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/API_SPEC.md",
+      "path": "../sdkwork-specs/API_SPEC.md",
       "purpose": "SDKWork v3 HTTP API prefixes, operationIds, OpenAPI, Problem Details, and generated SDK source-of-truth rules."
     },
     {
       "file": "SDK_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/SDK_SPEC.md",
+      "path": "../sdkwork-specs/SDK_SPEC.md",
       "purpose": "Generated SDK package, auth header, resource-style client surface, and no raw HTTP fallback rules."
     },
     {
       "file": "DOMAIN_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/DOMAIN_SPEC.md",
+      "path": "../sdkwork-specs/DOMAIN_SPEC.md",
       "purpose": "Canonical domain naming, bounded context, capability ownership, and cross-domain references."
     },
     {
       "file": "DATABASE_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/DATABASE_SPEC.md",
+      "path": "../sdkwork-specs/DATABASE_SPEC.md",
       "purpose": "Database prefix, table contract, tenant isolation, ownership, audit, and schema evolution rules."
     },
     {
       "file": "COMPONENT_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/COMPONENT_SPEC.md",
+      "path": "../sdkwork-specs/COMPONENT_SPEC.md",
       "purpose": "Local component manifest, public entrypoints, integration boundaries, and verification requirements."
     },
     {
       "file": "SECURITY_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/SECURITY_SPEC.md",
+      "path": "../sdkwork-specs/SECURITY_SPEC.md",
       "purpose": "Dual-token app/backend security, device auth separation, authorization, logging, and abuse protection."
     },
     {
       "file": "OBSERVABILITY_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/OBSERVABILITY_SPEC.md",
+      "path": "../sdkwork-specs/OBSERVABILITY_SPEC.md",
       "purpose": "Trace, metric, structured logging, audit correlation, and sensitive data redaction rules."
     },
     {
       "file": "TEST_SPEC.md",
-      "path": "../spring-ai-plus/spring-ai-plus-business/specs/TEST_SPEC.md",
+      "path": "../sdkwork-specs/TEST_SPEC.md",
       "purpose": "Contract, architecture, integration, and verification standards."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure and generated code boundaries."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical SDKWork naming rules."
+    },
+    {
+      "file": "MODULE_SPEC.md",
+      "path": "../sdkwork-specs/MODULE_SPEC.md",
+      "purpose": "Reusable module and package boundary rules."
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust crate and module rules."
     }
   ],
   "contracts": {
@@ -90,7 +114,8 @@
       "AiotConfig",
       "AiotRuntimeBuilder",
       "RuntimeServicePlan"
-    ]
+    ],
+    "routeManifest": null
   },
   "protocolPluginStandard": {
     "manifest": "sdkwork_aiot_protocol::ProtocolAdapterManifest",
@@ -112,8 +137,12 @@
     "firstPlugin": "xiaozhi"
   },
   "boundaries": {
-    "externalSharedKernels": ["sdkwork-appbase.iam"],
-    "forbiddenComponents": ["sdkwork-aiot-iam"],
+    "externalSharedKernels": [
+      "sdkwork-appbase.iam"
+    ],
+    "forbiddenComponents": [
+      "sdkwork-aiot-iam"
+    ],
     "forbiddenTables": [
       "iam_tenant",
       "iam_organization",
@@ -123,8 +152,13 @@
       "iam_policy",
       "iam_credential"
     ],
-    "deviceProtocolBasePaths": ["/iot/xiaozhi"],
-    "apiPrefixes": ["/app/v3/api/iot", "/backend/v3/api/iot"]
+    "deviceProtocolBasePaths": [
+      "/iot/xiaozhi"
+    ],
+    "apiPrefixes": [
+      "/app/v3/api/iot",
+      "/backend/v3/api/iot"
+    ]
   },
   "verification": {
     "commands": [

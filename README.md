@@ -188,3 +188,45 @@ Behavior:
 - Bridge runtime health can be pulled via `GET /internal/bridge/health`.
 - Bridge counters can be pulled via `GET /internal/bridge/stats`.
 - Prometheus-style metrics can be pulled via `GET /internal/bridge/metrics`.
+
+## SDKWork Documentation Contract
+
+Domain: device
+Capability: aiot-runtime
+Package type: rust-crate
+Status: standard
+
+### Public API
+
+Public exports are declared in `specs/component.spec.json` under `contracts.publicExports`.
+
+### Required SDK Surface
+
+- `@sdkwork/aiot-app-sdk`
+- `@sdkwork/aiot-backend-sdk`
+
+### Configuration
+
+Configuration keys and runtime entrypoints are declared in `specs/component.spec.json`.
+
+### SaaS/Private/Local Behavior
+
+This module follows the canonical standards linked from `specs/component.spec.json`, including deployment and runtime configuration rules where applicable.
+
+### Security
+
+Do not add secrets, live tokens, manual auth headers, or app-local credential handling to this module.
+
+### Extension Points
+
+Extension points are limited to declared public exports, runtime entrypoints, SDK clients, events, and config keys.
+
+### Verification
+
+- `cargo fmt --all -- --check`
+- `cargo test --workspace`
+- `cargo check --workspace`
+
+### Owner And Status
+
+Owner and lifecycle status are tracked in `specs/component.spec.json`.
