@@ -5,9 +5,9 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }
-sdkwork-aiot-protocol = { path = "../sdkwork-aiot-protocol" }
-sdkwork-aiot-runtime = { path = "../sdkwork-aiot-runtime" }
+sdkwork-aiot-contract.workspace = true
+sdkwork-aiot-protocol.workspace = true
+sdkwork-aiot-runtime.workspace = true
 
 [dev-dependencies]
-sdkwork-aiot-storage = { path = "../sdkwork-aiot-storage" }
+sdkwork-aiot-storage.workspace = true

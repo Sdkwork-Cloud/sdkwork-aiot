@@ -5,5 +5,5 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }
+sdkwork-aiot-contract.workspace = true
 

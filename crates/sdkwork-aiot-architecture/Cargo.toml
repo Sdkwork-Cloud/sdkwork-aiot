@@ -7,10 +7,10 @@ license.workspace = true
 [dependencies]
 
 [dev-dependencies]
-sdkwork-aiot-adapter-xiaozhi = { path = "../sdkwork-aiot-adapter-xiaozhi" }
-sdkwork-aiot-contract = { path = "../sdkwork-aiot-contract" }
-sdkwork-aiot-http-api = { path = "../sdkwork-aiot-http-api" }
-sdkwork-aiot-protocol = { path = "../sdkwork-aiot-protocol" }
-sdkwork-aiot-runtime = { path = "../sdkwork-aiot-runtime" }
-sdkwork-aiot-storage = { path = "../sdkwork-aiot-storage" }
-sdkwork-aiot-transport = { path = "../sdkwork-aiot-transport" }
+sdkwork-aiot-adapter-xiaozhi.workspace = true
+sdkwork-aiot-contract.workspace = true
+sdkwork-aiot-http-api.workspace = true
+sdkwork-aiot-protocol.workspace = true
+sdkwork-aiot-runtime.workspace = true
+sdkwork-aiot-storage.workspace = true
+sdkwork-aiot-transport.workspace = true

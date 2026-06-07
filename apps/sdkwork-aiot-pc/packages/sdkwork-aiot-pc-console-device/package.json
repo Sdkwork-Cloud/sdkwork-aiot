@@ -1,0 +1,49 @@
+{
+  "name": "@sdkwork/aiot-pc-console-device",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SDKWork AIoT managed device console for PC - device catalogs, local hardware state, and machine capability views.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sdkwork/aiot-app-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "@sdkwork/core-pc-react": "*",
+    "@sdkwork/ui-pc-react": "*",
+    "react": ">=18.2.0 <20.0.0",
+    "react-dom": ">=18.2.0 <20.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@sdkwork/core-pc-react": {
+      "optional": true
+    },
+    "@sdkwork/ui-pc-react": {
+      "optional": true
+    }
+  },
+  "sdkwork": {
+    "workspace": "sdkwork-aiot",
+    "product": "sdkwork-aiot",
+    "architecture": "pc-console",
+    "domain": "device",
+    "capability": "managed-device",
+    "status": "ready",
+    "supersedes": [
+      "@sdkwork/device-pc-react"
+    ]
+  }
+}

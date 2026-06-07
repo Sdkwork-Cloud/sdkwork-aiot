@@ -23,3 +23,18 @@ resolver = "2"
 edition = "2021"
 version = "0.1.0"
 license = "Apache-2.0"
+
+[workspace.dependencies]
+# SDKWork workspace members - declared once at workspace root
+sdkwork-aiot-contract = { path = "crates/sdkwork-aiot-contract" }
+sdkwork-aiot-core = { path = "crates/sdkwork-aiot-core" }
+sdkwork-aiot-protocol = { path = "crates/sdkwork-aiot-protocol" }
+sdkwork-aiot-runtime = { path = "crates/sdkwork-aiot-runtime" }
+sdkwork-aiot-storage = { path = "crates/sdkwork-aiot-storage" }
+sdkwork-aiot-storage-sqlx = { path = "crates/sdkwork-aiot-storage-sqlx" }
+sdkwork-aiot-security = { path = "crates/sdkwork-aiot-security" }
+sdkwork-aiot-observability = { path = "crates/sdkwork-aiot-observability" }
+sdkwork-aiot-adapter-xiaozhi = { path = "crates/sdkwork-aiot-adapter-xiaozhi" }
+sdkwork-aiot-transport = { path = "crates/sdkwork-aiot-transport" }
+sdkwork-aiot-http-api = { path = "crates/sdkwork-aiot-http-api" }
+sdkwork-aiot-architecture = { path = "crates/sdkwork-aiot-architecture" }
