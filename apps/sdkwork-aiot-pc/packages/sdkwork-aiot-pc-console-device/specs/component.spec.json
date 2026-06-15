@@ -81,9 +81,9 @@
     "consumers": [
       "sdkwork-appbase",
       "sdkwork-cloud-portal",
-      "craw-chat"
+      "sdkwork-im"
     ],
-    "removalPlan": "Remove @sdkwork/device-pc-react, sdkwork-cloud-portal/services/iot, and craw-chat/adapters/iot-mqtt after consumers pin to @sdkwork/aiot-pc-console-device."
+    "removalPlan": "Remove @sdkwork/device-pc-react, sdkwork-cloud-portal/services/iot, and sdkwork-im/adapters/iot-mqtt after consumers pin to @sdkwork/aiot-pc-console-device."
   },
   "integration": {
     "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",
