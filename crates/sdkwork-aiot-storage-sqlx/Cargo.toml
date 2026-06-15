@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 sdkwork-pool-config = { path = "../../../sdkwork-pool/crates/sdkwork-pool-config" }
+sdkwork-pool-sqlx = { path = "../../../sdkwork-pool/crates/sdkwork-pool-sqlx" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 serde_json = "1"
 sdkwork-aiot-storage.workspace = true
