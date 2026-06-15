@@ -5,8 +5,8 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-sdkwork-database-config = { path = "../../../sdkwork-pool/crates/sdkwork-database-config" }
-sdkwork-database-sqlx = { path = "../../../sdkwork-pool/crates/sdkwork-database-sqlx" }
+sdkwork-database-config = { path = "../../../sdkwork-database/crates/sdkwork-database-config" }
+sdkwork-database-sqlx = { path = "../../../sdkwork-database/crates/sdkwork-database-sqlx" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 serde_json = "1"
 sdkwork-aiot-storage.workspace = true
