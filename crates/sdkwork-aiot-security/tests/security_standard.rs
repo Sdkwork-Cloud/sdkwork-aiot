@@ -72,6 +72,20 @@ fn device_auth_decision_rejects_missing_association_context() {
 }
 
 #[test]
+fn device_auth_decision_rejects_bearer_token_mismatch() {
+    let request = DeviceAuthRequest::new("xiaozhi.websocket", "device-001")
+        .with_tenant("t1")
+        .with_organization("o1")
+        .with_product("prod1")
+        .with_mode(DeviceAuthMode::BearerToken)
+        .with_evidence("Authorization", "Bearer device-token")
+        .with_evidence("token", "other-token");
+
+    let error = DeviceAuthDecision::allow(request).expect_err("bearer mismatch must fail");
+    assert_eq!(error.code, "security.device_auth.bearer_mismatch");
+}
+
+#[test]
 fn standard_device_auth_modes_cover_protocol_plugin_security_modes() {
     let modes = DeviceAuthMode::standard_modes();
 

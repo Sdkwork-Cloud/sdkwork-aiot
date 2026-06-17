@@ -459,6 +459,10 @@ fn migration_catalog_is_versioned_and_ordered() {
     assert_eq!(catalog[0].name, "aiot_core_schema");
     assert_eq!(catalog[0].schema_version, schema_version());
     assert!(catalog[0].sql.contains("CREATE TABLE iot_device"));
+    assert_eq!(catalog.len(), 2);
+    assert_eq!(catalog[1].version, "0002");
+    assert_eq!(catalog[1].name, "aiot_admin_entity_schema");
+    assert!(catalog[1].sql.contains("CREATE TABLE iot_admin_entity"));
 }
 
 #[test]
@@ -1536,4 +1540,122 @@ fn sqlx_protocol_uow_executes_protocol_ingest_as_explicit_transaction_plan() {
             .collect::<Vec<_>>(),
         vec!["idempotency_guard", "primary_write", "outbox_write"]
     );
+}
+
+#[test]
+fn rusqlite_sql_statement_executor_persists_device_create_batch() {
+    use sdkwork_aiot_storage::AiotDeviceRecord;
+    use sdkwork_aiot_storage_sqlx::{RusqliteSqlStatementExecutor, SqlDeviceRepositoryPlanner};
+
+    let unique_suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!("aiot-rusqlite-executor-{unique_suffix}.db"));
+    let _ = std::fs::remove_file(&path);
+
+    let executor = RusqliteSqlStatementExecutor::open(&path).expect("open rusqlite executor");
+    let record = AiotDeviceRecord {
+        id: "1".to_string(),
+        tenant_id: 10001,
+        organization_id: 20001,
+        device_id: "rusqlite-device-001".to_string(),
+        display_name: "Rusqlite Device".to_string(),
+        product_id: "1008".to_string(),
+        client_id: Some("rusqlite-client".to_string()),
+        chip_family: Some("esp32_s3".to_string()),
+        status: "active".to_string(),
+        metadata_json: None,
+        last_seen_at: "2026-01-01T00:00:00Z".to_string(),
+    };
+    let batch = SqlDeviceRepositoryPlanner::with_dialect(SqlDialect::Sqlite)
+        .plan_create_device(&record)
+        .expect("plan device create");
+    executor.execute_batch(batch);
+
+    let repo = SqliteSqlxDeviceRepository::open(&path).expect("reopen sqlite repo");
+    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let loaded = repo
+        .get_device(&association, "rusqlite-device-001")
+        .expect("device persisted");
+    assert_eq!(loaded.display_name, "Rusqlite Device");
+    assert_eq!(loaded.client_id.as_deref(), Some("rusqlite-client"));
+
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn sqlite_credential_repository_verifies_hashed_bearer_tokens() {
+    use sdkwork_aiot_storage_sqlx::{
+        SqliteCredentialCreateCommand, SqliteSqlxCredentialRepository,
+    };
+
+    let repository = SqliteSqlxCredentialRepository::new_in_memory().expect("credential repo");
+    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let created = repository
+        .create_credential(SqliteCredentialCreateCommand {
+            association,
+            device_id: "device-auth-001".to_string(),
+            credential_type: "device-bearer".to_string(),
+            expires_at: None,
+        })
+        .expect("create credential");
+    let issued_secret = created
+        .issued_secret
+        .expect("issued secret returned once on create");
+
+    assert!(repository.verify_bearer_token("device-auth-001", &issued_secret));
+    assert!(!repository.verify_bearer_token("device-auth-001", "wrong-token"));
+    assert!(!repository.verify_bearer_token("other-device", &issued_secret));
+
+    let listed = repository.list_credentials(
+        &AiotStorageAssociation::tenant_org(10001, 20001),
+        "device-auth-001",
+    );
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].credential_type, "device-bearer");
+
+    repository
+        .revoke_credential(
+            &AiotStorageAssociation::tenant_org(10001, 20001),
+            "device-auth-001",
+            &created.credential_id,
+        )
+        .expect("revoke credential");
+    assert!(!repository.verify_bearer_token("device-auth-001", &issued_secret));
+}
+
+#[test]
+fn shared_sqlite_memory_uri_uses_one_schema_for_device_and_credential_repositories() {
+    use sdkwork_aiot_storage_sqlx::{
+        SqliteCredentialCreateCommand, SqliteSqlxCredentialRepository, SqliteSqlxDeviceRepository,
+        DEFAULT_SHARED_SQLITE_MEMORY_URI,
+    };
+
+    let device_repo =
+        SqliteSqlxDeviceRepository::open(DEFAULT_SHARED_SQLITE_MEMORY_URI).expect("device repo");
+    let credential_repo = SqliteSqlxCredentialRepository::open(DEFAULT_SHARED_SQLITE_MEMORY_URI)
+        .expect("credential repo");
+    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+
+    device_repo
+        .create_device(AiotDeviceCreateCommand::new(
+            association.clone(),
+            "shared-db-device",
+            "Shared DB Device",
+            "1001",
+        ))
+        .expect("create device");
+
+    let created = credential_repo
+        .create_credential(SqliteCredentialCreateCommand {
+            association,
+            device_id: "shared-db-device".to_string(),
+            credential_type: "device-bearer".to_string(),
+            expires_at: None,
+        })
+        .expect("create credential");
+    let issued_secret = created.issued_secret.expect("issued secret");
+
+    assert!(credential_repo.verify_bearer_token("shared-db-device", &issued_secret));
 }

@@ -4,13 +4,15 @@ use sdkwork_aiot_gateway::{
     standard_gateway_server_and_session_options_with_plugins_activation_registry_and_mcp_tools,
     standard_gateway_server_with_plugins,
     standard_gateway_server_with_plugins_activation_registry_and_mcp_tools,
-    xiaozhi_mqtt_session_reply, xiaozhi_mqtt_udp_decode_audio, xiaozhi_simulator_http_handler,
-    xiaozhi_websocket_session_reply, xiaozhi_websocket_session_reply_with_mcp_tool_provider,
-    DefaultXiaozhiSimulatorMcpToolProvider, InMemoryXiaozhiActivationChallengeRegistry,
-    WebSocketSessionReply, XiaozhiActivationVerifier, XiaozhiMqttUdpSession,
-    XiaozhiOtaProfileProvider, XiaozhiSessionOptions,
+    xiaozhi_device_token_valid, xiaozhi_mqtt_session_reply, xiaozhi_mqtt_udp_decode_audio,
+    xiaozhi_simulator_http_handler, xiaozhi_websocket_session_reply,
+    xiaozhi_websocket_session_reply_with_mcp_tool_provider, DefaultXiaozhiSimulatorMcpToolProvider,
+    InMemoryXiaozhiActivationChallengeRegistry, WebSocketSessionReply, XiaozhiActivationVerifier,
+    XiaozhiMqttUdpSession, XiaozhiOtaProfileProvider, XiaozhiSessionOptions,
 };
-use sdkwork_aiot_transport::handle_http_request_bytes;
+use sdkwork_aiot_storage::AiotStorageAssociation;
+use sdkwork_aiot_storage_sqlx::{SqliteCredentialCreateCommand, SqliteSqlxCredentialRepository};
+use sdkwork_aiot_transport::parse_http_request_bytes;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -19,6 +21,26 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+mod test_env {
+    use std::sync::Once;
+
+    static INIT: Once = Once::new();
+
+    pub fn setup() {
+        INIT.call_once(|| {
+            std::env::set_var("SDKWORK_AIOT_DEV_MODE", "1");
+        });
+    }
+}
+
+fn handle_http_request_bytes(
+    server: &sdkwork_aiot_transport::TransportServer,
+    bytes: &[u8],
+) -> Result<String, sdkwork_aiot_transport::TransportError> {
+    test_env::setup();
+    sdkwork_aiot_transport::handle_http_request_bytes(server, bytes)
+}
 
 #[derive(Debug, Default)]
 struct ErroringToolInvoker;
@@ -890,6 +912,45 @@ fn xiaozhi_websocket_session_replies_to_browser_simulator_hello_with_server_hell
     assert!(first.contains(r#""session_id":"dev-001-browser-001""#));
     assert!(second.contains(r#""type":"mcp""#));
     assert!(second.contains(r#""method":"initialize""#));
+}
+
+#[test]
+fn xiaozhi_websocket_session_reply_with_options_persists_protocol_storage_command() {
+    use sdkwork_aiot_storage::{AiotStorageWriteKind, InMemoryProtocolIngestUnitOfWork};
+
+    let server = standard_gateway_server().expect("gateway server");
+    let request = sdkwork_aiot_transport::parse_http_request_bytes(
+        b"GET /iot/xiaozhi/ws?protocol_version=3&device_id=dev-001&client_id=browser-001 HTTP/1.1\r\nHost: domain\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n",
+    )
+    .expect("request");
+    let protocol_ingest = Arc::new(InMemoryProtocolIngestUnitOfWork::new());
+    let options = XiaozhiSessionOptions::from_mcp_tool_provider(Arc::new(
+        DefaultXiaozhiSimulatorMcpToolProvider::from_env(),
+    ))
+    .with_protocol_ingest(protocol_ingest.clone());
+
+    let replies = sdkwork_aiot_gateway::xiaozhi_websocket_session_reply_with_options(
+        &server,
+        &request,
+        sdkwork_aiot_transport::WebSocketFrame::text(
+            r#"{"type":"hello","version":3,"features":{"mcp":true},"transport":"websocket","session_id":"session-001","message_id":"msg-001","idempotency_key":"idem-001","trace_id":"trace-001","audio_params":{"format":"opus","sample_rate":16000,"channels":1,"frame_duration":60}}"#,
+        ),
+        &options,
+    )
+    .expect("reply");
+
+    assert!(!replies.is_empty());
+    let snapshot = protocol_ingest.snapshot();
+    assert_eq!(snapshot.primary_writes.len(), 1);
+    assert_eq!(snapshot.outbox_events.len(), 1);
+    assert_eq!(
+        snapshot.primary_writes[0].write_kind,
+        AiotStorageWriteKind::OpenSession
+    );
+    assert_eq!(
+        snapshot.primary_writes[0].idempotency_key.as_str(),
+        "idem-001"
+    );
 }
 
 #[test]
@@ -2453,6 +2514,7 @@ fn spawn_gateway_with_env(bind_addr: &str, env_overrides: &[(&str, Option<&str>)
     let mut command = Command::new(gateway_binary());
     command
         .env("SDKWORK_AIOT_GATEWAY_BIND", bind_addr)
+        .env("SDKWORK_AIOT_DEV_MODE", "1")
         .env_remove("SDKWORK_AIOT_GATEWAY_NO_LISTEN")
         .env_remove("SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE")
         .stdin(Stdio::null())
@@ -2573,4 +2635,52 @@ impl Drop for EnvGuard {
             }
         }
     }
+}
+
+#[test]
+fn xiaozhi_device_token_valid_accepts_sqlite_stored_credentials_in_production_mode() {
+    let _env = EnvGuard::set_all_locked(&[("SDKWORK_AIOT_DEV_MODE", None)]);
+
+    let repository =
+        Arc::new(SqliteSqlxCredentialRepository::new_in_memory().expect("credential repository"));
+    let created = repository
+        .create_credential(SqliteCredentialCreateCommand {
+            association: AiotStorageAssociation::tenant_org(10001, 20001),
+            device_id: "gateway-device-001".to_string(),
+            credential_type: "device-bearer".to_string(),
+            expires_at: None,
+        })
+        .expect("create credential");
+    let issued_secret = created
+        .issued_secret
+        .expect("issued secret returned on create");
+
+    let options = XiaozhiSessionOptions::from_mcp_tool_provider(Arc::new(
+        DefaultXiaozhiSimulatorMcpToolProvider::from_env(),
+    ))
+    .with_device_credential_repository(repository);
+
+    let authorized = parse_http_request_bytes(
+        format!(
+            "GET /iot/xiaozhi/ws?device_id=gateway-device-001&client_id=client-001 HTTP/1.1\r\nHost: domain\r\nAuthorization: Bearer {issued_secret}\r\n\r\n"
+        )
+        .as_bytes(),
+    )
+    .expect("authorized request");
+    assert!(xiaozhi_device_token_valid(&authorized, &options));
+
+    let wrong_token = parse_http_request_bytes(
+        b"GET /iot/xiaozhi/ws?device_id=gateway-device-001&client_id=client-001 HTTP/1.1\r\nHost: domain\r\nAuthorization: Bearer wrong-token\r\n\r\n",
+    )
+    .expect("wrong token request");
+    assert!(!xiaozhi_device_token_valid(&wrong_token, &options));
+
+    let missing_device = parse_http_request_bytes(
+        format!(
+            "GET /iot/xiaozhi/ws?client_id=client-001 HTTP/1.1\r\nHost: domain\r\nAuthorization: Bearer {issued_secret}\r\n\r\n"
+        )
+        .as_bytes(),
+    )
+    .expect("missing device request");
+    assert!(!xiaozhi_device_token_valid(&missing_device, &options));
 }

@@ -1,5 +1,10 @@
 use std::collections::BTreeMap;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 use sdkwork_aiot_contract::AiotRequestContext;
 use sdkwork_aiot_protocol::{InboundFrame, MessageCodec};
@@ -21,6 +26,8 @@ pub enum HttpStatus {
     Unauthorized,
     Forbidden,
     NotFound,
+    TooManyRequests,
+    ServiceUnavailable,
     InternalServerError,
 }
 
@@ -37,6 +44,8 @@ impl HttpStatus {
             Self::Unauthorized => 401,
             Self::Forbidden => 403,
             Self::NotFound => 404,
+            Self::TooManyRequests => 429,
+            Self::ServiceUnavailable => 503,
             Self::InternalServerError => 500,
         }
     }
@@ -53,6 +62,8 @@ impl HttpStatus {
             Self::Unauthorized => "Unauthorized",
             Self::Forbidden => "Forbidden",
             Self::NotFound => "Not Found",
+            Self::TooManyRequests => "Too Many Requests",
+            Self::ServiceUnavailable => "Service Unavailable",
             Self::InternalServerError => "Internal Server Error",
         }
     }
@@ -74,7 +85,7 @@ impl HttpRequest {
         Self {
             method: method.into(),
             raw_path: path.clone(),
-            path: path.into(),
+            path,
             body: Vec::new(),
             headers: BTreeMap::new(),
             query_params: BTreeMap::new(),
@@ -154,8 +165,10 @@ pub fn handle_http_request_bytes(
     bytes: &[u8],
 ) -> Result<String, TransportError> {
     let request = parse_http_request_bytes(bytes)?;
-    let response = if matches!(request.path.as_str(), "/healthz" | "/readyz") {
-        build_health_response(&server.health.component_name, server.health.ready)
+    let response = if request.path.as_str() == "/healthz" {
+        build_health_response(&server.health.component_name, true)
+    } else if request.path.as_str() == "/readyz" {
+        build_health_response(&server.health.component_name, server.health.is_ready())
     } else if server
         .listeners
         .websocket_routes
@@ -206,7 +219,6 @@ pub fn parse_http_request_prefix(bytes: &[u8]) -> Result<(HttpRequest, usize), T
         }
     }
 
-    let mut request = request;
     request.body.extend_from_slice(&bytes[header_len..]);
 
     Ok((request, header_len))
@@ -529,6 +541,208 @@ impl TransportError {
     pub fn from_runtime_protocol(error: RuntimeProtocolError) -> Self {
         Self { code: error.code }
     }
+}
+
+pub const DEFAULT_MAX_HTTP_BODY_BYTES: usize = 1_048_576;
+
+#[derive(Debug, Clone)]
+pub struct HttpServeOptions {
+    pub max_connections: Option<usize>,
+    pub read_timeout: Option<Duration>,
+    pub max_body_bytes: usize,
+    pub shutdown: Option<Arc<AtomicBool>>,
+}
+
+impl Default for HttpServeOptions {
+    fn default() -> Self {
+        Self {
+            max_connections: None,
+            read_timeout: Some(Duration::from_secs(5)),
+            max_body_bytes: DEFAULT_MAX_HTTP_BODY_BYTES,
+            shutdown: None,
+        }
+    }
+}
+
+pub type HttpBytesHandler = Arc<dyn Fn(Vec<u8>) -> String + Send + Sync + 'static>;
+
+pub fn read_full_http_request(
+    stream: &mut impl Read,
+    max_body_bytes: usize,
+) -> Result<Vec<u8>, TransportError> {
+    let max_body_bytes = if max_body_bytes == 0 {
+        DEFAULT_MAX_HTTP_BODY_BYTES
+    } else {
+        max_body_bytes
+    };
+    let mut buffer = Vec::with_capacity(8192);
+    let mut chunk = [0u8; 4096];
+
+    loop {
+        let read = stream
+            .read(&mut chunk)
+            .map_err(|_| TransportError::new("transport.http.read_failed"))?;
+        if read == 0 {
+            if buffer.is_empty() {
+                return Err(TransportError::new("transport.http.empty"));
+            }
+            break;
+        }
+        buffer.extend_from_slice(&chunk[..read]);
+        if buffer.len() > max_body_bytes.saturating_add(65_536) {
+            return Err(TransportError::new("transport.http.request_too_large"));
+        }
+
+        if let Some(header_len) = http_header_len(&buffer) {
+            let body_len = content_length_from_header_bytes(&buffer[..header_len])?;
+            if body_len > max_body_bytes {
+                return Err(TransportError::new("transport.http.body_too_large"));
+            }
+            if body_len == 0 && buffer.len() > header_len {
+                let implicit_body_len = buffer.len() - header_len;
+                if implicit_body_len > max_body_bytes {
+                    return Err(TransportError::new("transport.http.body_too_large"));
+                }
+                return Ok(buffer);
+            }
+            let total = header_len
+                .checked_add(body_len)
+                .ok_or_else(|| TransportError::new("transport.http.request_too_large"))?;
+            while buffer.len() < total {
+                let read = stream
+                    .read(&mut chunk)
+                    .map_err(|_| TransportError::new("transport.http.read_failed"))?;
+                if read == 0 {
+                    return Err(TransportError::new("transport.http.incomplete_body"));
+                }
+                buffer.extend_from_slice(&chunk[..read]);
+                if buffer.len() > total {
+                    return Err(TransportError::new("transport.http.request_too_large"));
+                }
+            }
+            buffer.truncate(total);
+            return Ok(buffer);
+        }
+    }
+
+    if http_header_len(&buffer).is_some() {
+        Ok(buffer)
+    } else {
+        Err(TransportError::new("transport.http.incomplete_headers"))
+    }
+}
+
+pub fn serve_http_concurrent(
+    listener: TcpListener,
+    handler: HttpBytesHandler,
+    options: HttpServeOptions,
+) {
+    let active_connections = Arc::new(AtomicUsize::new(0));
+
+    loop {
+        if options
+            .shutdown
+            .as_ref()
+            .is_some_and(|shutdown| !shutdown.load(Ordering::Relaxed))
+        {
+            break;
+        }
+
+        let (mut stream, _) = match listener.accept() {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!("sdkwork-aiot-transport accept_error={error}");
+                continue;
+            }
+        };
+
+        if let Some(max_connections) = options.max_connections {
+            if active_connections.load(Ordering::Relaxed) >= max_connections {
+                let _ = write_service_unavailable(&mut stream);
+                continue;
+            }
+        }
+
+        if let Some(read_timeout) = options.read_timeout {
+            let _ = stream.set_read_timeout(Some(read_timeout));
+        }
+
+        active_connections.fetch_add(1, Ordering::Relaxed);
+        let handler = Arc::clone(&handler);
+        let active_connections = Arc::clone(&active_connections);
+        let max_body_bytes = options.max_body_bytes;
+        thread::spawn(move || {
+            let _guard = ActiveConnectionGuard::new(active_connections);
+            let request_bytes = match read_full_http_request(&mut stream, max_body_bytes) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    let response = problem_response_bytes(&error.code);
+                    let _ = stream.write_all(response.as_bytes());
+                    return;
+                }
+            };
+            let response = handler(request_bytes);
+            let _ = stream.write_all(response.as_bytes());
+        });
+    }
+}
+
+struct ActiveConnectionGuard {
+    active_connections: Arc<AtomicUsize>,
+}
+
+impl ActiveConnectionGuard {
+    fn new(active_connections: Arc<AtomicUsize>) -> Self {
+        Self { active_connections }
+    }
+}
+
+impl Drop for ActiveConnectionGuard {
+    fn drop(&mut self) {
+        self.active_connections.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+fn content_length_from_header_bytes(header_bytes: &[u8]) -> Result<usize, TransportError> {
+    let raw = std::str::from_utf8(header_bytes)
+        .map_err(|_| TransportError::new("transport.http.invalid_utf8"))?;
+    for line in raw.split("\r\n").skip(1) {
+        if line.is_empty() {
+            break;
+        }
+        if let Some((name, value)) = line.split_once(':') {
+            if name.trim().eq_ignore_ascii_case("content-length") {
+                let length = value
+                    .trim()
+                    .parse::<usize>()
+                    .map_err(|_| TransportError::new("transport.http.invalid_content_length"))?;
+                return Ok(length);
+            }
+        }
+    }
+    Ok(0)
+}
+
+fn write_service_unavailable(stream: &mut TcpStream) -> std::io::Result<()> {
+    let body = r#"{"type":"about:blank","title":"Service Unavailable","status":503,"code":"transport.http.too_many_connections"}"#;
+    let response = format!(
+        "HTTP/1.1 503 Service Unavailable\r\ncontent-type: application/problem+json\r\ncontent-length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    stream.write_all(response.as_bytes())
+}
+
+fn problem_response_bytes(code: &str) -> String {
+    let body = format!(
+        r#"{{"type":"about:blank","title":"Bad Request","status":400,"code":"{}"}}"#,
+        code
+    );
+    format!(
+        "HTTP/1.1 400 Bad Request\r\ncontent-type: application/problem+json\r\ncontent-length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    )
 }
 
 fn base64_encode(input: &[u8]) -> String {

@@ -74,7 +74,9 @@
       "."
     ],
     "runtimeEntrypoints": [],
-    "routeManifest": null,
+    "routeManifest": [
+      "sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json"
+    ],
     "sdkClients": [],
     "events": [],
     "configKeys": []

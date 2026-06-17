@@ -44,7 +44,7 @@
         "summary": "List user-visible AIoT devices",
         "security": [
           {
-            "AuthToken": [],
+            "Authorization": [],
             "AccessToken": []
           }
         ],
@@ -92,7 +92,7 @@
         "summary": "Retrieve one AIoT device",
         "security": [
           {
-            "AuthToken": [],
+            "Authorization": [],
             "AccessToken": []
           }
         ],
@@ -145,7 +145,7 @@
         "summary": "Create a device command",
         "security": [
           {
-            "AuthToken": [],
+            "Authorization": [],
             "AccessToken": []
           }
         ],
@@ -211,7 +211,7 @@
         "summary": "Retrieve device twin",
         "security": [
           {
-            "AuthToken": [],
+            "Authorization": [],
             "AccessToken": []
           }
         ],
@@ -264,7 +264,7 @@
         "summary": "List device events",
         "security": [
           {
-            "AuthToken": [],
+            "Authorization": [],
             "AccessToken": []
           }
         ],
@@ -293,7 +293,7 @@
   },
   "components": {
     "securitySchemes": {
-      "AuthToken": {
+      "Authorization": {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",

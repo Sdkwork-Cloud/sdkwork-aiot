@@ -164,14 +164,16 @@ fn external_submodules_are_curated_high_signal_iot_references() {
 fn sdk_families_have_openapi_sources_and_generation_manifests() {
     let root = workspace_root();
 
-    for (family, prefix, package_name) in [
+    for (family, openapi_prefix, sdkgen_prefix, package_name) in [
         (
             "sdks/sdkwork-aiot-app-sdk",
             "/app/v3/api/iot",
+            "/app/v3/api",
             "@sdkwork/aiot-app-sdk",
         ),
         (
             "sdks/sdkwork-aiot-backend-sdk",
+            "/backend/v3/api/iot",
             "/backend/v3/api/iot",
             "@sdkwork/aiot-backend-sdk",
         ),
@@ -192,7 +194,7 @@ fn sdk_families_have_openapi_sources_and_generation_manifests() {
         let assembly_text = fs::read_to_string(&assembly).expect("sdk assembly");
 
         assert!(openapi_text.contains(r#""openapi": "3.1.2""#));
-        assert!(openapi_text.contains(prefix));
+        assert!(openapi_text.contains(openapi_prefix));
         assert!(openapi_text.contains(r#""Authorization""#));
         assert!(openapi_text.contains(r#""Access-Token""#));
         assert!(openapi_text.contains(r#""X-Sdkwork-Tenant-Id""#));
@@ -228,7 +230,7 @@ fn sdk_families_have_openapi_sources_and_generation_manifests() {
         }
         assert!(sdkgen_text.contains(r#""standardProfile": "sdkwork-v3""#));
         assert!(sdkgen_text.contains(package_name));
-        assert!(sdkgen_text.contains(prefix));
+        assert!(sdkgen_text.contains(sdkgen_prefix));
         assert!(assembly_text.contains(package_name));
         assert!(assembly_text.contains(r#""generatedProtocols": ["http"]"#));
     }
@@ -238,36 +240,44 @@ fn sdk_families_have_openapi_sources_and_generation_manifests() {
 fn typescript_sdk_boundaries_are_reserved_for_generated_clients() {
     let root = workspace_root();
 
-    for (package_path, package_name, client_name) in [
-        (
-            "sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript",
-            "@sdkwork/aiot-app-sdk",
-            "SdkworkAiotAppClient",
-        ),
-        (
-            "sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript",
-            "@sdkwork/aiot-backend-sdk",
-            "SdkworkAiotBackendClient",
-        ),
-    ] {
-        let package_root = root.join(package_path);
-        let package_json = fs::read_to_string(package_root.join("package.json"))
-            .expect("typescript sdk package.json");
-        let sdk_json = fs::read_to_string(package_root.join("sdkwork-sdk.json"))
-            .expect("typescript sdkwork-sdk.json");
-        let index = fs::read_to_string(package_root.join("src").join("index.ts"))
-            .expect("typescript sdk index");
+    let app_package_root = root.join("sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript");
+    let app_package_json = fs::read_to_string(app_package_root.join("package.json"))
+        .expect("app typescript sdk package.json");
+    let app_sdk_json = fs::read_to_string(app_package_root.join("sdkwork-sdk.json"))
+        .expect("app typescript sdkwork-sdk.json");
+    let app_index = fs::read_to_string(app_package_root.join("src").join("index.ts"))
+        .expect("app typescript sdk index");
 
-        assert!(package_json.contains(package_name));
-        assert!(sdk_json.contains(package_name));
-        assert!(sdk_json.contains(r#""generated": true"#));
-        assert!(index.contains(client_name));
-        assert!(index.contains("Generated SDK placeholder"));
-        assert!(
-            !index.contains("fetch(") && !index.contains("XMLHttpRequest"),
-            "reserved SDK boundary must not introduce handwritten transport logic"
-        );
-    }
+    assert!(app_package_json.contains("@sdkwork/aiot-app-sdk"));
+    assert!(app_sdk_json.contains("@sdkwork/aiot-app-sdk"));
+    assert!(app_sdk_json.contains(r#""generated": true"#));
+    assert!(app_index.contains("createGeneratedAiotAppClient"));
+    assert!(app_index.contains("generated/server-openapi"));
+    assert!(app_index.contains("SdkworkAiotAppClient"));
+    assert!(
+        !app_index.contains("fetch(") && !app_index.contains("XMLHttpRequest"),
+        "reserved app SDK boundary must not introduce handwritten transport logic"
+    );
+
+    let backend_package_root =
+        root.join("sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript");
+    let backend_package_json = fs::read_to_string(backend_package_root.join("package.json"))
+        .expect("backend typescript sdk package.json");
+    let backend_sdk_json = fs::read_to_string(backend_package_root.join("sdkwork-sdk.json"))
+        .expect("backend typescript sdkwork-sdk.json");
+    let backend_index = fs::read_to_string(backend_package_root.join("src").join("index.ts"))
+        .expect("backend typescript sdk index");
+
+    assert!(backend_package_json.contains("@sdkwork/aiot-backend-sdk"));
+    assert!(backend_sdk_json.contains("@sdkwork/aiot-backend-sdk"));
+    assert!(backend_sdk_json.contains(r#""generated": true"#));
+    assert!(backend_index.contains("createGeneratedAiotBackendClient"));
+    assert!(backend_index.contains("generated/server-openapi"));
+    assert!(backend_index.contains("SdkworkAiotBackendClient"));
+    assert!(
+        !backend_index.contains("fetch(") && !backend_index.contains("XMLHttpRequest"),
+        "reserved backend SDK boundary must not introduce handwritten transport logic"
+    );
 }
 
 #[test]
@@ -554,6 +564,56 @@ fn protocol_plugin_manifest_standard_fields_are_not_eroded() {
         assert!(
             xiaozhi_source.contains(expected),
             "xiaozhi plugin manifest missing {expected}"
+        );
+    }
+}
+
+#[test]
+fn committed_route_manifests_match_http_api_contracts() {
+    let root = workspace_root();
+    let manifest_specs = [
+        (
+            AiotApiSurface::App,
+            "sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json",
+        ),
+        (
+            AiotApiSurface::Admin,
+            "sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json",
+        ),
+    ];
+
+    for (surface, relative_path) in manifest_specs {
+        let path = root.join(relative_path);
+        let committed = fs::read_to_string(&path).unwrap_or_else(|error| {
+            panic!("missing route manifest {relative_path}: {error}");
+        });
+        let expected = sdkwork_aiot_http_api::standard_route_manifest_json(surface);
+        assert_eq!(
+            committed.trim(),
+            expected.trim(),
+            "route manifest drift detected for {relative_path}; run SDKWORK_EXPORT_ROUTE_MANIFESTS=1 cargo test -p sdkwork-aiot-http-api export_route_manifest_artifacts_when_requested -- --exact"
+        );
+    }
+
+    for route in standard_api_route_contracts() {
+        let relative_path = match route.surface {
+            AiotApiSurface::App => {
+                "sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json"
+            }
+            AiotApiSurface::Admin => {
+                "sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json"
+            }
+        };
+        let manifest = fs::read_to_string(root.join(relative_path)).expect(relative_path);
+        assert!(
+            manifest.contains(&format!(r#""operationId": "{}""#, route.operation_id)),
+            "{relative_path} missing operationId {}",
+            route.operation_id
+        );
+        assert!(
+            manifest.contains(&format!(r#""path": "{}""#, route.path)),
+            "{relative_path} missing path {}",
+            route.path
         );
     }
 }

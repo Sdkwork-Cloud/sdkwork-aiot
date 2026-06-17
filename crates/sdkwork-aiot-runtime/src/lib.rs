@@ -16,6 +16,7 @@ use sdkwork_aiot_storage::{
 };
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeMode {
@@ -55,6 +56,7 @@ pub struct AiotRuntime {
     components: Vec<RuntimeComponent>,
     protocol_adapters: Vec<ProtocolAdapterManifest>,
     protocol_routes: Vec<AiotProtocolRoute>,
+    capacity_policy: AiotRuntimeCapacityPolicy,
 }
 
 impl AiotRuntime {
@@ -109,6 +111,10 @@ impl AiotRuntime {
 
     pub fn protocol_route_for_path(&self, path: &str) -> Option<&AiotProtocolRoute> {
         self.protocol_routes.iter().find(|route| route.path == path)
+    }
+
+    pub fn capacity_policy(&self) -> &AiotRuntimeCapacityPolicy {
+        &self.capacity_policy
     }
 
     pub fn handle_protocol_envelope(
@@ -319,6 +325,7 @@ impl AiotRuntimeBuilder {
             components: self.components,
             protocol_adapters: self.protocol_adapters,
             protocol_routes: self.protocol_routes,
+            capacity_policy: AiotRuntimeCapacityPolicy::standard(),
         })
     }
 }
@@ -1008,12 +1015,35 @@ impl AiotGatewayListenerBundle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct AiotHealthCheck {
     pub component_name: String,
     pub ready: bool,
     pub details: Vec<&'static str>,
+    readiness_probe: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
 }
+
+impl std::fmt::Debug for AiotHealthCheck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AiotHealthCheck")
+            .field("component_name", &self.component_name)
+            .field("ready", &self.ready)
+            .field("details", &self.details)
+            .field("has_readiness_probe", &self.readiness_probe.is_some())
+            .finish()
+    }
+}
+
+impl PartialEq for AiotHealthCheck {
+    fn eq(&self, other: &Self) -> bool {
+        self.component_name == other.component_name
+            && self.ready == other.ready
+            && self.details == other.details
+            && self.readiness_probe.is_some() == other.readiness_probe.is_some()
+    }
+}
+
+impl Eq for AiotHealthCheck {}
 
 impl AiotHealthCheck {
     pub fn ready(component_name: impl Into<String>) -> Self {
@@ -1021,7 +1051,20 @@ impl AiotHealthCheck {
             component_name: component_name.into(),
             ready: true,
             details: vec!["runtime_builder", "protocol_registry", "component_manifest"],
+            readiness_probe: None,
         }
+    }
+
+    pub fn with_readiness_probe(
+        mut self,
+        probe: impl Fn() -> bool + Send + Sync + 'static,
+    ) -> Self {
+        self.readiness_probe = Some(Arc::new(probe));
+        self
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.ready && self.readiness_probe.as_ref().is_none_or(|probe| probe())
     }
 }
 

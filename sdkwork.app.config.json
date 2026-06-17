@@ -12,7 +12,7 @@
     "privacyPolicyUrl": "https://sdkwork.com/privacy",
     "termsOfServiceUrl": "https://sdkwork.com/terms",
     "iconUrl": "https://cdn.sdkwork.com/apps/sdkwork-aiot/assets/icon-1024.png",
-    "appType": "APP_HTML",
+    "appType": "APP_REACT",
     "versionSource": "manifest",
     "identifiers": {
       "packageName": null,
@@ -135,7 +135,7 @@
     "storeUrl": "https://sdkwork.com/apps/sdkwork-aiot",
     "stores": [],
     "config": {
-      "workspaceRoot": "apps/sdkwork-aiot",
+      "workspaceRoot": "apps/sdkwork-aiot-pc",
       "framework": "web",
       "managedBy": "apps/scripts/initialize-sdkwork-app-standard-v3.mjs"
     }
@@ -221,7 +221,7 @@
         }
       ],
       "metadata": {
-        "workspaceRoot": "apps/sdkwork-aiot",
+        "workspaceRoot": "apps/sdkwork-aiot-pc",
         "framework": "web",
         "packageManager": "pnpm",
         "migratedFromLegacyConfig": false
@@ -269,7 +269,7 @@
     "build": {
       "targets": []
     },
-    "sourceRoot": "apps/sdkwork-aiot"
+    "sourceRoot": "apps/sdkwork-aiot-pc"
   },
   "metadata": {
     "standardOwner": "sdkwork-platform",

@@ -7,7 +7,7 @@
     "version": "0.1.0",
     "type": "rust-crate",
     "root": "sdkwork-aiot-server",
-    "domain": "device",
+    "domain": "iot",
     "capability": "aiot-runtime",
     "languages": [
       "rust"
@@ -115,7 +115,10 @@
       "AiotRuntimeBuilder",
       "RuntimeServicePlan"
     ],
-    "routeManifest": null
+    "routeManifest": [
+      "sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json",
+      "sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json"
+    ]
   },
   "protocolPluginStandard": {
     "manifest": "sdkwork_aiot_protocol::ProtocolAdapterManifest",

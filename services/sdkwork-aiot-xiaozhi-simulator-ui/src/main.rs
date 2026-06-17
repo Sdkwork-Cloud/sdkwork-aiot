@@ -426,6 +426,7 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> io::Re
     terminal.show_cursor()
 }
 
+#[allow(clippy::result_large_err)]
 fn open_socket(
     config: &SimulatorConfig,
 ) -> Result<WebSocket<MaybeTlsStream<TcpStream>>, tungstenite::Error> {
@@ -450,6 +451,7 @@ fn open_socket(
     Ok(socket)
 }
 
+#[allow(clippy::result_large_err)]
 fn close_socket(
     socket: &mut Option<WebSocket<MaybeTlsStream<TcpStream>>>,
 ) -> Result<(), tungstenite::Error> {
@@ -469,9 +471,9 @@ fn send_json(
     let ws = socket
         .as_mut()
         .ok_or_else(|| "not connected, press 'c' first".to_string())?;
-    ws.send(Message::Text(text.clone().into()))
+    let _ = event_tx.send(UiEvent::Outbound(text.clone()));
+    ws.send(Message::Text(text))
         .map_err(|error| format!("write failed: {error}"))?;
-    let _ = event_tx.send(UiEvent::Outbound(text));
     Ok(())
 }
 

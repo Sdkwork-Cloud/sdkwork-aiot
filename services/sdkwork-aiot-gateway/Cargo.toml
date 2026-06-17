@@ -6,9 +6,15 @@ license.workspace = true
 
 [dependencies]
 sdkwork-aiot-runtime = { path = "../../crates/sdkwork-aiot-runtime" }
+sdkwork-aiot-observability = { path = "../../crates/sdkwork-aiot-observability" }
 sdkwork-aiot-adapter-xiaozhi = { path = "../../crates/sdkwork-aiot-adapter-xiaozhi" }
+sdkwork-aiot-storage = { path = "../../crates/sdkwork-aiot-storage" }
+sdkwork-aiot-storage-sqlx = { path = "../../crates/sdkwork-aiot-storage-sqlx" }
 sdkwork-aiot-transport = { path = "../../crates/sdkwork-aiot-transport" }
 rumqttc = "0.24"
 ctrlc = "=3.4.5"
 rusqlite = { version = "0.31", features = ["bundled"] }
 redis = "0.28"
+
+[dev-dependencies]
+sdkwork-aiot-storage = { path = "../../crates/sdkwork-aiot-storage" }

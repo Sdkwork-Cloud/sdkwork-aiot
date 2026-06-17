@@ -238,6 +238,10 @@ pub enum AiotDeviceRepositoryError {
 }
 
 pub trait AiotDeviceRepository: Send + Sync {
+    fn storage_ready(&self) -> bool {
+        true
+    }
+
     fn create_device(
         &self,
         command: AiotDeviceCreateCommand,
@@ -1661,7 +1665,7 @@ impl AiotProtocolIngestUnitOfWork for InMemoryProtocolIngestUnitOfWork {
     }
 }
 
-pub trait AiotProtocolIngestUnitOfWork {
+pub trait AiotProtocolIngestUnitOfWork: Send + Sync {
     fn execute_protocol_command(
         &self,
         command: &AiotProtocolStorageCommand,

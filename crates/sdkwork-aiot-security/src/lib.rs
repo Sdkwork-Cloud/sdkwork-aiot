@@ -151,6 +151,23 @@ pub struct DeviceAuthDecision {
 
 impl DeviceAuthDecision {
     pub fn allow(request: DeviceAuthRequest) -> Result<Self, DeviceAuthError> {
+        let has_association_context = request
+            .tenant_id
+            .as_ref()
+            .is_some_and(|value| !value.trim().is_empty())
+            && request
+                .organization_id
+                .as_ref()
+                .is_some_and(|value| !value.trim().is_empty())
+            && request
+                .product_id
+                .as_ref()
+                .is_some_and(|value| !value.trim().is_empty());
+
+        if request.mode == DeviceAuthMode::BearerToken && has_association_context {
+            verify_bearer_token_evidence(&request)?;
+        }
+
         let tenant_id = required(request.tenant_id, "security.device_auth.missing_context")?;
         let organization_id = required(
             request.organization_id,
@@ -200,4 +217,43 @@ fn required(value: Option<String>, code: &'static str) -> Result<String, DeviceA
     value
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| DeviceAuthError::new(code))
+}
+
+fn verify_bearer_token_evidence(request: &DeviceAuthRequest) -> Result<(), DeviceAuthError> {
+    let authorization = request
+        .evidence
+        .get("Authorization")
+        .or_else(|| request.evidence.get("authorization"))
+        .ok_or_else(|| DeviceAuthError::new("security.device_auth.missing_bearer"))?;
+
+    let bearer = extract_bearer_token(authorization)
+        .ok_or_else(|| DeviceAuthError::new("security.device_auth.invalid_bearer"))?;
+    if bearer.is_empty() {
+        return Err(DeviceAuthError::new("security.device_auth.invalid_bearer"));
+    }
+
+    if let Some(expected) = request
+        .evidence
+        .get("token")
+        .or_else(|| request.evidence.get("bearer_token"))
+    {
+        if bearer != expected.as_str() {
+            return Err(DeviceAuthError::new("security.device_auth.bearer_mismatch"));
+        }
+    }
+
+    Ok(())
+}
+
+fn extract_bearer_token(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    let token = trimmed
+        .strip_prefix("Bearer ")
+        .or_else(|| trimmed.strip_prefix("bearer "))?;
+    let token = token.trim();
+    if token.is_empty() {
+        None
+    } else {
+        Some(token.to_string())
+    }
 }

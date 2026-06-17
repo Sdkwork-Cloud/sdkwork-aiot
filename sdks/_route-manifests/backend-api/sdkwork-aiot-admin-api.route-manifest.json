@@ -1,0 +1,1537 @@
+{
+  "apiAuthority": "sdkwork-aiot-backend-api",
+  "capability": "iot",
+  "domain": "iot",
+  "kind": "sdkwork.route.manifest",
+  "owner": "sdkwork-aiot",
+  "packageName": "sdkwork-aiot-admin-api",
+  "prefix": "/backend/v3/api",
+  "routes": [
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.products.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "products.list"
+      },
+      "method": "GET",
+      "operationId": "products.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/products",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.products"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.products.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "products.create"
+      },
+      "method": "POST",
+      "operationId": "products.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/products",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.products"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.products.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "products.retrieve"
+      },
+      "method": "GET",
+      "operationId": "products.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/products/{productId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.products"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.products.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "products.update"
+      },
+      "method": "PUT",
+      "operationId": "products.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/products/{productId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.products"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.products.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "products.delete"
+      },
+      "method": "DELETE",
+      "operationId": "products.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/products/{productId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.products"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "hardwareProfiles.list"
+      },
+      "method": "GET",
+      "operationId": "hardwareProfiles.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/hardware_profiles",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.hardwareProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "hardwareProfiles.create"
+      },
+      "method": "POST",
+      "operationId": "hardwareProfiles.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/hardware_profiles",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.hardwareProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "hardwareProfiles.retrieve"
+      },
+      "method": "GET",
+      "operationId": "hardwareProfiles.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.hardwareProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "hardwareProfiles.update"
+      },
+      "method": "PUT",
+      "operationId": "hardwareProfiles.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.hardwareProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "hardwareProfiles.delete"
+      },
+      "method": "DELETE",
+      "operationId": "hardwareProfiles.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.hardwareProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "protocolProfiles.list"
+      },
+      "method": "GET",
+      "operationId": "protocolProfiles.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/protocol_profiles",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.protocolProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "protocolProfiles.create"
+      },
+      "method": "POST",
+      "operationId": "protocolProfiles.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/protocol_profiles",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.protocolProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "protocolProfiles.retrieve"
+      },
+      "method": "GET",
+      "operationId": "protocolProfiles.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.protocolProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "protocolProfiles.update"
+      },
+      "method": "PUT",
+      "operationId": "protocolProfiles.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.protocolProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "protocolProfiles.delete"
+      },
+      "method": "DELETE",
+      "operationId": "protocolProfiles.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.protocolProfiles"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "capabilityModels.list"
+      },
+      "method": "GET",
+      "operationId": "capabilityModels.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/capability_models",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.capabilityModels"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "capabilityModels.create"
+      },
+      "method": "POST",
+      "operationId": "capabilityModels.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/capability_models",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.capabilityModels"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "capabilityModels.retrieve"
+      },
+      "method": "GET",
+      "operationId": "capabilityModels.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/capability_models/{capabilityModelId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.capabilityModels"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "capabilityModels.update"
+      },
+      "method": "PUT",
+      "operationId": "capabilityModels.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/capability_models/{capabilityModelId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.capabilityModels"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.profiles.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "capabilityModels.delete"
+      },
+      "method": "DELETE",
+      "operationId": "capabilityModels.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/capability_models/{capabilityModelId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.capabilityModels"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.list"
+      },
+      "method": "GET",
+      "operationId": "devices.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.create"
+      },
+      "method": "POST",
+      "operationId": "devices.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.retrieve"
+      },
+      "method": "GET",
+      "operationId": "devices.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.update"
+      },
+      "method": "PUT",
+      "operationId": "devices.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.delete",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.delete"
+      },
+      "method": "DELETE",
+      "operationId": "devices.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.credentials.list"
+      },
+      "method": "GET",
+      "operationId": "devices.credentials.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/credentials",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.credentials.retrieve"
+      },
+      "method": "GET",
+      "operationId": "devices.credentials.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/credentials/{credentialId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.credentials.create"
+      },
+      "method": "POST",
+      "operationId": "devices.credentials.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/credentials",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.credentials.delete"
+      },
+      "method": "DELETE",
+      "operationId": "devices.credentials.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/credentials/{credentialId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.sessions.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.sessions.list"
+      },
+      "method": "GET",
+      "operationId": "devices.sessions.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/sessions",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.sessions.disconnect",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.sessions.disconnect"
+      },
+      "method": "DELETE",
+      "operationId": "devices.sessions.disconnect",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/sessions/{sessionId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.capabilities.list"
+      },
+      "method": "GET",
+      "operationId": "devices.capabilities.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/capabilities",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.commands.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.commands.list"
+      },
+      "method": "GET",
+      "operationId": "devices.commands.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/commands",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.commands.cancel",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.commands.cancel"
+      },
+      "method": "POST",
+      "operationId": "devices.commands.cancel",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/commands/{commandId}/cancel",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.twins.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.twin.retrieve"
+      },
+      "method": "GET",
+      "operationId": "devices.twin.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/twin",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.twins.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.twin.update"
+      },
+      "method": "PATCH",
+      "operationId": "devices.twin.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/devices/{deviceId}/twin",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareArtifacts.list"
+      },
+      "method": "GET",
+      "operationId": "firmwareArtifacts.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_artifacts",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareArtifacts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareArtifacts.create"
+      },
+      "method": "POST",
+      "operationId": "firmwareArtifacts.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_artifacts",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareArtifacts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareArtifacts.retrieve"
+      },
+      "method": "GET",
+      "operationId": "firmwareArtifacts.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_artifacts/{artifactId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareArtifacts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareArtifacts.update"
+      },
+      "method": "PUT",
+      "operationId": "firmwareArtifacts.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_artifacts/{artifactId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareArtifacts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.write",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareArtifacts.delete"
+      },
+      "method": "DELETE",
+      "operationId": "firmwareArtifacts.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_artifacts/{artifactId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareArtifacts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareRollouts.list"
+      },
+      "method": "GET",
+      "operationId": "firmwareRollouts.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_rollouts",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareRollouts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.rollout",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareRollouts.create"
+      },
+      "method": "POST",
+      "operationId": "firmwareRollouts.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_rollouts",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareRollouts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareRollouts.retrieve"
+      },
+      "method": "GET",
+      "operationId": "firmwareRollouts.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_rollouts/{rolloutId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareRollouts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.rollout",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareRollouts.update"
+      },
+      "method": "PUT",
+      "operationId": "firmwareRollouts.update",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_rollouts/{rolloutId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareRollouts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.firmware.rollout",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "firmwareRollouts.delete"
+      },
+      "method": "DELETE",
+      "operationId": "firmwareRollouts.delete",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/firmware_rollouts/{rolloutId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.firmwareRollouts"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.telemetry.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "events.list"
+      },
+      "method": "GET",
+      "operationId": "events.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/events",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.events"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.protocolAdapters.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "protocolAdapters.list"
+      },
+      "method": "GET",
+      "operationId": "protocolAdapters.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/protocol_adapters",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.protocolAdapters"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.runtime.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "runtime.capacity.retrieve"
+      },
+      "method": "GET",
+      "operationId": "runtime.capacity.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-backend-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/backend/v3/api/iot/runtime/capacity",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.runtime"
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "sdkFamily": "sdkwork-aiot-backend-sdk",
+  "source": {
+    "crateImport": "sdkwork_aiot_admin_api",
+    "crateRoot": "services/sdkwork-aiot-admin-api"
+  },
+  "surface": "backend-api"
+}

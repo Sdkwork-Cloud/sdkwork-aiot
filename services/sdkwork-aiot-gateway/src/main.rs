@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -20,6 +21,7 @@ const DEFAULT_MQTT_PUBLISH_RETRY_ATTEMPTS: u32 = 2;
 const DEFAULT_MQTT_PUBLISH_RETRY_DELAY_MILLIS: u64 = 100;
 const DEFAULT_BRIDGE_STATS_LOG_INTERVAL_SECONDS: u64 = 30;
 const DEFAULT_MQTT_MAX_OUTBOUND_PER_EVENT: usize = 8;
+const MAX_WEBSOCKET_FRAME_BUFFER_BYTES: usize = 1_048_576;
 const BRIDGE_STATS_PATH: &str = "/internal/bridge/stats";
 const BRIDGE_METRICS_PATH: &str = "/internal/bridge/metrics";
 const BRIDGE_HEALTH_PATH: &str = "/internal/bridge/health";
@@ -47,6 +49,7 @@ fn main() {
     }
 
     let server = Arc::new(server);
+    let active_ws_connections = Arc::new(AtomicU64::new(0));
     let bridge_enabled =
         std::env::var("SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE").as_deref() == Ok("1");
     let bridge_stats = Arc::new(BridgeStats::new(current_unix_time_millis()));
@@ -68,6 +71,15 @@ fn main() {
         .set_nonblocking(true)
         .expect("set listener nonblocking");
     println!("sdkwork-aiot-gateway listening on http://{bind_addr}");
+    sdkwork_aiot_observability::emit_gateway_lifecycle(
+        "gateway.startup",
+        &sdkwork_aiot_observability::TraceFields::new("gateway-startup")
+            .protocol("xiaozhi.websocket"),
+    );
+    sdkwork_aiot_observability::emit_runtime_metric(
+        &sdkwork_aiot_observability::RuntimeMetricFields::new("sdkwork-aiot-gateway")
+            .connections(0),
+    );
 
     while running.load(Ordering::Relaxed) {
         let stream = match listener.accept() {
@@ -87,6 +99,7 @@ fn main() {
         let session_options = session_options.clone();
         let bridge_stats = Arc::clone(&bridge_stats);
         let bridge_state = Arc::clone(&bridge_state);
+        let active_ws_connections = Arc::clone(&active_ws_connections);
         std::thread::spawn(move || {
             handle_client_connection(
                 &server,
@@ -94,6 +107,7 @@ fn main() {
                 stream,
                 bridge_stats,
                 bridge_state,
+                active_ws_connections,
             )
         });
     }
@@ -211,30 +225,46 @@ impl UdpBridgeConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SessionState {
-    session: Option<XiaozhiMqttUdpSession>,
+struct ManagedMqttUdpSession {
+    session: XiaozhiMqttUdpSession,
     last_activity_millis: i64,
 }
 
-impl SessionState {
-    fn new() -> Self {
+impl ManagedMqttUdpSession {
+    fn new(session: XiaozhiMqttUdpSession) -> Self {
         Self {
-            session: None,
+            session,
             last_activity_millis: current_unix_time_millis(),
         }
-    }
-
-    fn snapshot_session(&self) -> Option<XiaozhiMqttUdpSession> {
-        self.session.clone()
     }
 
     fn touch_now(&mut self) {
         self.last_activity_millis = current_unix_time_millis();
     }
+}
 
-    fn set_session(&mut self, session: Option<XiaozhiMqttUdpSession>) {
-        self.session = session;
-        self.touch_now();
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SessionState {
+    sessions: HashMap<String, ManagedMqttUdpSession>,
+}
+
+impl SessionState {
+    fn new() -> Self {
+        Self {
+            sessions: HashMap::new(),
+        }
+    }
+
+    fn snapshot_session(&self, session_key: Option<&str>) -> Option<XiaozhiMqttUdpSession> {
+        let key = session_key?;
+        self.sessions
+            .get(key)
+            .map(|managed| managed.session.clone())
+    }
+
+    fn upsert_session(&mut self, session_key: String, session: XiaozhiMqttUdpSession) {
+        self.sessions
+            .insert(session_key, ManagedMqttUdpSession::new(session));
     }
 }
 
@@ -465,9 +495,10 @@ fn run_mqtt_bridge_loop(
 
             if let Event::Incoming(Incoming::Publish(publish)) = event {
                 let inbound = String::from_utf8_lossy(&publish.payload).to_string();
+                let session_key = sdkwork_aiot_gateway::xiaozhi_mqtt_session_lookup_key(&inbound);
                 let session_snapshot = {
                     let guard = session_state.lock().expect("mqtt session lock");
-                    guard.snapshot_session()
+                    guard.snapshot_session(session_key.as_deref())
                 };
 
                 let response = sdkwork_aiot_gateway::xiaozhi_mqtt_session_reply_with_options(
@@ -485,9 +516,14 @@ fn run_mqtt_bridge_loop(
                     }
                 };
 
-                {
+                if let Some(session) = next_session {
                     let mut guard = session_state.lock().expect("mqtt session lock");
-                    guard.set_session(next_session);
+                    guard.upsert_session(session.session_id.clone(), session);
+                } else if let Some(key) = session_key {
+                    let mut guard = session_state.lock().expect("mqtt session lock");
+                    if let Some(managed) = guard.sessions.get_mut(&key) {
+                        managed.touch_now();
+                    }
                 }
 
                 let (bounded_outbound, dropped) =
@@ -557,8 +593,11 @@ fn run_udp_bridge_loop(
 
     let mut buf = [0u8; 2048];
     while running.load(Ordering::Relaxed) {
-        if purge_idle_session(&session_state, config.session_idle_timeout) {
-            stats.session_idle_purges.fetch_add(1, Ordering::Relaxed);
+        let purged = purge_idle_sessions(&session_state, config.session_idle_timeout);
+        if purged > 0 {
+            stats
+                .session_idle_purges
+                .fetch_add(purged, Ordering::Relaxed);
         }
 
         let (len, from) = match socket.recv_from(&mut buf) {
@@ -577,24 +616,30 @@ fn run_udp_bridge_loop(
         stats.udp_packets_total.fetch_add(1, Ordering::Relaxed);
 
         let mut guard = session_state.lock().expect("udp session lock");
-        let Some(session) = guard.session.as_mut() else {
+        if guard.sessions.is_empty() {
             continue;
-        };
+        }
 
-        let packet = match sdkwork_aiot_gateway::xiaozhi_mqtt_udp_decode_audio(session, &buf[..len])
-        {
-            Ok(packet) => packet,
-            Err(error) => {
-                stats.udp_decode_failures.fetch_add(1, Ordering::Relaxed);
-                eprintln!(
-                    "sdkwork-aiot-gateway udp_decode_error={} from={from}",
-                    error.code
-                );
-                continue;
-            }
-        };
-        session.remote_sequence = packet.sequence;
-        guard.touch_now();
+        let mut matched = false;
+        for managed in guard.sessions.values_mut() {
+            let packet = match sdkwork_aiot_gateway::xiaozhi_mqtt_udp_decode_audio(
+                &managed.session,
+                &buf[..len],
+            ) {
+                Ok(packet) => packet,
+                Err(_) => continue,
+            };
+            managed.session.remote_sequence = packet.sequence;
+            managed.touch_now();
+            matched = true;
+            break;
+        }
+        if !matched {
+            stats.udp_decode_failures.fetch_add(1, Ordering::Relaxed);
+            eprintln!(
+                "sdkwork-aiot-gateway udp_decode_error=transport.udp.decode_failed from={from}"
+            );
+        }
         stats.maybe_log_snapshot(config.stats_log_interval);
     }
     state.udp_socket_bound.store(false, Ordering::Relaxed);
@@ -619,23 +664,36 @@ fn handle_client_connection(
     mut stream: TcpStream,
     bridge_stats: Arc<BridgeStats>,
     bridge_state: Arc<BridgeRuntimeState>,
+    active_ws_connections: Arc<AtomicU64>,
 ) {
     let _ = stream.set_read_timeout(Some(HTTP_READ_TIMEOUT));
 
-    let mut buffer = [0u8; 8192];
-    let read = match stream.read(&mut buffer) {
-        Ok(read) => read,
+    let buffer = match sdkwork_aiot_transport::read_full_http_request(
+        &mut stream,
+        sdkwork_aiot_transport::DEFAULT_MAX_HTTP_BODY_BYTES,
+    ) {
+        Ok(buffer) => buffer,
         Err(error) => {
-            eprintln!("sdkwork-aiot-gateway read_error={error}");
+            eprintln!("sdkwork-aiot-gateway read_error={}", error.code);
+            let response = problem_response(&error.code);
+            let _ = stream.write_all(response.as_bytes());
             return;
         }
     };
-    if read == 0 {
+    if buffer.is_empty() {
         return;
     }
 
-    let parsed_request = sdkwork_aiot_transport::parse_http_request_prefix(&buffer[..read]);
+    let parsed_request = sdkwork_aiot_transport::parse_http_request_prefix(&buffer);
     if let Ok((request, header_len)) = parsed_request {
+        if request.path.starts_with("/internal/")
+            && !sdkwork_aiot_gateway::internal_route_authorized(&request)
+        {
+            let response = unauthorized_response("gateway.internal.unauthorized");
+            let _ = stream.write_all(response.as_bytes());
+            return;
+        }
+
         if request.method == "GET" && request.path == BRIDGE_HEALTH_PATH {
             let response = bridge_health_response(bridge_state.as_ref(), bridge_stats.as_ref());
             let response = format_response(&response);
@@ -676,15 +734,36 @@ fn handle_client_connection(
         if is_websocket_upgrade(&request)
             && request.path == sdkwork_aiot_adapter_xiaozhi::XIAOZHI_WS_PATH
         {
+            if !sdkwork_aiot_gateway::xiaozhi_device_token_valid(&request, session_options) {
+                let response = unauthorized_response("gateway.xiaozhi.websocket.unauthorized");
+                let _ = stream.write_all(response.as_bytes());
+                return;
+            }
+
+            let projected_connections = active_ws_connections.load(Ordering::Relaxed) + 1;
+            if sdkwork_aiot_gateway::ws_backpressure_rejects_new_connection(
+                &server.runtime,
+                projected_connections,
+            ) {
+                let response =
+                    service_unavailable_response("gateway.xiaozhi.websocket.backpressure");
+                let _ = stream.write_all(response.as_bytes());
+                return;
+            }
+
             match sdkwork_aiot_transport::build_websocket_handshake_response(&request) {
                 Ok(response) => {
                     let response = format_response(&response);
                     if stream.write_all(response.as_bytes()).is_ok() {
+                        active_ws_connections.fetch_add(1, Ordering::Relaxed);
+                        let _guard = ActiveWsConnectionGuard {
+                            counter: Arc::clone(&active_ws_connections),
+                        };
                         handle_xiaozhi_websocket_session(
-                            &server,
+                            server,
                             session_options,
                             &request,
-                            buffer[header_len..read].to_vec(),
+                            buffer[header_len..].to_vec(),
                             stream,
                         );
                     }
@@ -698,8 +777,7 @@ fn handle_client_connection(
         }
     }
 
-    let response = match sdkwork_aiot_transport::handle_http_request_bytes(&server, &buffer[..read])
-    {
+    let response = match sdkwork_aiot_transport::handle_http_request_bytes(server, &buffer) {
         Ok(response) => response,
         Err(error) => problem_response(&error.code),
     };
@@ -752,6 +830,10 @@ fn handle_xiaozhi_websocket_session(
             }
         };
         frame_buffer.extend_from_slice(&read_buffer[..read]);
+        if frame_buffer.len() > MAX_WEBSOCKET_FRAME_BUFFER_BYTES {
+            eprintln!("sdkwork-aiot-gateway websocket_frame_buffer_limit_exceeded");
+            return;
+        }
     }
 }
 
@@ -1056,6 +1138,40 @@ fn problem_response(code: &str) -> String {
     )
 }
 
+fn unauthorized_response(code: &str) -> String {
+    let body = format!(
+        r#"{{"type":"about:blank","title":"Unauthorized","status":401,"code":"{}"}}"#,
+        json_escape(code)
+    );
+    format!(
+        "HTTP/1.1 401 Unauthorized\r\ncontent-type: application/problem+json\r\ncontent-length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    )
+}
+
+fn service_unavailable_response(code: &str) -> String {
+    let body = format!(
+        r#"{{"type":"about:blank","title":"Service Unavailable","status":503,"code":"{}"}}"#,
+        json_escape(code)
+    );
+    format!(
+        "HTTP/1.1 503 Service Unavailable\r\ncontent-type: application/problem+json\r\ncontent-length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    )
+}
+
+struct ActiveWsConnectionGuard {
+    counter: Arc<AtomicU64>,
+}
+
+impl Drop for ActiveWsConnectionGuard {
+    fn drop(&mut self) {
+        self.counter.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 fn json_escape(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for ch in input.chars() {
@@ -1118,18 +1234,18 @@ fn reconnect_delay(attempt: u32, base: Duration, max: Duration) -> Duration {
     Duration::from_millis(expanded.min(max_millis))
 }
 
-fn purge_idle_session(
+fn purge_idle_sessions(
     session_state: &Arc<Mutex<SessionState>>,
     session_idle_timeout: Duration,
-) -> bool {
+) -> u64 {
     let now = current_unix_time_millis();
     let idle_timeout_millis = duration_millis_i64(session_idle_timeout).max(1);
     let mut guard = session_state.lock().expect("udp session lock");
-    if should_purge_idle_session(now, guard.last_activity_millis, idle_timeout_millis) {
-        guard.session = None;
-        return true;
-    }
-    false
+    let before = guard.sessions.len();
+    guard.sessions.retain(|_, managed| {
+        !should_purge_idle_session(now, managed.last_activity_millis, idle_timeout_millis)
+    });
+    u64::try_from(before.saturating_sub(guard.sessions.len())).unwrap_or(u64::MAX)
 }
 
 fn should_purge_idle_session(
@@ -1212,7 +1328,7 @@ mod tests {
     }
 
     #[test]
-    fn purge_idle_session_clears_session_when_timed_out() {
+    fn purge_idle_sessions_clears_timed_out_entries() {
         let session = XiaozhiMqttUdpSession {
             device_id: "dev-001".to_string(),
             client_id: "client-001".to_string(),
@@ -1224,14 +1340,19 @@ mod tests {
             remote_sequence: 42,
         };
         let state = Arc::new(Mutex::new(SessionState {
-            session: Some(session),
-            last_activity_millis: 0,
+            sessions: HashMap::from([(
+                session.session_id.clone(),
+                ManagedMqttUdpSession {
+                    session,
+                    last_activity_millis: 0,
+                },
+            )]),
         }));
 
-        let purged = purge_idle_session(&state, Duration::from_millis(1));
-        assert!(purged);
+        let purged = purge_idle_sessions(&state, Duration::from_millis(1));
+        assert_eq!(purged, 1);
         let guard = state.lock().expect("state lock");
-        assert!(guard.session.is_none());
+        assert!(guard.sessions.is_empty());
     }
 
     #[test]

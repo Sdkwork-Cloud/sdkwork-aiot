@@ -15,6 +15,12 @@ use sdkwork_aiot_adapter_xiaozhi::{
     CLIENT_ID_HEADER, DEVICE_ID_HEADER, PROTOCOL_VERSION_HEADER, XIAOZHI_ACTIVATE_PATH,
     XIAOZHI_MQTT_PATH, XIAOZHI_OTA_ACTIVATE_PATH, XIAOZHI_OTA_PATH, XIAOZHI_WS_PATH,
 };
+use sdkwork_aiot_runtime::{AiotRuntime, AiotRuntimePressure, BackpressureAction};
+use sdkwork_aiot_storage::{AiotProtocolIngestUnitOfWork, InMemoryProtocolIngestUnitOfWork};
+use sdkwork_aiot_storage_sqlx::{
+    RusqliteSqlStatementExecutor, SqlDialect, SqlProtocolIngestPlanner,
+    SqliteSqlxCredentialRepository, SqlxProtocolIngestUnitOfWork,
+};
 use sdkwork_aiot_transport::{
     websocket_frame_to_inbound_frame, HttpRequest, HttpResponse, HttpStatus, TransportError,
     TransportServer, WebSocketFrame, WebSocketOpcode,
@@ -78,6 +84,7 @@ const ENV_XIAOZHI_MCP_POLICY_RULES: &str = "SDKWORK_AIOT_XIAOZHI_MCP_POLICY_RULE
 const ENV_XIAOZHI_MCP_POLICY_LOG_ALLOW: &str = "SDKWORK_AIOT_XIAOZHI_MCP_POLICY_LOG_ALLOW";
 const ENV_XIAOZHI_SERVER_TIMEZONE_OFFSET_MINUTES: &str =
     "SDKWORK_AIOT_XIAOZHI_SERVER_TIMEZONE_OFFSET_MINUTES";
+const ENV_DEVICE_DB_PATH: &str = "SDKWORK_AIOT_DEVICE_DB_PATH";
 
 const ACTIVATION_REGISTRY_BACKEND_UNKNOWN: u64 = 0;
 const ACTIVATION_REGISTRY_BACKEND_IN_MEMORY: u64 = 1;
@@ -1167,6 +1174,8 @@ pub struct XiaozhiSessionOptions {
     mcp_tool_provider: Arc<dyn XiaozhiSimulatorMcpToolProvider>,
     mcp_tool_invoker: Arc<dyn XiaozhiSimulatorMcpToolInvoker>,
     mcp_tool_policy: Arc<dyn XiaozhiSimulatorMcpToolPolicy>,
+    protocol_ingest: Arc<dyn AiotProtocolIngestUnitOfWork>,
+    device_credential_repository: Option<Arc<SqliteSqlxCredentialRepository>>,
 }
 
 impl XiaozhiSessionOptions {
@@ -1175,6 +1184,8 @@ impl XiaozhiSessionOptions {
             mcp_tool_provider: Arc::new(DefaultXiaozhiSimulatorMcpToolProvider::from_env()),
             mcp_tool_invoker: Arc::new(DefaultXiaozhiSimulatorMcpToolInvoker),
             mcp_tool_policy: Arc::new(RuleBasedXiaozhiSimulatorMcpToolPolicy::from_env()),
+            protocol_ingest: protocol_ingest_from_env(),
+            device_credential_repository: device_credential_repository_from_env(),
         }
     }
 
@@ -1185,6 +1196,8 @@ impl XiaozhiSessionOptions {
             mcp_tool_provider,
             mcp_tool_invoker: Arc::new(DefaultXiaozhiSimulatorMcpToolInvoker),
             mcp_tool_policy: Arc::new(AllowAllXiaozhiSimulatorMcpToolPolicy),
+            protocol_ingest: Arc::new(InMemoryProtocolIngestUnitOfWork::new()),
+            device_credential_repository: None,
         }
     }
 
@@ -1196,6 +1209,8 @@ impl XiaozhiSessionOptions {
             mcp_tool_provider,
             mcp_tool_invoker,
             mcp_tool_policy: Arc::new(AllowAllXiaozhiSimulatorMcpToolPolicy),
+            protocol_ingest: Arc::new(InMemoryProtocolIngestUnitOfWork::new()),
+            device_credential_repository: None,
         }
     }
 
@@ -1208,7 +1223,25 @@ impl XiaozhiSessionOptions {
             mcp_tool_provider,
             mcp_tool_invoker,
             mcp_tool_policy,
+            protocol_ingest: protocol_ingest_from_env(),
+            device_credential_repository: device_credential_repository_from_env(),
         }
+    }
+
+    pub fn with_protocol_ingest(
+        mut self,
+        protocol_ingest: Arc<dyn AiotProtocolIngestUnitOfWork>,
+    ) -> Self {
+        self.protocol_ingest = protocol_ingest;
+        self
+    }
+
+    pub fn with_device_credential_repository(
+        mut self,
+        device_credential_repository: Arc<SqliteSqlxCredentialRepository>,
+    ) -> Self {
+        self.device_credential_repository = Some(device_credential_repository);
+        self
     }
 
     pub fn mcp_tool_provider(&self) -> Arc<dyn XiaozhiSimulatorMcpToolProvider> {
@@ -1222,6 +1255,56 @@ impl XiaozhiSessionOptions {
     pub fn mcp_tool_policy(&self) -> Arc<dyn XiaozhiSimulatorMcpToolPolicy> {
         Arc::clone(&self.mcp_tool_policy)
     }
+
+    pub fn protocol_ingest(&self) -> Arc<dyn AiotProtocolIngestUnitOfWork> {
+        Arc::clone(&self.protocol_ingest)
+    }
+
+    pub fn device_credential_repository(&self) -> Option<Arc<SqliteSqlxCredentialRepository>> {
+        self.device_credential_repository.as_ref().map(Arc::clone)
+    }
+}
+
+fn device_credential_repository_from_env() -> Option<Arc<SqliteSqlxCredentialRepository>> {
+    let path = env_string(ENV_DEVICE_DB_PATH)?;
+    match SqliteSqlxCredentialRepository::open(path) {
+        Ok(repository) => {
+            println!("sdkwork-aiot-gateway device_credential_repository=sqlite");
+            Some(Arc::new(repository))
+        }
+        Err(error) => {
+            eprintln!("sdkwork-aiot-gateway device_credential_repository_open_error={error}");
+            None
+        }
+    }
+}
+
+fn protocol_ingest_from_env() -> Arc<dyn AiotProtocolIngestUnitOfWork> {
+    let Some(path) = env_string(ENV_DEVICE_DB_PATH) else {
+        return Arc::new(InMemoryProtocolIngestUnitOfWork::new());
+    };
+
+    match RusqliteSqlStatementExecutor::open(path) {
+        Ok(executor) => Arc::new(SqlxProtocolIngestUnitOfWork::with_planner(
+            executor,
+            SqlProtocolIngestPlanner::for_dialect(SqlDialect::Sqlite),
+        )),
+        Err(error) => {
+            eprintln!("sdkwork-aiot-gateway protocol_ingest_sqlite_open_error={error}");
+            Arc::new(InMemoryProtocolIngestUnitOfWork::new())
+        }
+    }
+}
+
+fn log_protocol_ingest_receipt(receipt: &sdkwork_aiot_storage::AiotStorageWriteReceipt) {
+    if receipt.accepted && receipt.dead_letter_reason.is_none() {
+        return;
+    }
+
+    eprintln!(
+        "sdkwork-aiot-gateway protocol_ingest_error accepted={} duplicate={} reason={:?}",
+        receipt.accepted, receipt.duplicate, receipt.dead_letter_reason
+    );
 }
 
 pub fn standard_gateway_server() -> Result<TransportServer, TransportError> {
@@ -1361,11 +1444,12 @@ pub fn xiaozhi_ota_http_handler_with_provider_and_registry(
 
     let host = request.header("host").unwrap_or("localhost");
     let ws_scheme = websocket_scheme(request);
-    let token = request
-        .header("authorization")
-        .map(str::to_string)
-        .or_else(|| env_string(ENV_XIAOZHI_DEVICE_TOKEN))
-        .unwrap_or_else(|| DEFAULT_DEVICE_TOKEN.to_string());
+    let Some(token) = configured_device_token() else {
+        return problem_response(
+            HttpStatus::ServiceUnavailable,
+            "gateway.xiaozhi.ota.token_not_configured",
+        );
+    };
     let version = request
         .header("protocol-version")
         .and_then(|value| value.parse::<u32>().ok())
@@ -1459,6 +1543,7 @@ pub fn xiaozhi_websocket_session_reply_with_options(
         mcp_tool_provider.as_ref(),
         mcp_tool_invoker.as_ref(),
         mcp_tool_policy.as_ref(),
+        Some(options.protocol_ingest().as_ref()),
     )
 }
 
@@ -1477,6 +1562,7 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider(
         mcp_tool_provider,
         &mcp_tool_invoker,
         &mcp_tool_policy,
+        None,
     )
 }
 
@@ -1487,6 +1573,7 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
     mcp_tool_provider: &dyn XiaozhiSimulatorMcpToolProvider,
     mcp_tool_invoker: &dyn XiaozhiSimulatorMcpToolInvoker,
     mcp_tool_policy: &dyn XiaozhiSimulatorMcpToolPolicy,
+    protocol_ingest: Option<&dyn AiotProtocolIngestUnitOfWork>,
 ) -> Result<Vec<WebSocketSessionReply>, TransportError> {
     match frame.opcode {
         WebSocketOpcode::Ping => {
@@ -1507,6 +1594,11 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
         .runtime
         .handle_inbound_frame_with_codec(XIAOZHI_WS_PATH, &codec, inbound)
         .map_err(TransportError::from_runtime_protocol)?;
+
+    if let Some(protocol_ingest) = protocol_ingest {
+        let receipt = protocol_ingest.execute_protocol_command(&result.storage_command);
+        log_protocol_ingest_receipt(&receipt);
+    }
 
     let session_id = result.message.session_id.unwrap_or_else(|| {
         let device_id = result
@@ -1631,6 +1723,30 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
     }
 
     Ok(replies)
+}
+
+pub fn ws_backpressure_rejects_new_connection(
+    runtime: &AiotRuntime,
+    active_ws_connections: u64,
+) -> bool {
+    let pressure = AiotRuntimePressure {
+        node_connections: active_ws_connections,
+        tenant_sessions: 0,
+        device_inflight: 0,
+        outbox_lag: 0,
+    };
+    matches!(
+        runtime.capacity_policy().backpressure_action(&pressure),
+        BackpressureAction::Reject
+    )
+}
+
+pub fn xiaozhi_mqtt_session_lookup_key(inbound_json: &str) -> Option<String> {
+    json_string_field(inbound_json, "session_id").or_else(|| {
+        let device_id = json_string_field(inbound_json, "device_id")?;
+        let client_id = json_string_field(inbound_json, "client_id")?;
+        Some(format!("{device_id}-{client_id}"))
+    })
 }
 
 pub fn xiaozhi_mqtt_session_reply(
@@ -1865,6 +1981,103 @@ pub fn xiaozhi_mqtt_udp_decode_audio(
         .map_err(|error| TransportError::new(error.code))
 }
 
+pub fn dev_mode_enabled() -> bool {
+    std::env::var("SDKWORK_AIOT_DEV_MODE").as_deref() == Ok("1")
+}
+
+pub fn xiaozhi_device_token_valid(request: &HttpRequest, options: &XiaozhiSessionOptions) -> bool {
+    if dev_mode_enabled() {
+        return true;
+    }
+
+    let Some(token) = extract_device_token(request) else {
+        return false;
+    };
+
+    if let Some(repository) = options.device_credential_repository() {
+        let Some(device_id) = extract_device_id(request) else {
+            return false;
+        };
+        return repository.verify_bearer_token(&device_id, &token);
+    }
+
+    let Some(expected) = env_string(ENV_XIAOZHI_DEVICE_TOKEN) else {
+        return false;
+    };
+    token == expected
+}
+
+fn extract_device_id(request: &HttpRequest) -> Option<String> {
+    request
+        .header("device-id")
+        .or_else(|| request.query_param("device_id"))
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn configured_device_token() -> Option<String> {
+    if dev_mode_enabled() {
+        return Some(
+            env_string(ENV_XIAOZHI_DEVICE_TOKEN)
+                .unwrap_or_else(|| DEFAULT_DEVICE_TOKEN.to_string()),
+        );
+    }
+    env_string(ENV_XIAOZHI_DEVICE_TOKEN)
+}
+
+pub fn internal_route_authorized(request: &HttpRequest) -> bool {
+    if dev_mode_enabled() {
+        return true;
+    }
+
+    let Some(expected) = std::env::var("SDKWORK_AIOT_INTERNAL_TOKEN")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    else {
+        return false;
+    };
+
+    request
+        .header("sdkwork-aiot-internal-token")
+        .or_else(|| request.header("x-sdkwork-internal-token"))
+        .map(|value| value == expected)
+        .unwrap_or(false)
+}
+
+fn extract_device_token(request: &HttpRequest) -> Option<String> {
+    let from_header = request.header("authorization").map(|value| {
+        value
+            .strip_prefix("Bearer ")
+            .or_else(|| value.strip_prefix("bearer "))
+            .map(str::trim)
+            .unwrap_or(value)
+            .to_string()
+    });
+
+    if from_header.is_some() {
+        return from_header.filter(|value| !value.is_empty());
+    }
+
+    if !dev_mode_enabled() {
+        return None;
+    }
+
+    request
+        .query_param("authorization")
+        .or_else(|| request.query_param("token"))
+        .map(|value| {
+            value
+                .strip_prefix("Bearer ")
+                .or_else(|| value.strip_prefix("bearer "))
+                .map(str::trim)
+                .unwrap_or(value)
+                .to_string()
+        })
+        .filter(|value| !value.is_empty())
+}
+
 pub fn xiaozhi_codec_from_request(request: &HttpRequest) -> XiaozhiWebSocketCodec {
     let mut headers = Vec::new();
     if let Some(value) = request
@@ -1902,6 +2115,7 @@ pub fn xiaozhi_codec_from_request(request: &HttpRequest) -> XiaozhiWebSocketCode
     XiaozhiWebSocketCodec::new().with_handshake_context(xiaozhi_handshake_context(headers))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn xiaozhi_simulator_mcp_reply(
     transport: &str,
     session_id: &str,
@@ -2159,6 +2373,7 @@ fn xiaozhi_mcp_tools_list_result(
     xiaozhi_mcp_wrap_payload(session_id, payload)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn xiaozhi_mcp_tools_call_result(
     transport: &str,
     session_id: &str,
@@ -3064,7 +3279,7 @@ fn encode_registry_hex(value: &str) -> String {
 }
 
 fn decode_registry_hex(value: &str) -> Option<String> {
-    if value.len() % 2 != 0 {
+    if !value.len().is_multiple_of(2) {
         return None;
     }
     let mut out = Vec::with_capacity(value.len() / 2);
@@ -3142,7 +3357,7 @@ fn activation_request_accepted(
     request: &HttpRequest,
     challenge_registry: Option<&dyn XiaozhiActivationChallengeRegistry>,
 ) -> bool {
-    if env_bool(ENV_XIAOZHI_ACTIVATE_AUTO_ACCEPT) {
+    if env_bool(ENV_XIAOZHI_ACTIVATE_AUTO_ACCEPT) && dev_mode_enabled() {
         return true;
     }
 
@@ -3188,7 +3403,7 @@ fn activation_request_accepted(
     if let Some(challenge_registry) = challenge_registry {
         challenge_registry.consume_challenge(request, &challenge)
     } else {
-        true
+        dev_mode_enabled()
     }
 }
 
@@ -3475,7 +3690,7 @@ fn json_array_field<'a>(input: &'a str, field: &str) -> Option<&'a str> {
     }
 }
 
-fn json_array_objects<'a>(input: &'a str) -> Vec<&'a str> {
+fn json_array_objects(input: &str) -> Vec<&str> {
     let trimmed = input.trim();
     if !trimmed.starts_with('[') || !trimmed.ends_with(']') {
         return Vec::new();

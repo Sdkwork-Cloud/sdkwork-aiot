@@ -1,0 +1,173 @@
+{
+  "apiAuthority": "sdkwork-aiot-app-api",
+  "capability": "iot",
+  "domain": "iot",
+  "kind": "sdkwork.route.manifest",
+  "owner": "sdkwork-aiot",
+  "packageName": "sdkwork-aiot-app-api",
+  "prefix": "/app/v3/api",
+  "routes": [
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.list"
+      },
+      "method": "GET",
+      "operationId": "devices.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-app-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/app/v3/api/iot/devices",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.retrieve"
+      },
+      "method": "GET",
+      "operationId": "devices.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-app-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/app/v3/api/iot/devices/{deviceId}",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.commands.execute",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.commands.create"
+      },
+      "method": "POST",
+      "operationId": "devices.commands.create",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-app-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/app/v3/api/iot/devices/{deviceId}/commands",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.twins.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.twin.retrieve"
+      },
+      "method": "GET",
+      "operationId": "devices.twin.retrieve",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-app-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/app/v3/api/iot/devices/{deviceId}/twin",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    },
+    {
+      "auth": {
+        "dataScope": "organization",
+        "mode": "dual-token",
+        "permission": "iot.devices.read",
+        "required": true,
+        "tenantScope": "tenant"
+      },
+      "handler": {
+        "module": "sdkwork_aiot_http_api",
+        "name": "devices.events.list"
+      },
+      "method": "GET",
+      "operationId": "devices.events.list",
+      "ownership": {
+        "apiAuthority": "sdkwork-aiot-app-api",
+        "owner": "sdkwork-aiot"
+      },
+      "path": "/app/v3/api/iot/devices/{deviceId}/events",
+      "schemas": {
+        "problem": "ProblemDetail",
+        "request": null,
+        "response": null
+      },
+      "source": {
+        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+      },
+      "tags": [
+        "iot.devices"
+      ]
+    }
+  ],
+  "schemaVersion": 1,
+  "sdkFamily": "sdkwork-aiot-app-sdk",
+  "source": {
+    "crateImport": "sdkwork_aiot_app_api",
+    "crateRoot": "services/sdkwork-aiot-app-api"
+  },
+  "surface": "app-api"
+}

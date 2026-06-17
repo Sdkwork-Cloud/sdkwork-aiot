@@ -4,6 +4,16 @@ use std::sync::{Arc, Mutex};
 
 use rusqlite::types::Value as SqliteValue;
 use rusqlite::{params_from_iter, Connection};
+
+mod credential;
+mod persisted_entity;
+pub use credential::{
+    SqliteCredentialCreateCommand, SqliteCredentialRepositoryError, SqliteDeviceCredentialRecord,
+    SqliteSqlxCredentialRepository,
+};
+pub use persisted_entity::{
+    SqlitePersistedEntityError, SqlitePersistedEntityRecord, SqlitePersistedEntityRepository,
+};
 use sdkwork_aiot_storage::{
     table_contract, AiotCommandCreateCommand, AiotCommandRecord, AiotCommandRepository,
     AiotCommandRepositoryError, AiotCommandResultRecord, AiotDeviceCreateCommand,
@@ -20,6 +30,11 @@ pub fn schema_version() -> &'static str {
     "0.2.0"
 }
 
+/// Shared in-process SQLite URI so device, credential, and protocol-ingest repositories
+/// observe the same schema when no persistent `SDKWORK_AIOT_DEVICE_DB_PATH` is configured.
+pub const DEFAULT_SHARED_SQLITE_MEMORY_URI: &str =
+    "file:sdkwork-aiot-device-db?mode=memory&cache=shared";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SqlMigration {
     pub version: &'static str,
@@ -29,12 +44,47 @@ pub struct SqlMigration {
 }
 
 pub fn migration_catalog() -> Vec<SqlMigration> {
-    vec![SqlMigration {
-        version: "0001",
-        name: "aiot_core_schema",
-        schema_version: schema_version(),
-        sql: initial_migration_sql(),
-    }]
+    vec![
+        SqlMigration {
+            version: "0001",
+            name: "aiot_core_schema",
+            schema_version: schema_version(),
+            sql: initial_migration_sql(),
+        },
+        SqlMigration {
+            version: "0002",
+            name: "aiot_admin_entity_schema",
+            schema_version: schema_version(),
+            sql: admin_entity_migration_sql(),
+        },
+    ]
+}
+
+pub fn admin_entity_migration_sql() -> &'static str {
+    r#"
+CREATE TABLE iot_admin_entity (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    entity_kind VARCHAR(64) NOT NULL,
+    entity_key VARCHAR(128) NOT NULL,
+    payload_json TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_admin_entity_uuid UNIQUE (uuid),
+    CONSTRAINT uk_iot_admin_entity_scope_key UNIQUE (tenant_id, organization_id, entity_kind, entity_key)
+);
+
+CREATE INDEX idx_iot_admin_entity_tenant_kind
+    ON iot_admin_entity (tenant_id, entity_kind, status);
+"#
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -534,11 +584,13 @@ fn is_valid_int64_string(value: &str) -> bool {
     value.parse::<i64>().is_ok()
 }
 
+type CommandIdempotencyCache = HashMap<(i64, i64, String), String>;
+
 #[derive(Debug, Clone)]
 pub struct SqliteSqlxDeviceRepository {
     connection: Arc<Mutex<Connection>>,
     planner: SqlDeviceRepositoryPlanner,
-    command_idempotency_cache: Arc<Mutex<HashMap<(i64, i64, String), String>>>,
+    command_idempotency_cache: Arc<Mutex<CommandIdempotencyCache>>,
 }
 
 impl SqliteSqlxDeviceRepository {
@@ -574,6 +626,14 @@ impl SqliteSqlxDeviceRepository {
 }
 
 impl AiotDeviceRepository for SqliteSqlxDeviceRepository {
+    fn storage_ready(&self) -> bool {
+        self.connection
+            .lock()
+            .ok()
+            .and_then(|connection| connection.query_row("SELECT 1", [], |_| Ok(())).ok())
+            .is_some()
+    }
+
     fn create_device(
         &self,
         command: AiotDeviceCreateCommand,
@@ -582,22 +642,32 @@ impl AiotDeviceRepository for SqliteSqlxDeviceRepository {
             return Err(AiotDeviceRepositoryError::InvalidProductId);
         }
 
-        if self
-            .get_device(&command.association, &command.device_id)
-            .is_some()
-        {
+        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
+        let tx = connection
+            .transaction()
+            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
+
+        let exists: i64 = tx
+            .query_row(
+                "SELECT COUNT(1) FROM iot_device WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3",
+                (
+                    command.association.tenant_id,
+                    command.association.organization_id,
+                    &command.device_id,
+                ),
+                |row| row.get(0),
+            )
+            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
+        if exists > 0 {
             return Err(AiotDeviceRepositoryError::DuplicateDeviceId);
         }
 
-        let next_id = {
-            let connection = self.connection.lock().expect("sqlite device repo poisoned");
-            let max_id: i64 = connection
-                .query_row("SELECT COALESCE(MAX(id), 0) FROM iot_device", [], |row| {
-                    row.get(0)
-                })
-                .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-            max_id + 1
-        };
+        let max_id: i64 = tx
+            .query_row("SELECT COALESCE(MAX(id), 0) FROM iot_device", [], |row| {
+                row.get(0)
+            })
+            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
+        let next_id = max_id + 1;
 
         let record = AiotDeviceRecord {
             id: next_id.to_string(),
@@ -616,7 +686,11 @@ impl AiotDeviceRepository for SqliteSqlxDeviceRepository {
             .planner
             .plan_create_device(&record)
             .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        self.execute_batch(batch)
+        for statement in batch.statements {
+            execute_sql_statement(&tx, &statement)
+                .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
+        }
+        tx.commit()
             .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
         Ok(record)
     }
@@ -1460,14 +1534,77 @@ impl AiotDeviceTwinRepository for SqliteSqlxDeviceRepository {
 }
 
 fn ensure_device_schema(connection: &Connection) -> Result<(), rusqlite::Error> {
-    let table_exists: i64 = connection.query_row(
+    connection.execute_batch(
+        "CREATE TABLE IF NOT EXISTS iot_schema_version (
+            version TEXT NOT NULL PRIMARY KEY,
+            name TEXT NOT NULL,
+            schema_version TEXT NOT NULL,
+            applied_at TEXT NOT NULL
+        )",
+    )?;
+
+    let mut applied_versions = load_applied_schema_versions(connection)?;
+    bootstrap_legacy_schema_version(connection, &mut applied_versions)?;
+
+    for migration in migration_catalog() {
+        if applied_versions.contains(migration.version) {
+            continue;
+        }
+        connection.execute_batch(migration.sql)?;
+        record_applied_schema_version(connection, &migration)?;
+        applied_versions.insert(migration.version.to_string());
+    }
+
+    Ok(())
+}
+
+fn load_applied_schema_versions(
+    connection: &Connection,
+) -> Result<BTreeSet<String>, rusqlite::Error> {
+    let mut statement =
+        connection.prepare("SELECT version FROM iot_schema_version ORDER BY version ASC")?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    rows.collect()
+}
+
+fn bootstrap_legacy_schema_version(
+    connection: &Connection,
+    applied_versions: &mut BTreeSet<String>,
+) -> Result<(), rusqlite::Error> {
+    if !applied_versions.is_empty() {
+        return Ok(());
+    }
+
+    let legacy_device_table: i64 = connection.query_row(
         "SELECT COUNT(1) FROM sqlite_master WHERE type = 'table' AND name = 'iot_device'",
         [],
         |row| row.get(0),
     )?;
-    if table_exists == 0 {
-        connection.execute_batch(initial_migration_sql())?;
+    if legacy_device_table == 0 {
+        return Ok(());
     }
+
+    let Some(migration) = migration_catalog().into_iter().next() else {
+        return Ok(());
+    };
+    record_applied_schema_version(connection, &migration)?;
+    applied_versions.insert(migration.version.to_string());
+    Ok(())
+}
+
+fn record_applied_schema_version(
+    connection: &Connection,
+    migration: &SqlMigration,
+) -> Result<(), rusqlite::Error> {
+    connection.execute(
+        "INSERT OR IGNORE INTO iot_schema_version (version, name, schema_version, applied_at) VALUES (?1, ?2, ?3, ?4)",
+        (
+            migration.version,
+            migration.name,
+            migration.schema_version,
+            default_timestamp(),
+        ),
+    )?;
     Ok(())
 }
 
@@ -1956,7 +2093,7 @@ impl SqlStatementBatch {
     }
 }
 
-pub trait SqlStatementExecutor: Clone {
+pub trait SqlStatementExecutor: Clone + Send + Sync {
     fn execute_idempotency_guard(&self, key: &str, statement: SqlStatementPlan) -> bool;
 
     fn execute_batch(&self, batch: SqlStatementBatch);
@@ -2223,6 +2360,111 @@ impl SqlStatementExecutor for InMemorySqlStatementExecutor {
 
     fn execute_batch(&self, batch: SqlStatementBatch) {
         InMemorySqlStatementExecutor::execute_batch(self, batch);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RusqliteSqlStatementExecutor {
+    connection: Arc<Mutex<Connection>>,
+}
+
+impl RusqliteSqlStatementExecutor {
+    pub fn new(connection: Arc<Mutex<Connection>>) -> Self {
+        Self { connection }
+    }
+
+    pub fn new_in_memory() -> Result<Self, rusqlite::Error> {
+        let connection = Connection::open_in_memory()?;
+        ensure_device_schema(&connection)?;
+        Ok(Self::new(Arc::new(Mutex::new(connection))))
+    }
+
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, rusqlite::Error> {
+        let connection = Connection::open(path)?;
+        ensure_device_schema(&connection)?;
+        Ok(Self::new(Arc::new(Mutex::new(connection))))
+    }
+
+    fn execute_batch_in_connection(
+        connection: &mut Connection,
+        batch: SqlStatementBatch,
+    ) -> Result<(), rusqlite::Error> {
+        let tx = connection.transaction()?;
+        for statement in batch.statements {
+            execute_sql_statement(&tx, &statement)?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+}
+
+impl SqlStatementExecutor for RusqliteSqlStatementExecutor {
+    fn execute_idempotency_guard(&self, _key: &str, statement: SqlStatementPlan) -> bool {
+        let mut connection = self
+            .connection
+            .lock()
+            .expect("rusqlite sql statement executor poisoned");
+        let tx = match connection.transaction() {
+            Ok(tx) => tx,
+            Err(_) => return false,
+        };
+        let changed = match execute_sql_statement(&tx, &statement) {
+            Ok(changed) => changed,
+            Err(_) => {
+                let _ = tx.rollback();
+                return false;
+            }
+        };
+        if changed == 0 {
+            let _ = tx.rollback();
+            return false;
+        }
+        tx.commit().is_ok()
+    }
+
+    fn execute_batch(&self, batch: SqlStatementBatch) {
+        let mut connection = self
+            .connection
+            .lock()
+            .expect("rusqlite sql statement executor poisoned");
+        let _ = Self::execute_batch_in_connection(&mut connection, batch);
+    }
+
+    fn execute_transaction(&self, transaction: SqlTransactionPlan) -> SqlTransactionOutcome {
+        let mut connection = self
+            .connection
+            .lock()
+            .expect("rusqlite sql statement executor poisoned");
+        let tx = match connection.transaction() {
+            Ok(tx) => tx,
+            Err(_) => {
+                return SqlTransactionOutcome::rolled_back("storage.sql.transaction_begin_failed");
+            }
+        };
+
+        let guard_changed = match execute_sql_statement(&tx, &transaction.guard) {
+            Ok(changed) => changed,
+            Err(_) => {
+                let _ = tx.rollback();
+                return SqlTransactionOutcome::rolled_back("storage.sql.idempotency_guard_failed");
+            }
+        };
+        if guard_changed == 0 {
+            let _ = tx.rollback();
+            return SqlTransactionOutcome::Duplicate;
+        }
+
+        for statement in transaction.write_batch.statements {
+            if execute_sql_statement(&tx, &statement).is_err() {
+                let _ = tx.rollback();
+                return SqlTransactionOutcome::rolled_back("storage.sql.write_batch_failed");
+            }
+        }
+
+        match tx.commit() {
+            Ok(()) => SqlTransactionOutcome::Committed,
+            Err(_) => SqlTransactionOutcome::rolled_back("storage.sql.transaction_commit_failed"),
+        }
     }
 }
 

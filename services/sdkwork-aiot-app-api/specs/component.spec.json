@@ -74,7 +74,9 @@
       "."
     ],
     "runtimeEntrypoints": [],
-    "routeManifest": null,
+    "routeManifest": [
+      "sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json"
+    ],
     "sdkClients": [],
     "events": [],
     "configKeys": []

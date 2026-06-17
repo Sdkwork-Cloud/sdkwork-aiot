@@ -627,10 +627,7 @@ fn default_runtime_bundle_is_library_first_and_service_shells_reuse_it() {
 fn service_plan_declares_independent_mountable_surfaces() {
     let plan = RuntimeServicePlan::standard();
 
-    assert!(plan
-        .gateway_routes
-        .iter()
-        .any(|route| *route == "/iot/xiaozhi/ws"));
+    assert!(plan.gateway_routes.contains(&"/iot/xiaozhi/ws"));
     assert!(plan
         .backend_routes
         .iter()

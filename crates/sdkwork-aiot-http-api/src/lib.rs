@@ -1,5 +1,8 @@
+#![allow(private_interfaces)]
+
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use sdkwork_aiot_contract::{
     AiotRequestContext, IOT_PERMISSION_COMMANDS_CANCEL, IOT_PERMISSION_COMMANDS_EXECUTE,
@@ -12,6 +15,7 @@ use sdkwork_aiot_contract::{
     IOT_PERMISSION_TELEMETRY_READ, IOT_PERMISSION_TWINS_READ, IOT_PERMISSION_TWINS_WRITE,
 };
 use sdkwork_aiot_core::{CapabilityDefinition, CapabilityKind, ProtocolProfile};
+use sdkwork_aiot_observability::emit_api_request_trace;
 use sdkwork_aiot_protocol::{standard_protocol_catalog, CapabilityBridge, ProtocolPluginScope};
 use sdkwork_aiot_runtime::{standard_aiot_runtime, AiotRuntime, RuntimeBuildError, RuntimeMode};
 use sdkwork_aiot_storage::{
@@ -25,7 +29,781 @@ use sdkwork_aiot_storage::{
     InMemoryAiotEventRepository,
 };
 use sdkwork_aiot_transport::{build_health_response, HttpRequest, HttpResponse, HttpStatus};
+
+mod sqlite_admin;
+
 use serde_json::{Map as JsonMap, Value as JsonValue};
+pub use sqlite_admin::{AiotCatalogRepositoryHandle, AiotFirmwareRepositoryHandle};
+
+const AUTH_FAILURE_RATE_LIMIT_PER_MINUTE: u32 = 100;
+const AUTH_FAILURE_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
+
+static AUTH_FAILURE_RATE_LIMITER: Mutex<BTreeMap<String, AuthFailureWindow>> =
+    Mutex::new(BTreeMap::new());
+
+#[derive(Debug, Clone)]
+struct AuthFailureWindow {
+    window_start: Instant,
+    count: u32,
+}
+
+pub trait AiotIamContextResolver: Send + Sync {
+    fn resolve(&self, request: &HttpRequest) -> Result<AiotRequestContext, HttpResponse>;
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DefaultSdkworkIamContextResolver;
+
+impl AiotIamContextResolver for DefaultSdkworkIamContextResolver {
+    fn resolve(&self, request: &HttpRequest) -> Result<AiotRequestContext, HttpResponse> {
+        if is_blank_header(request, "authorization") || is_blank_header(request, "access-token") {
+            if auth_failure_rate_limited(request) {
+                return Err(problem_response(
+                    HttpStatus::TooManyRequests,
+                    "api.auth.rate_limited",
+                    "Too Many Requests",
+                ));
+            }
+            return Err(problem_response(
+                HttpStatus::Unauthorized,
+                "api.auth.missing_dual_token",
+                "SDKWork dual token is required",
+            ));
+        }
+
+        if trust_proxy_headers_enabled() {
+            resolve_protected_context_from_proxy_headers(request)
+        } else {
+            resolve_protected_context_from_token(request)
+        }
+    }
+}
+
+static DEFAULT_IAM_CONTEXT_RESOLVER: DefaultSdkworkIamContextResolver =
+    DefaultSdkworkIamContextResolver;
+
+pub fn default_iam_context_resolver() -> &'static DefaultSdkworkIamContextResolver {
+    &DEFAULT_IAM_CONTEXT_RESOLVER
+}
+
+pub trait AiotCredentialRepository: Send + Sync {
+    fn create_credential(
+        &self,
+        association: AiotStorageAssociation,
+        command: AiotCredentialCreateCommand,
+    ) -> Result<AiotDeviceCredentialRecord, HttpResponse>;
+
+    fn list_credentials(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+    ) -> Vec<AiotDeviceCredentialRecord>;
+
+    fn get_credential(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+        credential_id: &str,
+    ) -> Option<AiotDeviceCredentialRecord>;
+
+    fn delete_credential(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+        credential_id: &str,
+    ) -> Result<(), HttpResponse>;
+}
+
+pub struct SqliteCredentialRepositoryAdapter {
+    inner: Arc<sdkwork_aiot_storage_sqlx::SqliteSqlxCredentialRepository>,
+}
+
+impl SqliteCredentialRepositoryAdapter {
+    pub fn new_in_memory() -> Result<Self, String> {
+        sdkwork_aiot_storage_sqlx::SqliteSqlxCredentialRepository::new_in_memory()
+            .map(|inner| Self {
+                inner: Arc::new(inner),
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self, String> {
+        sdkwork_aiot_storage_sqlx::SqliteSqlxCredentialRepository::open(path)
+            .map(|inner| Self {
+                inner: Arc::new(inner),
+            })
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn verify_bearer_token(&self, device_id: &str, token: &str) -> bool {
+        self.inner.verify_bearer_token(device_id, token)
+    }
+}
+
+impl AiotCredentialRepository for SqliteCredentialRepositoryAdapter {
+    fn create_credential(
+        &self,
+        association: AiotStorageAssociation,
+        command: AiotCredentialCreateCommand,
+    ) -> Result<AiotDeviceCredentialRecord, HttpResponse> {
+        self.inner
+            .create_credential(sdkwork_aiot_storage_sqlx::SqliteCredentialCreateCommand {
+                association,
+                device_id: command.device_id,
+                credential_type: command.credential_type,
+                expires_at: command.expires_at,
+            })
+            .map(|record| AiotDeviceCredentialRecord {
+                credential_id: record.credential_id,
+                tenant_id: record.tenant_id,
+                organization_id: record.organization_id,
+                device_id: record.device_id,
+                credential_type: record.credential_type,
+                status: record.status,
+                expires_at: record.expires_at,
+                created_at: record.created_at,
+                revoked_at: record.revoked_at,
+                issued_secret: record.issued_secret,
+            })
+            .map_err(|_| {
+                problem_response(
+                    HttpStatus::InternalServerError,
+                    "api.storage.write_failed",
+                    "Storage write failed",
+                )
+            })
+    }
+
+    fn list_credentials(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+    ) -> Vec<AiotDeviceCredentialRecord> {
+        self.inner
+            .list_credentials(association, device_id)
+            .into_iter()
+            .map(|record| AiotDeviceCredentialRecord {
+                credential_id: record.credential_id,
+                tenant_id: record.tenant_id,
+                organization_id: record.organization_id,
+                device_id: record.device_id,
+                credential_type: record.credential_type,
+                status: record.status,
+                expires_at: record.expires_at,
+                created_at: record.created_at,
+                revoked_at: record.revoked_at,
+                issued_secret: None,
+            })
+            .collect()
+    }
+
+    fn get_credential(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+        credential_id: &str,
+    ) -> Option<AiotDeviceCredentialRecord> {
+        self.inner
+            .get_credential(association, device_id, credential_id)
+            .map(|record| AiotDeviceCredentialRecord {
+                credential_id: record.credential_id,
+                tenant_id: record.tenant_id,
+                organization_id: record.organization_id,
+                device_id: record.device_id,
+                credential_type: record.credential_type,
+                status: record.status,
+                expires_at: record.expires_at,
+                created_at: record.created_at,
+                revoked_at: record.revoked_at,
+                issued_secret: None,
+            })
+    }
+
+    fn delete_credential(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+        credential_id: &str,
+    ) -> Result<(), HttpResponse> {
+        self.inner
+            .revoke_credential(association, device_id, credential_id)
+            .map_err(|error| match error {
+                sdkwork_aiot_storage_sqlx::SqliteCredentialRepositoryError::CredentialNotFound => {
+                    credential_not_found_response(credential_id)
+                }
+                sdkwork_aiot_storage_sqlx::SqliteCredentialRepositoryError::PersistenceFailure => {
+                    problem_response(
+                        HttpStatus::InternalServerError,
+                        "api.storage.write_failed",
+                        "Storage write failed",
+                    )
+                }
+            })
+    }
+}
+
+fn trust_proxy_headers_enabled() -> bool {
+    std::env::var("SDKWORK_AIOT_TRUST_PROXY_HEADERS").as_deref() == Ok("1")
+}
+
+fn resolve_protected_context_from_proxy_headers(
+    request: &HttpRequest,
+) -> Result<AiotRequestContext, HttpResponse> {
+    let tenant_id = required_header(request, "x-sdkwork-tenant-id").map_err(|_| {
+        problem_response(
+            HttpStatus::Forbidden,
+            "api.context.missing",
+            "Resolved appbase context is required",
+        )
+    })?;
+    let organization_id = required_header(request, "x-sdkwork-organization-id").map_err(|_| {
+        problem_response(
+            HttpStatus::Forbidden,
+            "api.context.missing",
+            "Resolved appbase context is required",
+        )
+    })?;
+
+    parse_i64(tenant_id).map_err(|_| {
+        problem_response(
+            HttpStatus::BadRequest,
+            "api.context.invalid_tenant_id",
+            "Resolved tenant id is invalid",
+        )
+    })?;
+    parse_i64(organization_id).map_err(|_| {
+        problem_response(
+            HttpStatus::BadRequest,
+            "api.context.invalid_organization_id",
+            "Resolved organization id is invalid",
+        )
+    })?;
+
+    let mut ctx = AiotRequestContext::new(tenant_id, organization_id);
+
+    if let Some(user_id) = optional_header(request, "x-sdkwork-user-id") {
+        parse_i64(user_id).map_err(|_| {
+            problem_response(
+                HttpStatus::BadRequest,
+                "api.context.invalid_user_id",
+                "Resolved user id is invalid",
+            )
+        })?;
+        ctx = ctx.with_user(user_id);
+    }
+
+    if let Some(data_scope) = optional_header(request, "x-sdkwork-data-scope") {
+        data_scope.parse::<i32>().map_err(|_| {
+            problem_response(
+                HttpStatus::BadRequest,
+                "api.context.invalid_data_scope",
+                "Resolved data scope is invalid",
+            )
+        })?;
+        ctx = ctx.with_data_scope(data_scope);
+    }
+
+    for permission in permission_scope_headers(request) {
+        ctx = ctx.with_permission(permission);
+    }
+
+    Ok(ctx)
+}
+
+fn resolve_protected_context_from_token(
+    request: &HttpRequest,
+) -> Result<AiotRequestContext, HttpResponse> {
+    let bearer = bearer_token_from_request(request).ok_or_else(|| {
+        problem_response(
+            HttpStatus::Unauthorized,
+            "api.auth.invalid_bearer",
+            "Bearer token is invalid",
+        )
+    })?;
+
+    let claims = parse_bearer_jwt_claims(&bearer).map_err(|code| {
+        problem_response(HttpStatus::Unauthorized, code, "Bearer token is invalid")
+    })?;
+
+    let tenant_id = json_claim_string(&claims, &["tenant_id", "tenantId"]).ok_or_else(|| {
+        problem_response(
+            HttpStatus::Forbidden,
+            "api.context.missing",
+            "Resolved appbase context is required",
+        )
+    })?;
+    let organization_id = json_claim_string(&claims, &["organization_id", "organizationId"])
+        .ok_or_else(|| {
+            problem_response(
+                HttpStatus::Forbidden,
+                "api.context.missing",
+                "Resolved appbase context is required",
+            )
+        })?;
+
+    parse_i64(&tenant_id).map_err(|_| {
+        problem_response(
+            HttpStatus::BadRequest,
+            "api.context.invalid_tenant_id",
+            "Resolved tenant id is invalid",
+        )
+    })?;
+    parse_i64(&organization_id).map_err(|_| {
+        problem_response(
+            HttpStatus::BadRequest,
+            "api.context.invalid_organization_id",
+            "Resolved organization id is invalid",
+        )
+    })?;
+
+    let mut ctx = AiotRequestContext::new(tenant_id, organization_id);
+    if let Some(user_id) = json_claim_string(&claims, &["sub", "user_id", "userId"]) {
+        parse_i64(&user_id).map_err(|_| {
+            problem_response(
+                HttpStatus::BadRequest,
+                "api.context.invalid_user_id",
+                "Resolved user id is invalid",
+            )
+        })?;
+        ctx = ctx.with_user(user_id);
+    }
+
+    if let Some(data_scope) = json_claim_string(&claims, &["data_scope", "dataScope"]) {
+        ctx = ctx.with_data_scope(data_scope);
+    }
+
+    for permission in jwt_permissions_from_claims(&claims) {
+        ctx = ctx.with_permission(permission);
+    }
+    for permission in dev_permissions_from_env() {
+        ctx = ctx.with_permission(permission);
+    }
+
+    Ok(ctx)
+}
+
+fn jwt_permissions_from_claims(claims: &JsonValue) -> Vec<String> {
+    let mut permissions = Vec::new();
+    for key in [
+        "permission_scope",
+        "permissionScope",
+        "permissions",
+        "scope",
+    ] {
+        let Some(value) = claims.get(key) else {
+            continue;
+        };
+        match value {
+            JsonValue::String(text) => {
+                permissions.extend(
+                    text.split(',')
+                        .map(str::trim)
+                        .filter(|entry| !entry.is_empty())
+                        .map(str::to_string),
+                );
+            }
+            JsonValue::Array(items) => {
+                for item in items {
+                    if let JsonValue::String(text) = item {
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            permissions.push(trimmed.to_string());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    permissions.sort_unstable();
+    permissions.dedup();
+    permissions
+}
+
+fn bearer_token_from_request(request: &HttpRequest) -> Option<String> {
+    optional_header(request, "authorization")
+        .and_then(extract_bearer_token)
+        .or_else(|| {
+            optional_header(request, "access-token").and_then(|value| {
+                if value.contains(' ') {
+                    extract_bearer_token(value)
+                } else {
+                    Some(value.to_string())
+                }
+            })
+        })
+}
+
+fn extract_bearer_token(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    let token = trimmed
+        .strip_prefix("Bearer ")
+        .or_else(|| trimmed.strip_prefix("bearer "))?;
+    let token = token.trim();
+    if token.is_empty() {
+        None
+    } else {
+        Some(token.to_string())
+    }
+}
+
+fn parse_bearer_jwt_claims(token: &str) -> Result<JsonValue, &'static str> {
+    if let Some(secret) = dev_auth_secret() {
+        if !verify_dev_hmac_token(token, &secret) {
+            return Err("api.auth.invalid_bearer");
+        }
+    }
+
+    let parts = token.split('.').collect::<Vec<_>>();
+    if parts.len() != 3 {
+        return Err("api.auth.invalid_bearer");
+    }
+
+    let payload = base64_url_decode(parts[1]).ok_or("api.auth.invalid_bearer")?;
+    serde_json::from_slice(&payload).map_err(|_| "api.auth.invalid_bearer")
+}
+
+fn json_claim_string(claims: &JsonValue, keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|key| {
+        claims.get(*key).and_then(|value| match value {
+            JsonValue::String(text) if !text.trim().is_empty() => Some(text.clone()),
+            JsonValue::Number(number) => Some(number.to_string()),
+            _ => None,
+        })
+    })
+}
+
+fn dev_auth_secret() -> Option<String> {
+    std::env::var("SDKWORK_AIOT_DEV_AUTH_SECRET")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn dev_permissions_from_env() -> Vec<String> {
+    std::env::var("SDKWORK_AIOT_DEV_PERMISSIONS")
+        .ok()
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|entry| !entry.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn verify_dev_hmac_token(token: &str, secret: &str) -> bool {
+    let parts = token.split('.').collect::<Vec<_>>();
+    if parts.len() != 3 {
+        return false;
+    }
+    let signing_input = format!("{}.{}", parts[0], parts[1]);
+    let signature = match base64_url_decode(parts[2]) {
+        Some(value) => value,
+        None => return false,
+    };
+    let expected = hmac_sha256(secret.as_bytes(), signing_input.as_bytes());
+    constant_time_eq(&signature, &expected)
+}
+
+fn auth_failure_rate_limited(request: &HttpRequest) -> bool {
+    let client_ip = client_ip_from_request(request);
+    let mut guard = AUTH_FAILURE_RATE_LIMITER
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let now = Instant::now();
+    let entry = guard.entry(client_ip).or_insert(AuthFailureWindow {
+        window_start: now,
+        count: 0,
+    });
+    if now.duration_since(entry.window_start) >= AUTH_FAILURE_RATE_LIMIT_WINDOW {
+        entry.window_start = now;
+        entry.count = 0;
+    }
+    entry.count = entry.count.saturating_add(1);
+    entry.count > AUTH_FAILURE_RATE_LIMIT_PER_MINUTE
+}
+
+fn client_ip_from_request(request: &HttpRequest) -> String {
+    optional_header(request, "x-forwarded-for")
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .or_else(|| optional_header(request, "x-real-ip"))
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+fn base64_url_decode(input: &str) -> Option<Vec<u8>> {
+    let mut normalized = input.replace('-', "+").replace('_', "/");
+    let padding = normalized.len() % 4;
+    if padding != 0 {
+        normalized.push_str(&"=".repeat(4 - padding));
+    }
+    base64_decode(&normalized).ok()
+}
+
+fn base64_decode(input: &str) -> Result<Vec<u8>, ()> {
+    const TABLE: &[u8; 256] = &{
+        let mut table = [255u8; 256];
+        let mut index = 0u8;
+        while index < 64 {
+            let ascii = match index {
+                0..=25 => b'A' + index,
+                26..=51 => b'a' + (index - 26),
+                52..=61 => b'0' + (index - 52),
+                62 => b'+',
+                _ => b'/',
+            };
+            table[ascii as usize] = index;
+            index += 1;
+        }
+        table
+    };
+
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len() * 3 / 4);
+    let mut buffer = 0u32;
+    let mut bits = 0u32;
+
+    for &byte in bytes {
+        if byte == b'=' {
+            break;
+        }
+        let value = TABLE[byte as usize];
+        if value == 255 {
+            return Err(());
+        }
+        buffer = (buffer << 6) | u32::from(value);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buffer >> bits) as u8);
+            buffer &= (1 << bits) - 1;
+        }
+    }
+
+    Ok(out)
+}
+
+fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
+    const BLOCK_SIZE: usize = 64;
+    let mut normalized_key = [0u8; BLOCK_SIZE];
+    if key.len() > BLOCK_SIZE {
+        normalized_key[..32].copy_from_slice(&sha256_digest(key));
+    } else {
+        normalized_key[..key.len()].copy_from_slice(key);
+    }
+
+    let mut ipad = [0x36u8; BLOCK_SIZE];
+    let mut opad = [0x5cu8; BLOCK_SIZE];
+    for index in 0..BLOCK_SIZE {
+        ipad[index] ^= normalized_key[index];
+        opad[index] ^= normalized_key[index];
+    }
+
+    let mut inner = ipad.to_vec();
+    inner.extend_from_slice(message);
+    let inner_hash = sha256_digest(&inner);
+
+    let mut outer = opad.to_vec();
+    outer.extend_from_slice(&inner_hash);
+    sha256_digest(&outer)
+}
+
+fn sha256_digest(input: &[u8]) -> [u8; 32] {
+    const K: [u32; 64] = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+        0xc67178f2,
+    ];
+
+    let bit_len = (input.len() as u64) * 8;
+    let mut msg = input.to_vec();
+    msg.push(0x80);
+    while msg.len() % 64 != 56 {
+        msg.push(0);
+    }
+    msg.extend_from_slice(&bit_len.to_be_bytes());
+
+    let mut h = [
+        0x6a09e667u32,
+        0xbb67ae85,
+        0x3c6ef372,
+        0xa54ff53a,
+        0x510e527f,
+        0x9b05688c,
+        0x1f83d9ab,
+        0x5be0cd19,
+    ];
+
+    for chunk in msg.chunks(64) {
+        let mut w = [0u32; 64];
+        for (index, word) in w.iter_mut().take(16).enumerate() {
+            let offset = index * 4;
+            *word = u32::from_be_bytes([
+                chunk[offset],
+                chunk[offset + 1],
+                chunk[offset + 2],
+                chunk[offset + 3],
+            ]);
+        }
+        for index in 16..64 {
+            let s0 = w[index - 15].rotate_right(7)
+                ^ w[index - 15].rotate_right(18)
+                ^ (w[index - 15] >> 3);
+            let s1 = w[index - 2].rotate_right(17)
+                ^ w[index - 2].rotate_right(19)
+                ^ (w[index - 2] >> 10);
+            w[index] = w[index - 16]
+                .wrapping_add(s0)
+                .wrapping_add(w[index - 7])
+                .wrapping_add(s1);
+        }
+
+        let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h0) =
+            (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
+        for index in 0..64 {
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+            let ch = (e & f) ^ ((!e) & g);
+            let temp1 = h0
+                .wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(K[index])
+                .wrapping_add(w[index]);
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let maj = (a & b) ^ (a & c) ^ (b & c);
+            let temp2 = s0.wrapping_add(maj);
+            h0 = g;
+            g = f;
+            f = e;
+            e = d.wrapping_add(temp1);
+            d = c;
+            c = b;
+            b = a;
+            a = temp1.wrapping_add(temp2);
+        }
+        h[0] = h[0].wrapping_add(a);
+        h[1] = h[1].wrapping_add(b);
+        h[2] = h[2].wrapping_add(c);
+        h[3] = h[3].wrapping_add(d);
+        h[4] = h[4].wrapping_add(e);
+        h[5] = h[5].wrapping_add(f);
+        h[6] = h[6].wrapping_add(g);
+        h[7] = h[7].wrapping_add(h0);
+    }
+
+    let mut out = [0u8; 32];
+    for (index, word) in h.iter().enumerate() {
+        out[index * 4..index * 4 + 4].copy_from_slice(&word.to_be_bytes());
+    }
+    out
+}
+
+fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (left_byte, right_byte) in left.iter().zip(right.iter()) {
+        diff |= left_byte ^ right_byte;
+    }
+    diff == 0
+}
+
+fn apply_security_headers(mut response: HttpResponse) -> HttpResponse {
+    response = response
+        .with_header("x-content-type-options", "nosniff")
+        .with_header("x-frame-options", "DENY")
+        .with_header("referrer-policy", "no-referrer")
+        .with_header("cache-control", "no-store")
+        .with_header(
+            "content-security-policy",
+            "default-src 'none'; frame-ancestors 'none'",
+        );
+    response
+}
+
+fn cors_allowed_origins() -> Vec<String> {
+    std::env::var("SDKWORK_AIOT_CORS_ALLOWED_ORIGINS")
+        .ok()
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|entry| !entry.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn cors_allowed_origin(request: &HttpRequest) -> Option<String> {
+    let origin = optional_header(request, "origin")?;
+    let allowed = cors_allowed_origins();
+    if allowed.is_empty() {
+        return None;
+    }
+    if allowed.iter().any(|candidate| candidate == origin) {
+        Some(origin.to_string())
+    } else {
+        None
+    }
+}
+
+fn apply_cors_headers(request: &HttpRequest, mut response: HttpResponse) -> HttpResponse {
+    let Some(origin) = cors_allowed_origin(request) else {
+        return response;
+    };
+    response = response
+        .with_header("access-control-allow-origin", origin)
+        .with_header("vary", "Origin")
+        .with_header(
+            "access-control-allow-headers",
+            "Authorization, Access-Token, Content-Type, Idempotency-Key, X-Sdkwork-Tenant-Id, X-Sdkwork-Organization-Id, X-Sdkwork-User-Id, X-Sdkwork-Data-Scope, X-Sdkwork-Permission-Scope",
+        )
+        .with_header(
+            "access-control-allow-methods",
+            "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        )
+        .with_header("access-control-max-age", "600");
+    response
+}
+
+fn cors_preflight_response(request: &HttpRequest) -> Option<HttpResponse> {
+    if request.method != "OPTIONS" {
+        return None;
+    }
+    let origin = cors_allowed_origin(request)?;
+    Some(
+        apply_security_headers(
+            HttpResponse::new(HttpStatus::NoContent)
+                .with_header("access-control-allow-origin", origin)
+                .with_header("vary", "Origin")
+                .with_header(
+                    "access-control-allow-headers",
+                    optional_header(request, "access-control-request-headers").unwrap_or(
+                        "Authorization, Access-Token, Content-Type, Idempotency-Key, X-Sdkwork-Tenant-Id, X-Sdkwork-Organization-Id, X-Sdkwork-User-Id, X-Sdkwork-Data-Scope, X-Sdkwork-Permission-Scope",
+                    ),
+                )
+                .with_header(
+                    "access-control-allow-methods",
+                    optional_header(request, "access-control-request-method")
+                        .unwrap_or("GET, POST, PUT, PATCH, DELETE, OPTIONS"),
+                )
+                .with_header("access-control-max-age", "600"),
+        ),
+    )
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AiotApiSurface {
@@ -425,6 +1203,92 @@ pub fn standard_api_route_contracts() -> Vec<AiotApiRouteContract> {
     ]
 }
 
+pub fn standard_route_manifest_document(surface: AiotApiSurface) -> serde_json::Value {
+    let (package_name, api_surface, prefix, api_authority, sdk_family, crate_root) = match surface {
+        AiotApiSurface::App => (
+            "sdkwork-aiot-app-api",
+            "app-api",
+            "/app/v3/api",
+            "sdkwork-aiot-app-api",
+            "sdkwork-aiot-app-sdk",
+            "services/sdkwork-aiot-app-api",
+        ),
+        AiotApiSurface::Admin => (
+            "sdkwork-aiot-admin-api",
+            "backend-api",
+            "/backend/v3/api",
+            "sdkwork-aiot-backend-api",
+            "sdkwork-aiot-backend-sdk",
+            "services/sdkwork-aiot-admin-api",
+        ),
+    };
+
+    let routes = standard_api_route_contracts()
+        .into_iter()
+        .filter(|route| route.surface == surface)
+        .map(|route| {
+            let primary_tag = route
+                .operation_id
+                .split('.')
+                .next()
+                .unwrap_or("iot")
+                .to_string();
+            serde_json::json!({
+                "method": route.method,
+                "path": route.path,
+                "operationId": route.operation_id,
+                "tags": [format!("iot.{primary_tag}")],
+                "auth": {
+                    "mode": "dual-token",
+                    "required": true,
+                    "permission": route.required_permission,
+                    "tenantScope": "tenant",
+                    "dataScope": "organization"
+                },
+                "handler": {
+                    "module": "sdkwork_aiot_http_api",
+                    "name": route.operation_id
+                },
+                "schemas": {
+                    "request": null,
+                    "response": null,
+                    "problem": "ProblemDetail"
+                },
+                "ownership": {
+                    "owner": "sdkwork-aiot",
+                    "apiAuthority": api_authority
+                },
+                "source": {
+                    "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::json!({
+        "schemaVersion": 1,
+        "kind": "sdkwork.route.manifest",
+        "packageName": package_name,
+        "surface": api_surface,
+        "owner": "sdkwork-aiot",
+        "domain": "iot",
+        "capability": "iot",
+        "apiAuthority": api_authority,
+        "sdkFamily": sdk_family,
+        "prefix": prefix,
+        "source": {
+            "crateRoot": crate_root,
+            "crateImport": package_name.replace('-', "_")
+        },
+        "routes": routes
+    })
+}
+
+pub fn standard_route_manifest_json(surface: AiotApiSurface) -> String {
+    serde_json::to_string_pretty(&standard_route_manifest_document(surface))
+        .expect("serialize route manifest")
+}
+
 pub fn route_contract_for_request(
     surface: AiotApiSurface,
     request: &HttpRequest,
@@ -445,9 +1309,9 @@ pub struct AiotApiServer {
     event_repository: Arc<dyn AiotEventRepository>,
     twin_repository: Arc<dyn AiotDeviceTwinRepository>,
     device_session_repository: Arc<dyn AiotDeviceSessionRepository>,
-    credential_repository: Arc<InMemoryAiotCredentialRepository>,
-    firmware_repository: Arc<InMemoryAiotFirmwareRepository>,
-    catalog_repository: Arc<InMemoryAiotCatalogRepository>,
+    credential_repository: Arc<dyn AiotCredentialRepository>,
+    firmware_repository: Arc<AiotFirmwareRepositoryHandle>,
+    catalog_repository: Arc<AiotCatalogRepositoryHandle>,
 }
 
 impl AiotApiServer {
@@ -461,8 +1325,8 @@ impl AiotApiServer {
             twin_repository: Arc::new(InMemoryAiotDeviceTwinRepository::new()),
             device_session_repository: Arc::new(InMemoryAiotDeviceSessionRepository::new()),
             credential_repository: Arc::new(InMemoryAiotCredentialRepository::new()),
-            firmware_repository: Arc::new(InMemoryAiotFirmwareRepository::new()),
-            catalog_repository: Arc::new(InMemoryAiotCatalogRepository::new()),
+            firmware_repository: Arc::new(AiotFirmwareRepositoryHandle::new_in_memory()),
+            catalog_repository: Arc::new(AiotCatalogRepositoryHandle::new_in_memory()),
         }
     }
 
@@ -505,7 +1369,7 @@ impl AiotApiServer {
 
     pub fn with_firmware_repository(
         mut self,
-        firmware_repository: Arc<InMemoryAiotFirmwareRepository>,
+        firmware_repository: Arc<AiotFirmwareRepositoryHandle>,
     ) -> Self {
         self.firmware_repository = firmware_repository;
         self
@@ -513,7 +1377,7 @@ impl AiotApiServer {
 
     pub fn with_credential_repository(
         mut self,
-        credential_repository: Arc<InMemoryAiotCredentialRepository>,
+        credential_repository: Arc<dyn AiotCredentialRepository>,
     ) -> Self {
         self.credential_repository = credential_repository;
         self
@@ -529,10 +1393,14 @@ impl AiotApiServer {
 
     pub fn with_catalog_repository(
         mut self,
-        catalog_repository: Arc<InMemoryAiotCatalogRepository>,
+        catalog_repository: Arc<AiotCatalogRepositoryHandle>,
     ) -> Self {
         self.catalog_repository = catalog_repository;
         self
+    }
+
+    fn is_ready(&self) -> bool {
+        !self.runtime.component_names().is_empty() && self.device_repository.storage_ready()
     }
 
     fn create_product(
@@ -562,8 +1430,15 @@ impl AiotApiServer {
         product_id: &str,
     ) -> Result<AiotProductRecord, HttpResponse> {
         let association = request_context_to_storage_association(context)?;
-        self.catalog_repository
+        if let Some(record) = self
+            .catalog_repository
             .get_product(&association, product_id)
+        {
+            return Ok(record);
+        }
+        standard_product_records()
+            .into_iter()
+            .find(|record| record.product_id == product_id)
             .ok_or_else(|| product_not_found_response(product_id))
     }
 
@@ -617,8 +1492,15 @@ impl AiotApiServer {
         hardware_profile_id: &str,
     ) -> Result<AiotHardwareProfileRecord, HttpResponse> {
         let association = request_context_to_storage_association(context)?;
-        self.catalog_repository
+        if let Some(record) = self
+            .catalog_repository
             .get_hardware_profile(&association, hardware_profile_id)
+        {
+            return Ok(record);
+        }
+        standard_hardware_profile_records()
+            .into_iter()
+            .find(|record| record.hardware_profile_id == hardware_profile_id)
             .ok_or_else(|| hardware_profile_not_found_response(hardware_profile_id))
     }
 
@@ -672,8 +1554,15 @@ impl AiotApiServer {
         protocol_profile_id: &str,
     ) -> Result<AiotProtocolProfileRecord, HttpResponse> {
         let association = request_context_to_storage_association(context)?;
-        self.catalog_repository
+        if let Some(record) = self
+            .catalog_repository
             .get_protocol_profile(&association, protocol_profile_id)
+        {
+            return Ok(record);
+        }
+        standard_protocol_profile_records()
+            .into_iter()
+            .find(|record| record.protocol_profile_id == protocol_profile_id)
             .ok_or_else(|| protocol_profile_not_found_response(protocol_profile_id))
     }
 
@@ -1281,19 +2170,33 @@ pub fn handle_api_request_bytes(
     Ok(format_http_response(&response))
 }
 
+pub fn format_api_error_response(code: &str) -> String {
+    format_http_response(&problem_response(
+        HttpStatus::BadRequest,
+        code,
+        "Bad Request",
+    ))
+}
+
 pub fn handle_api_request(server: &AiotApiServer, request: &HttpRequest) -> HttpResponse {
+    if let Some(response) = cors_preflight_response(request) {
+        return response;
+    }
+
     let resolved = match resolve_api_request(request) {
         Ok(resolved) => resolved,
-        Err(response) => return response,
+        Err(response) => return apply_cors_headers(request, response),
     };
 
-    handle_resolved_api_request(server, &resolved)
+    let response = apply_cors_headers(request, handle_resolved_api_request(server, &resolved));
+    emit_api_request_trace(&request.method, &request.path, response.status.code());
+    response
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AiotApiRequestContext {
     Public,
-    Protected(AiotRequestContext),
+    Protected(Box<AiotRequestContext>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1313,7 +2216,7 @@ impl<'a> AiotResolvedApiRequest<'a> {
     pub fn protected(request: &'a HttpRequest, context: AiotRequestContext) -> Self {
         Self {
             request,
-            context: AiotApiRequestContext::Protected(context),
+            context: AiotApiRequestContext::Protected(Box::new(context)),
         }
     }
 
@@ -1356,7 +2259,12 @@ pub fn handle_resolved_api_request(
     }
 
     if matches!(request.path.as_str(), "/healthz" | "/readyz") {
-        return build_health_response("sdkwork-aiot-http-api", true);
+        let ready = if request.path.as_str() == "/healthz" {
+            true
+        } else {
+            server.is_ready()
+        };
+        return build_health_response("sdkwork-aiot-http-api", ready);
     }
 
     let Some(route) = route_contract_for_request(server.surface, request) else {
@@ -1378,7 +2286,7 @@ pub fn handle_resolved_api_request(
     let session_id = route_parameter_value(route.path, &request.path, "sessionId");
     let command_id = route_parameter_value(route.path, &request.path, "commandId");
     let request_context = match resolved.context() {
-        AiotApiRequestContext::Protected(context) => Some(context),
+        AiotApiRequestContext::Protected(context) => Some(context.as_ref()),
         AiotApiRequestContext::Public => None,
     };
 
@@ -2168,72 +3076,7 @@ fn is_protected_iot_api_path(path: &str) -> bool {
 fn resolve_protected_request_context(
     request: &HttpRequest,
 ) -> Result<AiotRequestContext, HttpResponse> {
-    if is_blank_header(request, "authorization") || is_blank_header(request, "access-token") {
-        return Err(problem_response(
-            HttpStatus::Unauthorized,
-            "api.auth.missing_dual_token",
-            "SDKWork dual token is required",
-        ));
-    }
-
-    let tenant_id = required_header(request, "x-sdkwork-tenant-id").map_err(|_| {
-        problem_response(
-            HttpStatus::Forbidden,
-            "api.context.missing",
-            "Resolved appbase context is required",
-        )
-    })?;
-    let organization_id = required_header(request, "x-sdkwork-organization-id").map_err(|_| {
-        problem_response(
-            HttpStatus::Forbidden,
-            "api.context.missing",
-            "Resolved appbase context is required",
-        )
-    })?;
-
-    parse_i64(tenant_id).map_err(|_| {
-        problem_response(
-            HttpStatus::BadRequest,
-            "api.context.invalid_tenant_id",
-            "Resolved tenant id is invalid",
-        )
-    })?;
-    parse_i64(organization_id).map_err(|_| {
-        problem_response(
-            HttpStatus::BadRequest,
-            "api.context.invalid_organization_id",
-            "Resolved organization id is invalid",
-        )
-    })?;
-
-    let mut ctx = AiotRequestContext::new(tenant_id, organization_id);
-
-    if let Some(user_id) = optional_header(request, "x-sdkwork-user-id") {
-        parse_i64(user_id).map_err(|_| {
-            problem_response(
-                HttpStatus::BadRequest,
-                "api.context.invalid_user_id",
-                "Resolved user id is invalid",
-            )
-        })?;
-        ctx = ctx.with_user(user_id);
-    }
-
-    if let Some(data_scope) = optional_header(request, "x-sdkwork-data-scope") {
-        data_scope.parse::<i32>().map_err(|_| {
-            problem_response(
-                HttpStatus::BadRequest,
-                "api.context.invalid_data_scope",
-                "Resolved data scope is invalid",
-            )
-        })?;
-        ctx = ctx.with_data_scope(data_scope);
-    }
-    for permission in permission_scope_headers(request) {
-        ctx = ctx.with_permission(permission);
-    }
-
-    Ok(ctx)
+    default_iam_context_resolver().resolve(request)
 }
 
 fn enforce_route_permission(
@@ -2525,12 +3368,12 @@ fn protocol_adapters_json(runtime: &AiotRuntime) -> String {
                 .unwrap_or_default();
 
             format!(
-                r#"{{"path":"{}","protocolId":"{}","pluginId":"{}","scope":"{}","transport":"{}","transports":[{}],"codecs":[{}],"sessionPolicies":[{}],"securityModes":[{}],"hardwareFamilies":[{}],"runtimeProfiles":[{}],"firmwareProfiles":[{}],"kind":"{}"}}"#,
+                r#"{{"path":"{}","protocolId":"{}","pluginId":"{}","scope":"{}","transport":"{:?}","transports":[{}],"codecs":[{}],"sessionPolicies":[{}],"securityModes":[{}],"hardwareFamilies":[{}],"runtimeProfiles":[{}],"firmwareProfiles":[{}],"kind":"{}"}}"#,
                 route.path,
                 route.protocol_id,
                 route.plugin_id,
                 scope,
-                format!("{:?}", route.transport),
+                route.transport,
                 transports,
                 codecs,
                 session_policies,
@@ -2946,6 +3789,7 @@ struct AiotDeviceCredentialRecord {
     expires_at: Option<String>,
     created_at: String,
     revoked_at: Option<String>,
+    issued_secret: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3424,6 +4268,7 @@ impl InMemoryAiotCredentialRepository {
             expires_at: command.expires_at,
             created_at: "2026-06-01T00:00:00Z".to_string(),
             revoked_at: None,
+            issued_secret: None,
         };
         state.credentials.insert(key, record.clone());
         Ok(record)
@@ -3485,6 +4330,52 @@ impl InMemoryAiotCredentialRepository {
             record.revoked_at = Some("2026-06-01T00:00:00Z".to_string());
         }
         Ok(())
+    }
+}
+
+impl AiotCredentialRepository for InMemoryAiotCredentialRepository {
+    fn create_credential(
+        &self,
+        association: AiotStorageAssociation,
+        command: AiotCredentialCreateCommand,
+    ) -> Result<AiotDeviceCredentialRecord, HttpResponse> {
+        InMemoryAiotCredentialRepository::create_credential(self, association, command)
+    }
+
+    fn list_credentials(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+    ) -> Vec<AiotDeviceCredentialRecord> {
+        InMemoryAiotCredentialRepository::list_credentials(self, association, device_id)
+    }
+
+    fn get_credential(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+        credential_id: &str,
+    ) -> Option<AiotDeviceCredentialRecord> {
+        InMemoryAiotCredentialRepository::get_credential(
+            self,
+            association,
+            device_id,
+            credential_id,
+        )
+    }
+
+    fn delete_credential(
+        &self,
+        association: &AiotStorageAssociation,
+        device_id: &str,
+        credential_id: &str,
+    ) -> Result<(), HttpResponse> {
+        InMemoryAiotCredentialRepository::delete_credential(
+            self,
+            association,
+            device_id,
+            credential_id,
+        )
     }
 }
 
@@ -4943,8 +5834,13 @@ fn standard_device_credential_collection_response(
 }
 
 fn device_credential_resource_json(credential: &AiotDeviceCredentialRecord) -> String {
+    let issued_secret = credential
+        .issued_secret
+        .as_deref()
+        .map(|secret| format!(r#","issuedSecret":"{}""#, json_escape(secret)))
+        .unwrap_or_default();
     format!(
-        r#"{{"credentialId":"{}","deviceId":"{}","credentialType":"{}","status":"{}","expiresAt":{},"createdAt":"{}","revokedAt":{}}}"#,
+        r#"{{"credentialId":"{}","deviceId":"{}","credentialType":"{}","status":"{}","expiresAt":{},"createdAt":"{}","revokedAt":{}{}}}"#,
         json_escape(&credential.credential_id),
         json_escape(&credential.device_id),
         json_escape(&credential.credential_type),
@@ -4952,6 +5848,7 @@ fn device_credential_resource_json(credential: &AiotDeviceCredentialRecord) -> S
         json_string_or_null(credential.expires_at.as_deref()),
         json_escape(&credential.created_at),
         json_string_or_null(credential.revoked_at.as_deref()),
+        issued_secret
     )
 }
 
@@ -5251,7 +6148,7 @@ fn firmware_rollout_not_found_response(rollout_id: &str) -> HttpResponse {
         ))
 }
 
-fn apply_media_object_blob_id(
+pub(crate) fn apply_media_object_blob_id(
     resource_json: &str,
     object_blob_id: &str,
 ) -> Result<String, serde_json::Error> {
@@ -5303,23 +6200,27 @@ fn route_kind_name(kind: sdkwork_aiot_runtime::AiotProtocolRouteKind) -> &'stati
 }
 
 fn problem_response(status: HttpStatus, code: &str, title: &str) -> HttpResponse {
-    HttpResponse::new(status)
-        .with_header("content-type", "application/problem+json")
-        .with_body(format!(
-            r#"{{"type":"about:blank","title":"{}","status":{},"code":"{}"}}"#,
-            title,
-            status.code(),
-            code
-        ))
+    apply_security_headers(
+        HttpResponse::new(status)
+            .with_header("content-type", "application/problem+json")
+            .with_body(format!(
+                r#"{{"type":"about:blank","title":"{}","status":{},"code":"{}"}}"#,
+                title,
+                status.code(),
+                code
+            )),
+    )
 }
 
 fn permission_denied_response(required_permission: &str) -> HttpResponse {
-    HttpResponse::new(HttpStatus::Forbidden)
-        .with_header("content-type", "application/problem+json")
-        .with_body(format!(
-            r#"{{"type":"about:blank","title":"Permission denied","status":403,"code":"api.permission.denied","requiredPermission":"{}"}}"#,
-            json_escape(required_permission)
-        ))
+    apply_security_headers(
+        HttpResponse::new(HttpStatus::Forbidden)
+            .with_header("content-type", "application/problem+json")
+            .with_body(format!(
+                r#"{{"type":"about:blank","title":"Permission denied","status":403,"code":"api.permission.denied","requiredPermission":"{}"}}"#,
+                json_escape(required_permission)
+            )),
+    )
 }
 
 fn parse_http_request(bytes: &[u8]) -> Result<HttpRequest, AiotApiError> {
@@ -5358,6 +6259,7 @@ fn parse_http_request(bytes: &[u8]) -> Result<HttpRequest, AiotApiError> {
 }
 
 fn format_http_response(response: &HttpResponse) -> String {
+    let response = apply_security_headers(response.clone());
     let mut out = format!(
         "HTTP/1.1 {} {}\r\n",
         response.status.code(),

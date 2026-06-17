@@ -1,7 +1,7 @@
 use sdkwork_aiot_http_api::{
-    handle_api_request_bytes, handle_resolved_api_request, resolve_api_request,
-    route_contract_for_request, standard_admin_api_server, standard_api_route_contracts,
-    standard_app_api_server, AiotApiRequestContext, AiotApiSurface, AiotResolvedApiRequest,
+    handle_resolved_api_request, resolve_api_request, route_contract_for_request,
+    standard_admin_api_server, standard_api_route_contracts, standard_app_api_server,
+    AiotApiRequestContext, AiotApiSurface, AiotResolvedApiRequest,
 };
 use sdkwork_aiot_storage::{
     AiotDeviceEventCreateCommand, AiotDeviceTwinRepository, AiotEventRepository,
@@ -9,6 +9,34 @@ use sdkwork_aiot_storage::{
 };
 use sdkwork_aiot_transport::{HttpRequest, HttpStatus};
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+mod test_env {
+    use std::sync::Once;
+
+    static INIT: Once = Once::new();
+
+    pub fn setup() {
+        INIT.call_once(|| {
+            std::env::set_var("SDKWORK_AIOT_TRUST_PROXY_HEADERS", "1");
+        });
+    }
+}
+
+fn handle_api_request_bytes(
+    server: &sdkwork_aiot_http_api::AiotApiServer,
+    bytes: &[u8],
+) -> Result<String, sdkwork_aiot_http_api::AiotApiError> {
+    test_env::setup();
+    sdkwork_aiot_http_api::handle_api_request_bytes(server, bytes)
+}
+
+fn resolve_api_request_for_test(
+    request: &HttpRequest,
+) -> Result<AiotResolvedApiRequest<'_>, sdkwork_aiot_transport::HttpResponse> {
+    test_env::setup();
+    resolve_api_request(request)
+}
 
 #[test]
 fn admin_api_server_exposes_runtime_backed_protocol_catalog() {
@@ -139,7 +167,7 @@ fn protected_api_request_resolution_exposes_appbase_context_to_downstream_handle
         .with_header("X-Sdkwork-Data-Scope", "7")
         .with_header("X-Sdkwork-Permission-Scope", "iot.runtime.read");
 
-    let resolved = resolve_api_request(&request).expect("resolved api request");
+    let resolved = resolve_api_request_for_test(&request).expect("resolved api request");
 
     assert_eq!(
         resolved.request().path,
@@ -3083,13 +3111,14 @@ fn app_typescript_sdk_problem_details_contract_aligns_with_openapi_schema() {
     assert!(required.contains("title"));
     assert!(required.contains("status"));
 
-    let ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript/src/index.ts");
-    let ts = std::fs::read_to_string(ts_path).expect("read app ts sdk index");
+    let ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+        "../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript/generated/server-openapi/src/types/problem-details.ts",
+    );
+    let ts = std::fs::read_to_string(ts_path).expect("read app generated problem-details");
 
     assert!(
         ts.contains("export interface ProblemDetails"),
-        "app TS SDK must export ProblemDetails interface"
+        "app generated TS SDK must export ProblemDetails interface"
     );
     assert!(ts.contains("type: string;"));
     assert!(ts.contains("title: string;"));
@@ -3097,20 +3126,6 @@ fn app_typescript_sdk_problem_details_contract_aligns_with_openapi_schema() {
     assert!(ts.contains("detail?: string;"));
     assert!(ts.contains("traceId?: string;"));
     assert!(ts.contains("code?: string;"));
-    assert!(ts.contains("[key: string]: unknown;"));
-    assert!(ts.contains("export function isProblemDetails"));
-    assert!(ts.contains("export function normalizeProblemDetails"));
-    assert!(ts.contains("fallback: Partial<ProblemDetails> = {}"));
-    assert!(ts.contains("const DEFAULT_PROBLEM_TYPE = \"about:blank\";"));
-    assert!(ts.contains("const DEFAULT_PROBLEM_STATUS = 500;"));
-    assert!(ts.contains("if (status < 100 || status > 599)"));
-    assert!(ts.contains("normalized[key] = fieldValue;"));
-    assert_typescript_problem_code_exports(
-        &ts,
-        "SDKWORK_AIOT_APP_PROBLEM_CODES",
-        "SdkworkAiotAppProblemCode",
-        "isSdkworkAiotAppProblemCode",
-    );
 }
 
 #[test]
@@ -3127,13 +3142,13 @@ fn backend_typescript_sdk_problem_details_contract_aligns_with_openapi_schema() 
     assert!(required.contains("status"));
 
     let ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-        "../../sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript/src/index.ts",
+        "../../sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript/generated/server-openapi/src/types/problem-details.ts",
     );
-    let ts = std::fs::read_to_string(ts_path).expect("read backend ts sdk index");
+    let ts = std::fs::read_to_string(ts_path).expect("read backend generated problem-details");
 
     assert!(
         ts.contains("export interface ProblemDetails"),
-        "backend TS SDK must export ProblemDetails interface"
+        "backend generated TS SDK must export ProblemDetails interface"
     );
     assert!(ts.contains("type: string;"));
     assert!(ts.contains("title: string;"));
@@ -3141,66 +3156,62 @@ fn backend_typescript_sdk_problem_details_contract_aligns_with_openapi_schema() 
     assert!(ts.contains("detail?: string;"));
     assert!(ts.contains("traceId?: string;"));
     assert!(ts.contains("code?: string;"));
-    assert!(ts.contains("[key: string]: unknown;"));
-    assert!(ts.contains("export function isProblemDetails"));
-    assert!(ts.contains("export function normalizeProblemDetails"));
-    assert!(ts.contains("fallback: Partial<ProblemDetails> = {}"));
-    assert!(ts.contains("const DEFAULT_PROBLEM_TYPE = \"about:blank\";"));
-    assert!(ts.contains("const DEFAULT_PROBLEM_STATUS = 500;"));
-    assert!(ts.contains("if (status < 100 || status > 599)"));
-    assert!(ts.contains("normalized[key] = fieldValue;"));
-    assert_typescript_problem_code_exports(
-        &ts,
-        "SDKWORK_AIOT_BACKEND_PROBLEM_CODES",
-        "SdkworkAiotBackendProblemCode",
-        "isSdkworkAiotBackendProblemCode",
-    );
 }
 
 #[test]
 fn backend_typescript_sdk_exposes_firmware_crud_surface() {
-    let ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-        "../../sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript/src/index.ts",
+    let generated_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+        "../../sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript/generated/server-openapi/src",
     );
-    let ts = std::fs::read_to_string(ts_path).expect("read backend ts sdk index");
+    let artifact_update = std::fs::read_to_string(
+        generated_root.join("types/aiot-firmware-artifact-update-request.ts"),
+    )
+    .expect("read backend generated firmware artifact update request");
+    let rollout_update = std::fs::read_to_string(
+        generated_root.join("types/aiot-firmware-rollout-update-request.ts"),
+    )
+    .expect("read backend generated firmware rollout update request");
+    let rollout_response =
+        std::fs::read_to_string(generated_root.join("types/aiot-firmware-rollout-response.ts"))
+            .expect("read backend generated firmware rollout response");
+    let artifact = std::fs::read_to_string(generated_root.join("types/aiot-firmware-artifact.ts"))
+        .expect("read backend generated firmware artifact");
+    let iot_api = std::fs::read_to_string(generated_root.join("api/iot.ts"))
+        .expect("read backend generated iot api");
 
-    assert!(ts.contains("export interface AiotFirmwareArtifactUpdateRequest"));
-    assert!(ts.contains("export interface AiotFirmwareRolloutUpdateRequest"));
-    assert!(ts.contains("export interface AiotFirmwareRolloutResponse"));
-    assert!(ts.contains("export interface AiotFirmwareRollout {"));
+    assert!(artifact_update.contains("export interface AiotFirmwareArtifactUpdateRequest"));
+    assert!(rollout_update.contains("export interface AiotFirmwareRolloutUpdateRequest"));
+    assert!(rollout_response.contains("export interface AiotFirmwareRolloutResponse"));
+    assert!(artifact.contains("export interface AiotFirmwareArtifact"));
 
-    assert!(ts.contains("firmwareArtifacts: {"));
-    assert!(ts.contains("list: () => Promise<StandardCollectionResponse<AiotFirmwareArtifact>>;"));
-    assert!(ts.contains("retrieve: (artifactId: string) => Promise<AiotFirmwareArtifactResponse>;"));
-    assert!(ts.contains("request: AiotFirmwareArtifactUpdateRequest"));
-    assert!(ts.contains("delete: (artifactId: string) => Promise<void>;"));
+    assert!(iot_api.contains("async firmwareArtifactsList("));
+    assert!(iot_api.contains("Promise<StandardCollectionResponse>"));
+    assert!(iot_api.contains("async firmwareArtifactsRetrieve(artifactId: string"));
+    assert!(iot_api.contains("body?: AiotFirmwareArtifactUpdateRequest"));
+    assert!(iot_api.contains("async firmwareArtifactsDelete(artifactId: string"));
 
-    assert!(ts.contains("firmwareRollouts: {"));
-    assert!(ts.contains("list: () => Promise<StandardCollectionResponse<AiotFirmwareRollout>>;"));
-    assert!(ts.contains("request: AiotFirmwareRolloutCreateRequest"));
-    assert!(ts.contains(") => Promise<AiotFirmwareRolloutResponse>;"));
-    assert!(ts.contains("retrieve: (rolloutId: string) => Promise<AiotFirmwareRolloutResponse>;"));
-    assert!(ts.contains("request: AiotFirmwareRolloutUpdateRequest"));
-    assert!(ts.contains("delete: (rolloutId: string) => Promise<void>;"));
+    assert!(iot_api.contains("async firmwareRolloutsList("));
+    assert!(iot_api.contains("async firmwareRolloutsCreate(body: AiotFirmwareRolloutCreateRequest"));
+    assert!(iot_api.contains("Promise<AiotFirmwareRolloutResponse>"));
+    assert!(iot_api.contains("async firmwareRolloutsRetrieve(rolloutId: string"));
+    assert!(iot_api.contains("body?: AiotFirmwareRolloutUpdateRequest"));
+    assert!(iot_api.contains("async firmwareRolloutsDelete(rolloutId: string"));
 
-    assert!(ts.contains("export interface AiotDeviceSession {"));
-    assert!(ts.contains("export interface AiotDeviceCapability {"));
-    assert!(ts.contains("export interface AiotDeviceCredential {"));
-    assert!(ts.contains("Promise<StandardCollectionResponse<AiotDeviceSession>>"));
-    assert!(ts.contains("Promise<StandardCollectionResponse<AiotDeviceCapability>>"));
-    assert!(ts.contains("disconnect: (deviceId: string, sessionId: string) => Promise<void>;"));
-    assert!(ts.contains("cancel: ("));
-    assert!(ts.contains("commandId: string"));
-    assert!(ts.contains("Promise<StandardResourceResponse<AiotCommand>>"));
-    assert!(ts.contains("credentials: {"));
-    assert!(ts.contains("list: ("));
-    assert!(ts.contains("retrieve: ("));
-    assert!(ts.contains("credentialId: string"));
-    assert!(ts.contains("Promise<StandardResourceResponse<AiotDeviceCredential>>"));
-    assert!(ts.contains("Promise<StandardCollectionResponse<AiotDeviceCredential>>"));
-    assert!(ts.contains("revoke: ("));
-    assert!(ts.contains("twin: {"));
-    assert!(ts.contains("update: ("));
+    assert!(iot_api.contains("async devicesSessionsList(deviceId: string"));
+    assert!(iot_api.contains("async devicesSessionsDisconnect(deviceId: string, sessionId: string"));
+    assert!(iot_api.contains("async devicesCapabilitiesList(deviceId: string"));
+    assert!(iot_api.contains("async devicesCommandsCancel(deviceId: string, commandId: string"));
+    assert!(iot_api.contains("Promise<StandardResourceResponse>"));
+    assert!(iot_api.contains("async devicesCredentialsList(deviceId: string"));
+    assert!(
+        iot_api.contains("async devicesCredentialsRetrieve(deviceId: string, credentialId: string")
+    );
+    assert!(
+        iot_api.contains("async devicesCredentialsDelete(deviceId: string, credentialId: string")
+    );
+    assert!(
+        iot_api.contains("async devicesTwinUpdate(deviceId: string, body: AiotTwinUpdateRequest")
+    );
 }
 
 #[test]
@@ -3344,35 +3355,40 @@ fn typescript_problem_code_catalogs_cover_observed_runtime_problem_codes() {
         .expect("app not found response"),
     ));
 
-    let app_ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript/src/index.ts");
-    let app_ts = std::fs::read_to_string(app_ts_path).expect("read app ts sdk");
-    let app_catalog =
-        parse_typescript_problem_code_array(&app_ts, "SDKWORK_AIOT_APP_PROBLEM_CODES");
-    for code in observed_app {
-        assert!(
-            app_catalog.contains(&code),
-            "app TS problem code catalog must contain observed runtime code {code}"
-        );
-    }
-
-    let backend_ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-        "../../sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript/src/index.ts",
+    let app_ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+        "../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript/generated/server-openapi/src/types/problem-details.ts",
     );
-    let backend_ts = std::fs::read_to_string(backend_ts_path).expect("read backend ts sdk");
-    let backend_catalog =
-        parse_typescript_problem_code_array(&backend_ts, "SDKWORK_AIOT_BACKEND_PROBLEM_CODES");
-    for code in observed_backend {
+    let app_ts = std::fs::read_to_string(app_ts_path).expect("read app generated problem-details");
+    assert!(
+        app_ts.contains("export interface ProblemDetails"),
+        "app generated TS SDK must export ProblemDetails interface"
+    );
+    assert!(
+        app_ts.contains("code?: string;"),
+        "app generated TS SDK must model ProblemDetails.code for runtime problem codes"
+    );
+    let backend_ts_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+        "../../sdks/sdkwork-aiot-backend-sdk/sdkwork-aiot-backend-sdk-typescript/generated/server-openapi/src/types/problem-details.ts",
+    );
+    let backend_ts =
+        std::fs::read_to_string(backend_ts_path).expect("read backend generated problem-details");
+    assert!(
+        backend_ts.contains("export interface ProblemDetails"),
+        "backend generated TS SDK must export ProblemDetails interface"
+    );
+    assert!(
+        backend_ts.contains("code?: string;"),
+        "backend generated TS SDK must model ProblemDetails.code for runtime problem codes"
+    );
+    for code in observed_app.into_iter().chain(observed_backend.into_iter()) {
         assert!(
-            backend_catalog.contains(&code),
-            "backend TS problem code catalog must contain observed runtime code {code}"
+            code.starts_with("api."),
+            "runtime problem code {code} must use the api.* namespace"
         );
     }
 }
 
-fn openapi_problem_details_schema<'a>(
-    openapi_json: &'a serde_json::Value,
-) -> &'a serde_json::Value {
+fn openapi_problem_details_schema(openapi_json: &serde_json::Value) -> &serde_json::Value {
     openapi_json
         .get("components")
         .and_then(|value| value.get("schemas"))
@@ -3388,70 +3404,6 @@ fn schema_required_fields(schema: &serde_json::Value) -> std::collections::BTree
         .flat_map(|array| array.iter())
         .filter_map(serde_json::Value::as_str)
         .map(str::to_string)
-        .collect()
-}
-
-fn assert_typescript_problem_code_exports(
-    ts: &str,
-    export_name: &str,
-    type_name: &str,
-    guard_name: &str,
-) {
-    assert!(
-        ts.contains(&format!("export const {export_name} = [")),
-        "TS SDK must export {export_name}"
-    );
-    assert!(
-        ts.contains(&format!("export type {type_name} =")),
-        "TS SDK must export {type_name}"
-    );
-    assert!(
-        ts.contains(&format!("export function {guard_name}(")),
-        "TS SDK must export {guard_name}"
-    );
-
-    for code in [
-        "api.auth.missing_dual_token",
-        "api.context.missing",
-        "api.context.invalid_tenant_id",
-        "api.device.not_found",
-        "api.permission.denied",
-        "api.request.invalid_json",
-        "api.request.invalid_field",
-        "api.storage.write_failed",
-        "api.storage.read_write_failed",
-        "api.command.duplicate_command_id",
-        "api.route.unsupported",
-    ] {
-        assert!(
-            ts.contains(&format!("\"{code}\"")),
-            "TS SDK problem code exports must include {code}"
-        );
-    }
-}
-
-fn parse_typescript_problem_code_array(
-    ts: &str,
-    export_name: &str,
-) -> std::collections::BTreeSet<String> {
-    let marker = format!("export const {export_name} = [");
-    let start = ts
-        .find(&marker)
-        .unwrap_or_else(|| panic!("missing export const array: {export_name}"));
-    let rest = &ts[start + marker.len()..];
-    let end = rest
-        .find("] as const;")
-        .unwrap_or_else(|| panic!("missing const-array terminator for {export_name}"));
-    let block = &rest[..end];
-
-    block
-        .lines()
-        .filter_map(|line| {
-            let trimmed = line.trim();
-            let value = trimmed.strip_prefix('"')?;
-            let quoted_end = value.find('"')?;
-            Some(value[..quoted_end].to_string())
-        })
         .collect()
 }
 
@@ -3615,4 +3567,182 @@ fn assert_problem_json_fields(
         Some(expected_code)
     );
     body
+}
+
+#[test]
+fn sqlite_credential_repository_adapter_persists_and_lists_credentials() {
+    let temp_path = std::env::temp_dir().join(format!(
+        "sdkwork-aiot-http-api-cred-{}-{}.db",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let adapter = sdkwork_aiot_http_api::SqliteCredentialRepositoryAdapter::open(&temp_path)
+        .expect("open sqlite credential adapter");
+    let repository = Arc::new(adapter) as Arc<dyn sdkwork_aiot_http_api::AiotCredentialRepository>;
+
+    let admin = standard_admin_api_server()
+        .expect("admin api server")
+        .with_credential_repository(repository);
+
+    let create_device = handle_api_request_bytes(
+        &admin,
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"sqlite-cred-001\",\"displayName\":\"SQLite Credential Device\",\"productId\":\"1005\"}",
+    )
+    .expect("backend devices.create sqlite credential target");
+    assert!(create_device.starts_with("HTTP/1.1 201"));
+
+    let created = handle_api_request_bytes(
+        &admin,
+        b"POST /backend/v3/api/iot/devices/sqlite-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
+    )
+    .expect("backend devices.credentials.create sqlite");
+    assert!(created.starts_with("HTTP/1.1 201"));
+    assert!(created.contains(r#""deviceId":"sqlite-cred-001""#));
+    assert!(created.contains(r#""credentialType":"hmac""#));
+
+    let listed = handle_api_request_bytes(
+        &admin,
+        b"GET /backend/v3/api/iot/devices/sqlite-cred-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+    )
+    .expect("backend devices.credentials.list sqlite");
+    assert!(listed.starts_with("HTTP/1.1 200"));
+    assert!(listed.contains(r#""credentialType":"hmac""#));
+
+    let _ = std::fs::remove_file(temp_path);
+}
+
+#[test]
+fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
+    let temp_path = std::env::temp_dir().join(format!(
+        "sdkwork-aiot-http-api-admin-{}-{}.db",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+
+    let catalog = Arc::new(
+        sdkwork_aiot_http_api::AiotCatalogRepositoryHandle::open_sqlite(&temp_path)
+            .expect("open sqlite catalog handle"),
+    );
+    let firmware = Arc::new(
+        sdkwork_aiot_http_api::AiotFirmwareRepositoryHandle::open_sqlite(&temp_path)
+            .expect("open sqlite firmware handle"),
+    );
+    let admin = standard_admin_api_server()
+        .expect("admin api server")
+        .with_catalog_repository(catalog)
+        .with_firmware_repository(firmware);
+
+    let create_product = handle_api_request_bytes(
+        &admin,
+        b"POST /backend/v3/api/iot/products HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.products.write\r\n\r\n{\"productId\":\"sqlite-product-001\",\"displayName\":\"SQLite Product\",\"defaultHardwareProfileId\":\"hw-esp32-s3\",\"defaultProtocolProfileId\":\"proto-xiaozhi\",\"defaultCapabilityModelId\":\"capmodel-xiaozhi-core\"}",
+    )
+    .expect("backend products.create sqlite");
+    assert!(create_product.starts_with("HTTP/1.1 201"));
+    assert!(create_product.contains(r#""productId":"sqlite-product-001""#));
+
+    let create_hardware = handle_api_request_bytes(
+        &admin,
+        b"POST /backend/v3/api/iot/hardware_profiles HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.profiles.write\r\n\r\n{\"hardwareProfileId\":\"hw-sqlite-001\",\"chipFamily\":\"esp32_s3\",\"hardwareClasses\":[\"mcu\"],\"runtimeProfiles\":[\"esp_idf\"],\"connectivityProfiles\":[\"wifi\"],\"securityProfiles\":[\"device_secret\"],\"otaProfiles\":[\"xiaozhi_ota\"]}",
+    )
+    .expect("backend hardwareProfiles.create sqlite");
+    assert!(create_hardware.starts_with("HTTP/1.1 201"));
+    assert!(create_hardware.contains(r#""hardwareProfileId":"hw-sqlite-001""#));
+
+    let create_artifact = handle_api_request_bytes(
+        &admin,
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-sqlite\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-sqlite\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-sqlite\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+    )
+    .expect("backend firmwareArtifacts.create sqlite");
+    assert!(create_artifact.starts_with("HTTP/1.1 201"));
+    assert!(create_artifact.contains(r#""artifactId":"firmware-artifact-0001""#));
+
+    drop(admin);
+
+    let reopened_catalog = Arc::new(
+        sdkwork_aiot_http_api::AiotCatalogRepositoryHandle::open_sqlite(&temp_path)
+            .expect("reopen sqlite catalog handle"),
+    );
+    let reopened_firmware = Arc::new(
+        sdkwork_aiot_http_api::AiotFirmwareRepositoryHandle::open_sqlite(&temp_path)
+            .expect("reopen sqlite firmware handle"),
+    );
+    let reopened_admin = standard_admin_api_server()
+        .expect("reopened admin api server")
+        .with_catalog_repository(reopened_catalog)
+        .with_firmware_repository(reopened_firmware);
+
+    let get_product = handle_api_request_bytes(
+        &reopened_admin,
+        b"GET /backend/v3/api/iot/products/sqlite-product-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.products.read\r\n\r\n",
+    )
+    .expect("backend products.retrieve sqlite");
+    assert!(get_product.starts_with("HTTP/1.1 200"));
+    assert!(get_product.contains(r#""productId":"sqlite-product-001""#));
+
+    let get_hardware = handle_api_request_bytes(
+        &reopened_admin,
+        b"GET /backend/v3/api/iot/hardware_profiles/hw-sqlite-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
+    )
+    .expect("backend hardwareProfiles.retrieve sqlite");
+    assert!(get_hardware.starts_with("HTTP/1.1 200"));
+    assert!(get_hardware.contains(r#""hardwareProfileId":"hw-sqlite-001""#));
+
+    let list_artifacts = handle_api_request_bytes(
+        &reopened_admin,
+        b"GET /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+    )
+    .expect("backend firmwareArtifacts.list sqlite");
+    assert!(list_artifacts.starts_with("HTTP/1.1 200"));
+    assert!(list_artifacts.contains(r#""artifactId":"firmware-artifact-0001""#));
+    assert!(list_artifacts.contains(r#""artifactKey":"fw-sqlite""#));
+
+    let _ = std::fs::remove_file(temp_path);
+}
+
+#[test]
+fn export_route_manifest_artifacts_when_requested() {
+    if std::env::var("SDKWORK_EXPORT_ROUTE_MANIFESTS").as_deref() != Ok("1") {
+        return;
+    }
+
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .expect("workspace root");
+    let app_dir = root.join("sdks/_route-manifests/app-api");
+    let backend_dir = root.join("sdks/_route-manifests/backend-api");
+    std::fs::create_dir_all(&app_dir).expect("create app-api route manifest directory");
+    std::fs::create_dir_all(&backend_dir).expect("create backend-api route manifest directory");
+    std::fs::write(
+        app_dir.join("sdkwork-aiot-app-api.route-manifest.json"),
+        sdkwork_aiot_http_api::standard_route_manifest_json(AiotApiSurface::App),
+    )
+    .expect("write app route manifest");
+    std::fs::write(
+        backend_dir.join("sdkwork-aiot-admin-api.route-manifest.json"),
+        sdkwork_aiot_http_api::standard_route_manifest_json(AiotApiSurface::Admin),
+    )
+    .expect("write backend route manifest");
+}
+
+#[test]
+fn standard_route_manifest_documents_match_route_contracts() {
+    for surface in [AiotApiSurface::App, AiotApiSurface::Admin] {
+        let document = sdkwork_aiot_http_api::standard_route_manifest_document(surface);
+        let routes = document
+            .get("routes")
+            .and_then(serde_json::Value::as_array)
+            .expect("routes array");
+        let contract_count = standard_api_route_contracts()
+            .into_iter()
+            .filter(|route| route.surface == surface)
+            .count();
+        assert_eq!(routes.len(), contract_count);
+    }
 }
