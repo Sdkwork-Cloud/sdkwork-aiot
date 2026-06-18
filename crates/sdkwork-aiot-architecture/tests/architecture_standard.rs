@@ -24,6 +24,25 @@ fn quoted_json_values_after_key(document: &str, key: &str) -> Vec<String> {
         .collect()
 }
 
+fn topology_retired_env_keys(document: &str) -> Vec<String> {
+    let marker = r#""retired": {
+    "envKeys": ["#;
+    let start = document.find(marker).expect("retired envKeys array") + marker.len();
+    let rest = &document[start..];
+    let end = rest.find(']').expect("retired envKeys array end");
+    rest[..end]
+        .split(',')
+        .filter_map(|entry| {
+            let trimmed = entry.trim().trim_matches('"');
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .collect()
+}
+
 fn openapi_permission_for_operation(document: &str, operation_id: &str) -> Option<String> {
     let operation_marker = format!(r#""operationId": "{operation_id}""#);
     let operation_start = document.find(&operation_marker)?;
@@ -161,6 +180,125 @@ fn external_submodules_are_curated_high_signal_iot_references() {
 }
 
 #[test]
+fn external_xiaozhi_esp32_application_declares_core_server_message_types() {
+    let root = workspace_root();
+    let application = fs::read_to_string(root.join("external/xiaozhi-esp32/main/application.cc"))
+        .expect("external/xiaozhi-esp32 submodule must be initialized");
+    let protocol =
+        fs::read_to_string(root.join("external/xiaozhi-esp32/main/protocols/protocol.cc"))
+            .expect("external/xiaozhi-esp32 protocol.cc must exist");
+
+    for message_type in ["tts", "stt", "llm", "mcp", "system", "alert", "custom"] {
+        assert!(
+            application.contains(&format!("\"{message_type}\"")),
+            "external/xiaozhi-esp32 application.cc must handle server message type {message_type}"
+        );
+    }
+
+    for message_type in ["hello", "goodbye"] {
+        let mqtt_protocol =
+            fs::read_to_string(root.join("external/xiaozhi-esp32/main/protocols/mqtt_protocol.cc"))
+                .expect("external/xiaozhi-esp32 mqtt_protocol.cc must exist");
+        assert!(
+            mqtt_protocol.contains(&format!("\"{message_type}\"")),
+            "external/xiaozhi-esp32 mqtt_protocol.cc must reference transport message type {message_type}"
+        );
+    }
+
+    for message_type in ["listen", "abort"] {
+        assert!(
+            protocol.contains(message_type),
+            "external/xiaozhi-esp32 protocol.cc must reference device message type {message_type}"
+        );
+    }
+}
+
+#[test]
+fn service_shells_read_topology_surface_bind_env_keys() {
+    let root = workspace_root();
+    let spec_text =
+        fs::read_to_string(root.join("specs/topology.spec.json")).expect("topology spec");
+    let retired_keys = topology_retired_env_keys(&spec_text);
+
+    let cases = [
+        (
+            "services/sdkwork-aiot-gateway/src/main.rs",
+            "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_BIND",
+        ),
+        (
+            "services/sdkwork-aiot-app-api/src/main.rs",
+            "SDKWORK_AIOT_APPLICATION_APP_HTTP_BIND",
+        ),
+        (
+            "services/sdkwork-aiot-admin-api/src/main.rs",
+            "SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_BIND",
+        ),
+        (
+            "services/sdkwork-aiot-xiaozhi-simulator-ui/src/main.rs",
+            "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL",
+        ),
+    ];
+
+    for (service, canonical_key) in cases {
+        let source = fs::read_to_string(root.join(service)).expect(service);
+        assert!(
+            source.contains(canonical_key),
+            "{service} must read canonical topology env key {canonical_key}"
+        );
+        for retired_key in &retired_keys {
+            assert!(
+                !source.contains(retired_key),
+                "{service} must not read retired topology env key {retired_key}"
+            );
+        }
+    }
+}
+
+#[test]
+fn topology_dev_orchestrator_reads_spec_processes() {
+    let root = workspace_root();
+    let dev = fs::read_to_string(root.join("scripts/aiot-dev.mjs")).expect("aiot-dev orchestrator");
+
+    assert!(
+        dev.contains("listOrchestrationProcesses"),
+        "scripts/aiot-dev.mjs must spawn processes from topology orchestration"
+    );
+    assert!(
+        dev.contains("buildProcessEntries"),
+        "scripts/aiot-dev.mjs must centralize process planning"
+    );
+    assert!(
+        dev.contains("resolveDevProfileId"),
+        "scripts/aiot-dev.mjs must resolve profile ids from hosting/service layout"
+    );
+}
+
+#[test]
+fn pc_client_declares_topology_surface_env_keys() {
+    let root = workspace_root();
+    let topology_keys =
+        root.join("apps/sdkwork-aiot-pc/packages/sdkwork-aiot-pc-core/src/sdk/topologyEnvKeys.ts");
+    let source = fs::read_to_string(&topology_keys).expect("aiot-pc-core topology env keys");
+
+    for key in [
+        "VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL",
+        "VITE_SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL",
+        "VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL",
+        "VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
+    ] {
+        assert!(
+            source.contains(key),
+            "aiot-pc-core must declare topology client env key {key}"
+        );
+    }
+
+    assert!(
+        root.join("apps/sdkwork-aiot-pc/.env.example").exists(),
+        "apps/sdkwork-aiot-pc/.env.example is required"
+    );
+}
+
+#[test]
 fn sdk_families_have_openapi_sources_and_generation_manifests() {
     let root = workspace_root();
 
@@ -197,11 +335,14 @@ fn sdk_families_have_openapi_sources_and_generation_manifests() {
         assert!(openapi_text.contains(openapi_prefix));
         assert!(openapi_text.contains(r#""Authorization""#));
         assert!(openapi_text.contains(r#""Access-Token""#));
-        assert!(openapi_text.contains(r#""X-Sdkwork-Tenant-Id""#));
-        assert!(openapi_text.contains(r#""X-Sdkwork-Organization-Id""#));
-        assert!(openapi_text.contains(r#""X-Sdkwork-User-Id""#));
-        assert!(openapi_text.contains(r#""X-Sdkwork-Data-Scope""#));
-        assert!(openapi_text.contains(r#""X-Sdkwork-Permission-Scope""#));
+        assert!(
+            !openapi_text.contains(r#""name": "X-Sdkwork-Tenant-Id""#),
+            "{family} OpenAPI must not expose client-writable tenant context headers"
+        );
+        assert!(
+            !openapi_text.contains(r#""name": "X-Sdkwork-Organization-Id""#),
+            "{family} OpenAPI must not expose client-writable organization context headers"
+        );
         assert!(openapi_text.contains(r#""x-sdkwork-required-permission""#));
         assert!(openapi_text.contains("application/problem+json"));
         assert!(

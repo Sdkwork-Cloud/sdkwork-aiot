@@ -1,23 +1,34 @@
 # sdkwork-aiot-server
 
+## Development (topology v2)
+
+Default profile: `self-hosted.split-services.development` (`specs/topology.spec.json`).
+
+```bash
+pnpm aiot:dev
+```
+
+Cloud development profile:
+
+```bash
+pnpm aiot:dev:cloud
+```
+
+Include the Xiaozhi simulator UI:
+
+```bash
+pnpm aiot:dev:simulator
+```
+
+See `docs/topology-standard.md` and `configs/topology/README.md`.
+
 ## Xiaozhi Gateway Simulator
 
 The standalone gateway includes a cross-platform terminal UI simulator for
 local Xiaozhi compatibility checks.
 
-Start the gateway:
-
-```powershell
-$env:SDKWORK_AIOT_GATEWAY_BIND='127.0.0.1:18080'
-cargo run -p sdkwork-aiot-gateway
-```
-
-Start the simulator UI (in another terminal):
-
-```powershell
-$env:SDKWORK_AIOT_XIAOZHI_SIMULATOR_GATEWAY_HTTP='http://127.0.0.1:18080'
-cargo run -p sdkwork-aiot-xiaozhi-simulator-ui
-```
+`pnpm aiot:dev` starts app-api, admin-api, and edge gateway from the active
+topology profile. Use `pnpm aiot:dev:simulator` to also launch the simulator UI.
 
 The simulator exercises the same compatibility surface used by ESP32 firmware:
 
@@ -32,7 +43,7 @@ The simulator exercises the same compatibility surface used by ESP32 firmware:
   
 Default simulator env overrides:
 
-- `SDKWORK_AIOT_XIAOZHI_SIMULATOR_GATEWAY_HTTP`
+- `SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL`
 - `SDKWORK_AIOT_XIAOZHI_SIMULATOR_PROTOCOL_VERSION`
 - `SDKWORK_AIOT_XIAOZHI_SIMULATOR_DEVICE_ID`
 - `SDKWORK_AIOT_XIAOZHI_SIMULATOR_CLIENT_ID`

@@ -13,8 +13,10 @@ use sdkwork_aiot_adapter_xiaozhi::{
     XiaozhiAudioParams, XiaozhiMqttCodec, XiaozhiOtaMetadata, XiaozhiServerHello,
     XiaozhiUdpAudioCodec, XiaozhiUdpAudioPacket, XiaozhiWebSocketCodec, AUTHORIZATION_HEADER,
     CLIENT_ID_HEADER, DEVICE_ID_HEADER, PROTOCOL_VERSION_HEADER, XIAOZHI_ACTIVATE_PATH,
-    XIAOZHI_MQTT_PATH, XIAOZHI_OTA_ACTIVATE_PATH, XIAOZHI_OTA_PATH, XIAOZHI_WS_PATH,
+    XIAOZHI_MQTT_PATH, XIAOZHI_OTA_ACTIVATE_PATH, XIAOZHI_OTA_PATH, XIAOZHI_WEBSOCKET_PROTOCOL_ID,
+    XIAOZHI_WS_PATH,
 };
+use sdkwork_aiot_protocol::{MessageClass, MessageCodec, ProtocolEnvelope};
 use sdkwork_aiot_runtime::{AiotRuntime, AiotRuntimePressure, BackpressureAction};
 use sdkwork_aiot_storage::{AiotProtocolIngestUnitOfWork, InMemoryProtocolIngestUnitOfWork};
 use sdkwork_aiot_storage_sqlx::{
@@ -34,6 +36,9 @@ thread_local! {
 pub const XIAOZHI_SIMULATOR_PATH: &str = "/simulators/xiaozhi";
 const DEFAULT_DEVICE_TOKEN: &str = "device-token";
 const DEFAULT_ACTIVATION_MESSAGE: &str = "activation pending";
+const SIMULATOR_USER_SPEECH: &str = "simulated user speech from SDKWork";
+const SIMULATOR_TTS_SUBTITLE: &str = "simulated response from SDKWork";
+const SIMULATOR_OPUS_PLACEHOLDER: &[u8] = &[0xF8, 0xFF, 0xFE];
 const DEFAULT_ACTIVATION_TIMEOUT_MS: u32 = 30_000;
 const DEFAULT_ACTIVATION_REGISTRY_LOCK_WAIT_MILLIS: u64 = 2_000;
 const DEFAULT_ACTIVATION_REGISTRY_LOCK_POLL_MILLIS: u64 = 20;
@@ -734,6 +739,7 @@ pub enum WebSocketSessionReply {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MqttSessionReply {
     pub outbound_json: Vec<String>,
+    pub outbound_udp_packets: Vec<Vec<u8>>,
     pub close_audio_channel: bool,
 }
 
@@ -1160,11 +1166,23 @@ pub struct XiaozhiMqttUdpSession {
     pub udp_key_hex: String,
     pub udp_nonce_hex: String,
     pub remote_sequence: u32,
+    pub local_sequence: u32,
 }
 
 impl XiaozhiMqttUdpSession {
     pub fn udp_codec(&self) -> Result<XiaozhiUdpAudioCodec, TransportError> {
         XiaozhiUdpAudioCodec::new(&self.udp_key_hex, &self.udp_nonce_hex)
+            .map_err(|error| TransportError::new(error.code))
+    }
+
+    pub fn encode_outbound_audio(
+        &mut self,
+        timestamp: u32,
+        payload: impl AsRef<[u8]>,
+    ) -> Result<Vec<u8>, TransportError> {
+        self.local_sequence = self.local_sequence.saturating_add(1);
+        self.udp_codec()?
+            .encode_audio_packet(timestamp, self.local_sequence, payload)
             .map_err(|error| TransportError::new(error.code))
     }
 }
@@ -1518,6 +1536,127 @@ pub fn xiaozhi_simulator_http_handler(request: &HttpRequest) -> HttpResponse {
         )
 }
 
+fn xiaozhi_simulator_listen_user_text(envelope: &ProtocolEnvelope) -> String {
+    if envelope
+        .extensions
+        .get("xiaozhi.listen.state")
+        .is_some_and(|value| value == "detect")
+    {
+        envelope
+            .extensions
+            .get("xiaozhi.listen.text")
+            .filter(|value| !value.is_empty())
+            .cloned()
+            .unwrap_or_else(|| SIMULATOR_USER_SPEECH.to_string())
+    } else {
+        SIMULATOR_USER_SPEECH.to_string()
+    }
+}
+
+fn xiaozhi_websocket_binary_audio_reply(
+    request: &HttpRequest,
+    payload: &[u8],
+    timestamp_ms: u32,
+) -> Result<WebSocketSessionReply, TransportError> {
+    let protocol_version = request
+        .header("protocol-version")
+        .or_else(|| request.query_param("protocol_version"))
+        .unwrap_or("1");
+    let codec = xiaozhi_codec_from_request(request);
+    let mut builder =
+        ProtocolEnvelope::builder(XIAOZHI_WEBSOCKET_PROTOCOL_ID, MessageClass::MediaFrame)
+            .adapter("xiaozhi")
+            .semantic_type("audio")
+            .protocol_version(protocol_version)
+            .binary_payload(payload);
+    if protocol_version == "2" {
+        builder = builder.extension("xiaozhi.audio.timestamp_ms", timestamp_ms.to_string());
+    }
+    let frame = codec
+        .encode(builder.build())
+        .map_err(|error| TransportError::new(error.code))?;
+    Ok(WebSocketSessionReply::Binary(frame.payload))
+}
+
+fn xiaozhi_simulator_websocket_speech_replies(
+    request: &HttpRequest,
+    session_id: &str,
+    user_text: &str,
+    subtitle: &str,
+) -> Result<Vec<WebSocketSessionReply>, TransportError> {
+    let mut replies = vec![
+        WebSocketSessionReply::Text(format!(
+            r#"{{"session_id":"{}","type":"stt","text":"{}"}}"#,
+            json_escape(session_id),
+            json_escape(user_text)
+        )),
+        WebSocketSessionReply::Text(format!(
+            r#"{{"session_id":"{}","type":"llm","emotion":"happy","text":"connected"}}"#,
+            json_escape(session_id)
+        )),
+        WebSocketSessionReply::Text(format!(
+            r#"{{"session_id":"{}","type":"tts","state":"start"}}"#,
+            json_escape(session_id)
+        )),
+    ];
+    replies.push(xiaozhi_websocket_binary_audio_reply(
+        request,
+        SIMULATOR_OPUS_PLACEHOLDER,
+        0,
+    )?);
+    replies.push(WebSocketSessionReply::Text(format!(
+        r#"{{"session_id":"{}","type":"tts","state":"sentence_start","text":"{}"}}"#,
+        json_escape(session_id),
+        json_escape(subtitle)
+    )));
+    replies.push(WebSocketSessionReply::Text(format!(
+        r#"{{"session_id":"{}","type":"tts","state":"stop"}}"#,
+        json_escape(session_id)
+    )));
+    Ok(replies)
+}
+
+fn xiaozhi_simulator_mqtt_speech_replies(
+    session: &mut XiaozhiMqttUdpSession,
+    user_text: &str,
+    subtitle: &str,
+) -> Result<(Vec<String>, Vec<Vec<u8>>), TransportError> {
+    let session_id = session.session_id.clone();
+    let mut outbound_json = vec![
+        format!(
+            r#"{{"session_id":"{}","type":"stt","text":"{}"}}"#,
+            json_escape(&session_id),
+            json_escape(user_text)
+        ),
+        format!(
+            r#"{{"session_id":"{}","type":"llm","emotion":"happy","text":"connected"}}"#,
+            json_escape(&session_id)
+        ),
+        format!(
+            r#"{{"session_id":"{}","type":"tts","state":"start"}}"#,
+            json_escape(&session_id)
+        ),
+    ];
+    let outbound_udp = vec![session.encode_outbound_audio(0, SIMULATOR_OPUS_PLACEHOLDER)?];
+    outbound_json.push(format!(
+        r#"{{"session_id":"{}","type":"tts","state":"sentence_start","text":"{}"}}"#,
+        json_escape(&session_id),
+        json_escape(subtitle)
+    ));
+    outbound_json.push(format!(
+        r#"{{"session_id":"{}","type":"tts","state":"stop"}}"#,
+        json_escape(&session_id)
+    ));
+    Ok((outbound_json, outbound_udp))
+}
+
+fn xiaozhi_mqtt_goodbye_matches_session(
+    session: &XiaozhiMqttUdpSession,
+    inbound_session_id: Option<&str>,
+) -> bool {
+    inbound_session_id.is_none_or(|value| value == session.session_id)
+}
+
 pub fn xiaozhi_websocket_session_reply(
     server: &TransportServer,
     request: &HttpRequest,
@@ -1643,18 +1782,13 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
                 .map(String::as_str)
                 .unwrap_or("start");
             if state == "start" || state == "detect" {
-                replies.push(WebSocketSessionReply::Text(format!(
-                    r#"{{"session_id":"{}","type":"stt","text":"simulated user speech from SDKWork"}}"#,
-                    json_escape(&session_id)
-                )));
-                replies.push(WebSocketSessionReply::Text(format!(
-                    r#"{{"session_id":"{}","type":"llm","emotion":"happy","text":"connected"}}"#,
-                    json_escape(&session_id)
-                )));
-                replies.push(WebSocketSessionReply::Text(format!(
-                    r#"{{"session_id":"{}","type":"tts","state":"start"}}"#,
-                    json_escape(&session_id)
-                )));
+                let user_text = xiaozhi_simulator_listen_user_text(&result.envelope);
+                replies.extend(xiaozhi_simulator_websocket_speech_replies(
+                    request,
+                    &session_id,
+                    &user_text,
+                    SIMULATOR_TTS_SUBTITLE,
+                )?);
             } else if state == "stop" {
                 replies.push(WebSocketSessionReply::Text(format!(
                     r#"{{"session_id":"{}","type":"tts","state":"stop"}}"#,
@@ -1696,15 +1830,16 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
         }
         "audio" => {
             if frame.opcode == WebSocketOpcode::Binary {
-                replies.push(WebSocketSessionReply::Text(format!(
-                    r#"{{"session_id":"{}","type":"tts","state":"sentence_start","text":"received {} bytes of opus audio"}}"#,
-                    json_escape(&session_id),
+                let user_text = format!(
+                    "received {} bytes of opus audio",
                     result.envelope.payload.len()
-                )));
-                replies.push(WebSocketSessionReply::Text(format!(
-                    r#"{{"session_id":"{}","type":"tts","state":"stop"}}"#,
-                    json_escape(&session_id)
-                )));
+                );
+                replies.extend(xiaozhi_simulator_websocket_speech_replies(
+                    request,
+                    &session_id,
+                    &user_text,
+                    &user_text,
+                )?);
             }
         }
         "abort" => {
@@ -1714,10 +1849,7 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
             )));
         }
         "goodbye" => {
-            replies.push(WebSocketSessionReply::Text(format!(
-                r#"{{"session_id":"{}","type":"goodbye"}}"#,
-                json_escape(&session_id)
-            )));
+            replies.push(WebSocketSessionReply::Close);
         }
         _ => {}
     }
@@ -1817,6 +1949,7 @@ pub fn xiaozhi_mqtt_session_reply_with_mcp_tool_provider_and_invoker(
 
     let mut next_session = session.cloned();
     let mut outbound = Vec::new();
+    let mut outbound_udp = Vec::new();
     let mut close_audio_channel = false;
 
     match result.envelope.semantic_type.as_str() {
@@ -1876,10 +2009,11 @@ pub fn xiaozhi_mqtt_session_reply_with_mcp_tool_provider_and_invoker(
                 udp_key_hex,
                 udp_nonce_hex,
                 remote_sequence: 0,
+                local_sequence: 0,
             });
         }
         "listen" => {
-            if let Some(session) = session {
+            if let Some(ref mut working_session) = next_session {
                 let state = result
                     .envelope
                     .extensions
@@ -1887,28 +2021,24 @@ pub fn xiaozhi_mqtt_session_reply_with_mcp_tool_provider_and_invoker(
                     .map(String::as_str)
                     .unwrap_or("start");
                 if state == "start" || state == "detect" {
-                    outbound.push(format!(
-                        r#"{{"session_id":"{}","type":"stt","text":"simulated user speech from SDKWork"}}"#,
-                        json_escape(&session.session_id)
-                    ));
-                    outbound.push(format!(
-                        r#"{{"session_id":"{}","type":"llm","emotion":"happy","text":"connected"}}"#,
-                        json_escape(&session.session_id)
-                    ));
-                    outbound.push(format!(
-                        r#"{{"session_id":"{}","type":"tts","state":"start"}}"#,
-                        json_escape(&session.session_id)
-                    ));
+                    let user_text = xiaozhi_simulator_listen_user_text(&result.envelope);
+                    let (json, udp) = xiaozhi_simulator_mqtt_speech_replies(
+                        working_session,
+                        &user_text,
+                        SIMULATOR_TTS_SUBTITLE,
+                    )?;
+                    outbound.extend(json);
+                    outbound_udp.extend(udp);
                 } else if state == "stop" {
                     outbound.push(format!(
                         r#"{{"session_id":"{}","type":"tts","state":"stop"}}"#,
-                        json_escape(&session.session_id)
+                        json_escape(&working_session.session_id)
                     ));
                 }
             }
         }
         "mcp" => {
-            if let Some(session) = session {
+            if let Some(working_session) = next_session.as_ref() {
                 let kind = result
                     .envelope
                     .extensions
@@ -1918,9 +2048,9 @@ pub fn xiaozhi_mqtt_session_reply_with_mcp_tool_provider_and_invoker(
                 let inbound_json = std::str::from_utf8(&result.envelope.payload).ok();
                 if let Some(outbound_json) = xiaozhi_simulator_mcp_reply(
                     "mqtt",
-                    &session.session_id,
-                    Some(session.device_id.as_str()),
-                    Some(session.client_id.as_str()),
+                    &working_session.session_id,
+                    Some(working_session.device_id.as_str()),
+                    Some(working_session.client_id.as_str()),
                     kind,
                     inbound_json,
                     result
@@ -1942,22 +2072,27 @@ pub fn xiaozhi_mqtt_session_reply_with_mcp_tool_provider_and_invoker(
             }
         }
         "abort" => {
-            if let Some(session) = session {
+            if let Some(working_session) = next_session.as_ref() {
                 outbound.push(format!(
                     r#"{{"session_id":"{}","type":"tts","state":"stop"}}"#,
-                    json_escape(&session.session_id)
+                    json_escape(&working_session.session_id)
                 ));
             }
         }
         "goodbye" => {
-            if let Some(session) = session {
-                outbound.push(format!(
-                    r#"{{"session_id":"{}","type":"goodbye"}}"#,
-                    json_escape(&session.session_id)
-                ));
+            let inbound_session_id = result
+                .message
+                .session_id
+                .clone()
+                .or_else(|| json_string_field(inbound_json, "session_id"));
+            if next_session.as_ref().is_some_and(|working_session| {
+                xiaozhi_mqtt_goodbye_matches_session(working_session, inbound_session_id.as_deref())
+            }) {
+                // Device-initiated MQTT goodbye closes the UDP channel locally.
+                // Do not echo goodbye back; external/xiaozhi-esp32 avoids ping-pong replies.
+                close_audio_channel = true;
+                next_session = None;
             }
-            close_audio_channel = true;
-            next_session = None;
         }
         _ => {}
     }
@@ -1965,10 +2100,39 @@ pub fn xiaozhi_mqtt_session_reply_with_mcp_tool_provider_and_invoker(
     Ok((
         MqttSessionReply {
             outbound_json: outbound,
+            outbound_udp_packets: outbound_udp,
             close_audio_channel,
         },
         next_session,
     ))
+}
+
+pub fn xiaozhi_mqtt_goodbye_message(session_id: &str) -> String {
+    format!(
+        r#"{{"session_id":"{}","type":"goodbye"}}"#,
+        json_escape(session_id)
+    )
+}
+
+pub fn xiaozhi_mqtt_server_teardown_reply(session_id: &str) -> MqttSessionReply {
+    MqttSessionReply {
+        outbound_json: vec![xiaozhi_mqtt_goodbye_message(session_id)],
+        outbound_udp_packets: Vec::new(),
+        close_audio_channel: true,
+    }
+}
+
+pub fn xiaozhi_mqtt_udp_uplink_speech_reply(
+    session: &mut XiaozhiMqttUdpSession,
+    payload_len: usize,
+) -> Result<MqttSessionReply, TransportError> {
+    let user_text = format!("received {payload_len} bytes of opus audio");
+    let (json, udp) = xiaozhi_simulator_mqtt_speech_replies(session, &user_text, &user_text)?;
+    Ok(MqttSessionReply {
+        outbound_json: json,
+        outbound_udp_packets: udp,
+        close_audio_channel: false,
+    })
 }
 
 pub fn xiaozhi_mqtt_udp_decode_audio(

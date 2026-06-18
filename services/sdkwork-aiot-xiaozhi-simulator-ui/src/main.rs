@@ -61,7 +61,7 @@ struct SimulatorConfig {
 impl SimulatorConfig {
     fn from_env() -> Self {
         Self {
-            gateway_http_base: std::env::var("SDKWORK_AIOT_XIAOZHI_SIMULATOR_GATEWAY_HTTP")
+            gateway_http_base: std::env::var("SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL")
                 .unwrap_or_else(|_| DEFAULT_GATEWAY_HTTP.to_string()),
             protocol_version: std::env::var("SDKWORK_AIOT_XIAOZHI_SIMULATOR_PROTOCOL_VERSION")
                 .unwrap_or_else(|_| DEFAULT_PROTOCOL_VERSION.to_string()),

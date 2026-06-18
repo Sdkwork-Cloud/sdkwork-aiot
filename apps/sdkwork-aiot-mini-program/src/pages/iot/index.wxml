@@ -1,0 +1,9 @@
+<view class="card">
+  <view class="title">IoT 舰队</view>
+  <block wx:for="{{nodes}}" wx:key="deviceId">
+    <view class="card" style="margin: 24rpx 0 0;">
+      <view>{{item.displayName || item.deviceId || item.id}}</view>
+      <view class="muted">{{item.status}}</view>
+    </view>
+  </block>
+</view>

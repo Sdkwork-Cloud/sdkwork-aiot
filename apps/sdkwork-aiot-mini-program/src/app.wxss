@@ -1,0 +1,30 @@
+page {
+  background: #f4f4f5;
+  color: #18181b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  margin: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06);
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.muted {
+  color: #71717a;
+  font-size: 24rpx;
+}
+
+.button-primary {
+  background: #0891b2;
+  border-radius: 999rpx;
+  color: #ffffff;
+  margin-top: 24rpx;
+}

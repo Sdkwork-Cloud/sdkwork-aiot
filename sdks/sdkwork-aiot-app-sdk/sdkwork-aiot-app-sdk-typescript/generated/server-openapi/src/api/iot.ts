@@ -4,174 +4,43 @@ import type { HttpClient } from '../http/client';
 import type { AiotCommandCreateRequest, AiotCommandResponse, AiotDeviceListResponse, AiotDeviceResponse, AiotEventListResponse, AiotTwinResponse } from '../types';
 
 
-export interface IotDevicesEventsListParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
-}
-
-export class IotDevicesEventsApi {
+export class IotApi {
   private client: HttpClient;
-
-  constructor(client: HttpClient) {
-    this.client = client;
+  
+  constructor(client: HttpClient) { 
+    this.client = client; 
   }
 
-
-/** List device events */
-  async list(deviceId: string, params: IotDevicesEventsListParams): Promise<AiotEventListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: params.xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: params.xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: params.xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: params.xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: params.xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotEventListResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/events`), undefined, requestHeaders);
-  }
-}
-
-export interface IotDevicesTwinRetrieveParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
-}
-
-export class IotDevicesTwinApi {
-  private client: HttpClient;
-
-  constructor(client: HttpClient) {
-    this.client = client;
+/** List user-visible AIoT devices */
+  async devicesList(): Promise<AiotDeviceListResponse> {
+    return this.client.get<AiotDeviceListResponse>(appApiPath(`/iot/devices`));
   }
 
-
-/** Retrieve device twin */
-  async retrieve(deviceId: string, params: IotDevicesTwinRetrieveParams): Promise<AiotTwinResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: params.xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: params.xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: params.xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: params.xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: params.xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotTwinResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/twin`), undefined, requestHeaders);
+/** Retrieve one AIoT device */
+  async devicesRetrieve(deviceId: string): Promise<AiotDeviceResponse> {
+    return this.client.get<AiotDeviceResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}`));
   }
-}
-
-export interface IotDevicesCommandsCreateParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
-  idempotencyKey?: string;
-}
-
-export class IotDevicesCommandsApi {
-  private client: HttpClient;
-
-  constructor(client: HttpClient) {
-    this.client = client;
-  }
-
 
 /** Create a device command */
-  async create(deviceId: string, body: AiotCommandCreateRequest, params: IotDevicesCommandsCreateParams): Promise<AiotCommandResponse> {
+  async devicesCommandsCreate(deviceId: string, body: AiotCommandCreateRequest, idempotencyKey?: string): Promise<AiotCommandResponse> {
     const requestHeaders = buildRequestHeaders(
       {
-        'X-Sdkwork-Tenant-Id': { value: params.xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: params.xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: params.xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: params.xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: params.xSdkworkPermissionScope, style: 'simple', explode: false },
-        'Idempotency-Key': { value: params.idempotencyKey, style: 'simple', explode: false },
+        'Idempotency-Key': { value: idempotencyKey, style: 'simple', explode: false },
       },
       {}
     );
     return this.client.post<AiotCommandResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/commands`), body, undefined, requestHeaders, 'application/json');
   }
-}
 
-export interface IotDevicesListParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
-}
-
-export interface IotDevicesRetrieveParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
-}
-
-export class IotDevicesApi {
-  private client: HttpClient;
-  public readonly commands: IotDevicesCommandsApi;
-  public readonly twin: IotDevicesTwinApi;
-  public readonly events: IotDevicesEventsApi;
-
-  constructor(client: HttpClient) {
-    this.client = client;
-    this.commands = new IotDevicesCommandsApi(client);
-    this.twin = new IotDevicesTwinApi(client);
-    this.events = new IotDevicesEventsApi(client);
+/** Retrieve device twin */
+  async devicesTwinRetrieve(deviceId: string): Promise<AiotTwinResponse> {
+    return this.client.get<AiotTwinResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/twin`));
   }
 
-
-/** List user-visible AIoT devices */
-  async list(params: IotDevicesListParams): Promise<AiotDeviceListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: params.xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: params.xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: params.xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: params.xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: params.xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotDeviceListResponse>(appApiPath(`/iot/devices`), undefined, requestHeaders);
+/** List device events */
+  async devicesEventsList(deviceId: string): Promise<AiotEventListResponse> {
+    return this.client.get<AiotEventListResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/events`));
   }
-
-/** Retrieve one AIoT device */
-  async retrieve(deviceId: string, params: IotDevicesRetrieveParams): Promise<AiotDeviceResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: params.xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: params.xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: params.xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: params.xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: params.xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotDeviceResponse>(appApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}`), undefined, requestHeaders);
-  }
-}
-
-export class IotApi {
-  private client: HttpClient;
-  public readonly devices: IotDevicesApi;
-
-  constructor(client: HttpClient) {
-    this.client = client;
-    this.devices = new IotDevicesApi(client);
-  }
-
 }
 
 export function createIotApi(client: HttpClient): IotApi {

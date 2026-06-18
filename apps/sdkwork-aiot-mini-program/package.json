@@ -1,0 +1,13 @@
+{
+  "name": "@sdkwork/aiot-mini-program",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SDKWork AIoT WeChat mini program application.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

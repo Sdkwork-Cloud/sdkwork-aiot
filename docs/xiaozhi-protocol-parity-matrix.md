@@ -1,8 +1,14 @@
 # Xiaozhi Protocol Parity Matrix
 
-Last updated: 2026-06-01
+Last updated: 2026-06-17 (audited against `external/xiaozhi-esp32` @ `277cbd10`)
 
 This matrix tracks parity between `external/xiaozhi-esp32` and this repository for the xiaozhi-compatible IoT server.
+
+Initialize the reference tree before audits:
+
+```bash
+git submodule update --init external/xiaozhi-esp32
+```
 
 ## WebSocket Control + Media
 
@@ -10,8 +16,13 @@ This matrix tracks parity between `external/xiaozhi-esp32` and this repository f
 | --- | --- | --- |
 | WS headers (`Authorization`, `Protocol-Version`, `Device-Id`, `Client-Id`) | Implemented | Request parsing + handshake context mapping in adapter/gateway. |
 | `hello` exchange (`transport:"websocket"`) | Implemented | Server hello generated with session and audio params. |
-| Binary v1/v2/v3 Opus frame decode/encode | Implemented | Adapter codec supports v1 raw and v2/v3 headers. |
+| Binary v1/v2/v3 Opus frame decode/encode | Implemented | Adapter codec supports v1 raw and v2/v3 headers; v2 JSON-in-binary passthrough supported. |
 | JSON message family (`listen/abort/stt/tts/llm/alert/custom/mcp/goodbye`) | Implemented | Message class mapping + extension extraction + simulator replies. |
+| `tts.state` includes `start`, `stop`, `sentence_start` | Implemented | Simulator path emits full TTS lifecycle: `start` → binary Opus downlink → `sentence_start` → `stop`. |
+| `listen.state` includes `start`, `stop`, `detect` + `mode` | Implemented | Codec preserves `xiaozhi.listen.state/mode/text`. |
+| `abort.reason` (`wake_word_detected`) | Implemented | Codec preserves `xiaozhi.abort.reason`. |
+| WebSocket `goodbye` | N/A on device | ESP32 WS stack does not send `goodbye`; gateway accepts it for simulator/testing only. |
+| Legacy `type:"iot"` | Deprecated on ESP32 main | Still mapped in adapter for older firmware; replaced by MCP on current main branch. |
 | Ping/pong/close frame handling | Implemented | Gateway session loop handles control opcodes. |
 
 ## MCP JSON-RPC
@@ -22,6 +33,7 @@ This matrix tracks parity between `external/xiaozhi-esp32` and this repository f
 | Request/response/notification/error classification | Implemented | `xiaozhi.mcp.kind` derived for routing; `notifications/*` are ignored (no automatic reply), aligned with external parser behavior. |
 | JSON-RPC version guard (`jsonrpc == "2.0"`) | Implemented | Invalid or missing JSON-RPC version MCP request payloads are ignored (no reply), aligned with external parser semantics. |
 | MCP request `params` shape guard | Implemented | Non-object `params` in generic MCP requests are ignored (no reply), aligned with external parser behavior; `tools/call` still returns explicit external-style errors for its documented preconditions. |
+| MCP request numeric `id` on device | External constraint | ESP32 `McpServer::ParseMessage` accepts numeric IDs only; local server-side MCP parser accepts numeric and string IDs when acting as MCP server (more permissive). |
 | MCP payload-only frame handling | Implemented | MCP frames with `jsonrpc`/`id` only (no `method`/`result`/`error`) are ignored without automatic `tools/list` follow-up, aligned with external parser behavior. |
 | ID preservation (numeric + string) | Implemented | Correlation ID and JSON literal preserved (`xiaozhi.mcp.id_json`). |
 | Initialize/tools list/tools call simulator path | Implemented (simulator grade) | Supports `initialize`, `tools/list`, `tools/call`, string/numeric IDs, and unknown-method errors. |
@@ -36,7 +48,7 @@ This matrix tracks parity between `external/xiaozhi-esp32` and this repository f
 | `/iot/xiaozhi/ota` response with websocket profile | Implemented | Includes `websocket.url/token/version`. |
 | `/iot/xiaozhi/ota/activate` alias for activation | Implemented | Added compatibility alias because external firmware computes activate URL by appending `/activate` to OTA URL (`.../ota/activate`). |
 | OTA `mqtt` section | Implemented | Env-driven endpoint/client_id/credentials/topics/keepalive. |
-| OTA `udp` section (`server/port/key/nonce`) | Implemented | Env-driven, aligned with external MQTT+UDP profile. |
+| OTA `udp` section (`server/port/key/nonce`) | Implemented (server-side extension) | Env-driven; current ESP32 `ota.cc` does not parse top-level `udp` (UDP profile comes from MQTT hello), but local OTA response supports it for deployments that pre-provision UDP. |
 | OTA `firmware`, `activation`, `server_time` sections | Implemented | Env-driven and tested. |
 | `/iot/xiaozhi/activate` pending/accepted flow | Implemented | Issue/consume lifecycle with timeout + replay rejection; verifier remains pluggable. |
 | Activation-Version 2 payload fields (`algorithm`, `serial_number`, `challenge`, `hmac`) | Implemented (opt-in strict mode) | `SDKWORK_AIOT_XIAOZHI_ACTIVATE_STRICT_V2=1` enforces v2 field presence, `algorithm=hmac-sha256`, and header/body serial alignment; non-v2 requests keep legacy compatibility. |
@@ -49,8 +61,13 @@ This matrix tracks parity between `external/xiaozhi-esp32` and this repository f
 | --- | --- | --- |
 | MQTT hello (`transport:"udp"`) decode | Implemented | `XiaozhiMqttCodec` decodes + runtime pipeline. |
 | MQTT server hello with UDP crypto profile | Implemented | `XiaozhiServerHello::mqtt_udp(...)`. |
+| Device-initiated MQTT `goodbye` (no echo) | Implemented | Gateway closes UDP session without replying `goodbye`; ignores mismatched `session_id`, aligned with `mqtt_protocol.cc`. |
+| Server-initiated MQTT `goodbye` | Implemented (simulator grade) | `xiaozhi_mqtt_server_teardown_reply` emits `goodbye` with `close_audio_channel`; bridge removes session on teardown. Operator control: `GET /internal/bridge/sessions`, `DELETE /internal/bridge/sessions/{session_id}`. |
+| Bridge session control API | Implemented | Internal endpoints list active MQTT+UDP bridge sessions and disconnect by `session_id`, publishing server-initiated `goodbye` when bridge is enabled. |
+| UDP uplink → speech reply path | Implemented (simulator grade) | Bridge decodes uplink Opus and calls `xiaozhi_mqtt_udp_uplink_speech_reply` for STT/LLM/TTS + encrypted UDP downlink. |
 | UDP packet shape (`type/flags/len/ssrc/timestamp/sequence`) | Implemented | `XiaozhiUdpAudioCodec` encode/decode. |
-| UDP AES-CTR payload encryption/decryption | Implemented | Key/nonce hex profile, deterministic tests. |
+| UDP AES-CTR payload encryption/decryption | Implemented | Key/nonce hex profile, deterministic tests; server outbound encoding via `XiaozhiMqttUdpSession::encode_outbound_audio`. |
+| UDP server→device downlink (MQTT path) | Implemented (simulator grade) | `MqttSessionReply.outbound_udp_packets` + bridge shared UDP socket sends encrypted Opus to learned peer address. |
 | Replay/stale sequence rejection | Implemented | `decode_audio_packet_with_min_sequence(...)`. |
 | Main-process MQTT bridge loop | Implemented (optional) | `SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE=1` starts MQTT+UDP worker threads. |
 | MQTT reconnect and backoff policy | Implemented | Exponential reconnect backoff with env-configurable base/max window. |
@@ -58,7 +75,7 @@ This matrix tracks parity between `external/xiaozhi-esp32` and this repository f
 | Bridge observability counters | Implemented (lightweight) | Periodic stats logs + pull endpoints (`GET /internal/bridge/health`, `GET /internal/bridge/stats`, `GET /internal/bridge/metrics`) expose runtime state, reconnects, event errors, publish retries/failures, dropped outbound events, UDP decode failures, and idle purges. |
 | MQTT publish retry policy | Implemented | Publish retries are bounded and configurable; terminal failure is logged and counted. |
 | MQTT outbound fan-out guard | Implemented | Per-event outbound payload count is capped; overflow messages are dropped and counted for backpressure visibility. |
-| Full broker/session orchestration hardening | Partial | Graceful shutdown coordination, lightweight health/stats, and bounded fan-out/retry controls exist; richer metrics/trace hooks and delivery backpressure controls remain. |
+| Full broker/session orchestration hardening | Implemented (control plane) | Graceful shutdown, health/stats/metrics, bounded fan-out/retry, idle purge, and internal session disconnect API exist; distributed rate limits and trace hooks remain optional. |
 
 ## Plugin / Architecture
 
@@ -96,10 +113,11 @@ This matrix tracks parity between `external/xiaozhi-esp32` and this repository f
 
 ## Open Gaps (Next Iteration)
 
-1. Production-grade MQTT/UDP bridge hardening (retry policy, controlled shutdown, metrics, rate limits).
+1. Distributed bridge rate limits and richer trace hooks (control plane exists; advanced backpressure optional).
 2. Multi-node activation challenge coordination hardening for distributed, non-shared-file deployments (managed DB/Redis backend and operational guidance).
 3. Production MCP tool registry parity (beyond simulator) with live capability source and auth controls.
 4. End-to-end integration tests with real MQTT broker and live UDP sockets in CI profile.
+5. Real ASR/LLM/TTS pipeline integration (simulator uses placeholder Opus and fixed text).
 
 ## Operator Notes: Activation Registry Backend & Metrics
 
@@ -129,3 +147,29 @@ scrape_configs:
       - targets: ['127.0.0.1:18080']
     metrics_path: /internal/xiaozhi/activation-registry/metrics
 ```
+
+## Operator Notes: MQTT+UDP Bridge Session Control
+
+Enable the bridge worker threads:
+
+```bash
+SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE=1 cargo run -p sdkwork-aiot-gateway
+```
+
+List active bridge sessions (internal route; requires `SDKWORK_AIOT_DEV_MODE=1` or `SDKWORK_AIOT_INTERNAL_TOKEN`):
+
+```bash
+curl http://127.0.0.1:18080/internal/bridge/sessions
+```
+
+Server-initiated teardown for a xiaozhi MQTT+UDP session (publishes `goodbye` and removes local bridge state):
+
+```bash
+curl -X DELETE http://127.0.0.1:18080/internal/bridge/sessions/{session_id}
+```
+
+Responses:
+
+- `204 No Content` when the session was disconnected.
+- `404` with `gateway.bridge.session.not_found` when the session is unknown.
+- `503` with `gateway.bridge.disabled` when the bridge is not enabled.

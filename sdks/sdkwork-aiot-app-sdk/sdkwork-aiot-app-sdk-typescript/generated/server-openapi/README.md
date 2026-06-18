@@ -26,19 +26,7 @@ const client = new SdkworkAppClient({
 client.setApiKey('your-api-key');
 
 // Use the SDK
-const xSdkworkTenantId = 'X-Sdkwork-Tenant-Id';
-const xSdkworkOrganizationId = 'X-Sdkwork-Organization-Id';
-const xSdkworkUserId = 'X-Sdkwork-User-Id';
-const xSdkworkDataScope = 'X-Sdkwork-Data-Scope';
-const xSdkworkPermissionScope = 'X-Sdkwork-Permission-Scope';
-const params = {
-  xSdkworkTenantId,
-  xSdkworkOrganizationId,
-  xSdkworkUserId,
-  xSdkworkDataScope,
-  xSdkworkPermissionScope,
-};
-const result = await client.iot.devices.list(params);
+const result = await client.iot.devicesList();
 ```
 
 ## Authentication Modes (Mutually Exclusive)
@@ -90,19 +78,7 @@ const client = new SdkworkAppClient({
 
 ```typescript
 // List user-visible AIoT devices
-const xSdkworkTenantId = 'X-Sdkwork-Tenant-Id';
-const xSdkworkOrganizationId = 'X-Sdkwork-Organization-Id';
-const xSdkworkUserId = 'X-Sdkwork-User-Id';
-const xSdkworkDataScope = 'X-Sdkwork-Data-Scope';
-const xSdkworkPermissionScope = 'X-Sdkwork-Permission-Scope';
-const params = {
-  xSdkworkTenantId,
-  xSdkworkOrganizationId,
-  xSdkworkUserId,
-  xSdkworkDataScope,
-  xSdkworkPermissionScope,
-};
-const result = await client.iot.devices.list(params);
+const result = await client.iot.devicesList();
 ```
 
 ## Error Handling
@@ -111,19 +87,7 @@ const result = await client.iot.devices.list(params);
 import { SdkworkAppClient, NetworkError, TimeoutError, AuthenticationError } from '@sdkwork/aiot-app-sdk';
 
 try {
-  const xSdkworkTenantId = 'X-Sdkwork-Tenant-Id';
-  const xSdkworkOrganizationId = 'X-Sdkwork-Organization-Id';
-  const xSdkworkUserId = 'X-Sdkwork-User-Id';
-  const xSdkworkDataScope = 'X-Sdkwork-Data-Scope';
-  const xSdkworkPermissionScope = 'X-Sdkwork-Permission-Scope';
-  const params = {
-    xSdkworkTenantId,
-    xSdkworkOrganizationId,
-    xSdkworkUserId,
-    xSdkworkDataScope,
-    xSdkworkPermissionScope,
-  };
-  const result = await client.iot.devices.list(params);
+  const result = await client.iot.devicesList();
 } catch (error) {
   if (error instanceof AuthenticationError) {
     console.error('Authentication failed:', error.message);

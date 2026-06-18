@@ -38,6 +38,13 @@ Adapters may decode protocol frames into `ProtocolEnvelope` and encode `Protocol
 
 Runtime registration uses the manifest plus `AiotProtocolRoute` metadata. The runtime maps protocol-neutral `MessageClass` values into standard ingest actions and then into core domain ingest plans. Storage implementations consume repository/outbox/dead-letter ports, not plugin-specific payloads.
 
+## Runtime Topology
+
+- Machine contract: `topology.spec.json` (`schemaVersion: 2`, archetype `application-rest-edge-device`)
+- Profile env: `../configs/topology/*.env`
+- Human summary: `../docs/topology-standard.md`
+- Dev entry: `pnpm aiot:dev`
+
 ## Canonical Specs
 
 This component narrows the root SDKWork standards:

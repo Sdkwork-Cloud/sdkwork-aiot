@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-aiot-app-sdk",
-    "version": "0.1.0",
+    "version": "0.1.3",
     "language": "typescript",
     "sdkType": "app",
     "packageName": "@sdkwork/aiot-app-sdk"
@@ -11,7 +11,7 @@
   "generatedFiles": [
     {
       "path": "bin/publish-core.mjs",
-      "sha256": "affb1f1b5400ac492e94e2d01f3104b8dd38b50329e371265d4f0945f2b0763c"
+      "sha256": "6f2419187ee61e34210de8949ec968f5ab9d8bd0c0543e7caba6883198c36185"
     },
     {
       "path": "bin/publish.ps1",
@@ -31,7 +31,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
+      "sha256": "7ef84fe33ab3d7d880db6e7dd7e1b642fd2db70a8ec27b56ee50aecb1bb3e327"
     },
     {
       "path": "LICENSE",
@@ -39,15 +39,15 @@
     },
     {
       "path": "package.json",
-      "sha256": "63e7ee3cc7668183ee96ef586f949c51c84310716706b6ed1850be35d6177720"
+      "sha256": "6c876bf353417605a81d50077dc10f414ea3298d7863d3f13b5c6e192f80e27e"
     },
     {
       "path": "README.md",
-      "sha256": "178c0b669e20e34d48015acb0b4643c6362e355d7ab0cd36bb454562bbe9f0f1"
+      "sha256": "c5fbfea76468588d81b738394d050c311d97a9395a89fcdae8c2510f840165c9"
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "04600a1317c00257e1c098660d470c57c46800109aa730acc00248abee9b5323"
+      "sha256": "7729243bf780cc5ae9e1bfe89044e2a197c0a728e8479fabc1091fbe87b49162"
     },
     {
       "path": "src/api/base.ts",
@@ -59,7 +59,7 @@
     },
     {
       "path": "src/api/iot.ts",
-      "sha256": "3e97085764deae39506ce840eb8ed08a9a9a3d9fcf2b3de8c8e5d8459f99f81b"
+      "sha256": "a9db5af60e418008609e16411ffa69c7a82b90e0511dd4c935b7927e3bdca80a"
     },
     {
       "path": "src/api/paths.ts",
@@ -71,7 +71,7 @@
     },
     {
       "path": "src/http/client.ts",
-      "sha256": "05609fa19c8bfded1765dadb8f875dae5dd3e6f11f13244f6239450dea8732fc"
+      "sha256": "7d38292ab109380b0f3221d613e78b30c36b6aacaf0240cc3ab2b5d322237361"
     },
     {
       "path": "src/http/index.ts",
@@ -127,7 +127,7 @@
     },
     {
       "path": "src/types/common.ts",
-      "sha256": "ac5b348259c39e2cd8357dfcf8269268ee1da5f8a6e0770d714ab5eb796b3050"
+      "sha256": "d3ea25470f6e6a5f5a191811449b1810f775b9524c73e5568b1080b497f17b6f"
     },
     {
       "path": "src/types/index.ts",

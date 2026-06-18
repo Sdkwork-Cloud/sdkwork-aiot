@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "@sdkwork/aiot-app-core",
+    "displayName": "SDKWork AIoT App Core",
+    "version": "0.1.0",
+    "type": "typescript-package",
+    "root": "sdkwork-aiot/apps/sdkwork-aiot-shared/packages/sdkwork-aiot-app-core",
+    "domain": "iot",
+    "capability": "app-core",
+    "status": "ready",
+    "product": "sdkwork-aiot",
+    "languages": ["typescript"],
+    "generated": false,
+    "private": true,
+    "manifests": ["package.json"]
+  },
+  "contracts": {
+    "publicExports": ["."],
+    "sdkClients": ["@sdkwork/aiot-app-sdk"],
+    "runtimeEntrypoints": ["package.json#scripts.typecheck"],
+    "events": [],
+    "configKeys": [],
+    "routeManifest": null
+  },
+  "verification": {
+    "commands": [
+      "pnpm --filter @sdkwork/aiot-app-core typecheck",
+      "pnpm --filter @sdkwork/aiot-app-core test"
+    ]
+  }
+}

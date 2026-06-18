@@ -1,0 +1,10 @@
+{
+  "name": "@sdkwork/aiot-h5-console-iot",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": { "@sdkwork/aiot-h5-core": "workspace:*" },
+  "peerDependencies": { "react": ">=18.2.0 <20.0.0" }
+}

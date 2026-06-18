@@ -687,6 +687,20 @@ fn xiaozhi_ota_response_can_deliver_mqtt_udp_settings_from_external_protocol() {
 }
 
 #[test]
+fn xiaozhi_message_types_cover_external_esp32_main_branch() {
+    // Keep aligned with external/xiaozhi-esp32 main/protocols + application.cc handlers.
+    for message_type in [
+        "hello", "listen", "abort", "mcp", "goodbye", "stt", "tts", "llm", "system", "alert",
+        "custom", "audio", "iot", // legacy firmware; still decoded for compatibility
+    ] {
+        assert!(
+            map_xiaozhi_message_class(message_type).is_some(),
+            "missing xiaozhi message type mapping for {message_type}"
+        );
+    }
+}
+
+#[test]
 fn xiaozhi_activation_pending_response_keeps_esp32_polling_semantics() {
     let body = xiaozhi_activation_pending_response("activation pending");
 

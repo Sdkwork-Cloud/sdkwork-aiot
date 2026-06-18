@@ -1,0 +1,4 @@
+packages:
+  - "packages/*"
+  - "../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core"
+  - "../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript"

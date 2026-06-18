@@ -1,4 +1,5 @@
 import { readPcReactRuntimeSession } from "@sdkwork/core-pc-react";
+import { getAiotAppSdkClient } from "@sdkwork/aiot-pc-core";
 import type {
   AiotDevice,
   SdkworkAiotAppClient,
@@ -16,26 +17,11 @@ export interface GetSdkworkDeviceCatalogInput {
 }
 
 export interface CreateSdkworkDeviceServiceOptions {
-  aiotAppContext?: {
-    dataScope?: string;
-    organizationId: string;
-    permissionScope?: string;
-    tenantId: string;
-    userId?: string;
-  };
   aiotClient?: SdkworkAiotAppClient;
   devices?: readonly SdkworkManagedDevice[];
   getSessionTokens?: () => {
     authToken?: string;
   };
-}
-
-interface AiotDevicesListParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
 }
 
 export interface SdkworkDeviceService {
@@ -88,21 +74,6 @@ function readBoolean(value: unknown, fallback = false): boolean {
     }
   }
   return fallback;
-}
-
-function toListParams(options: CreateSdkworkDeviceServiceOptions): AiotDevicesListParams {
-  const context = options.aiotAppContext;
-  if (!context?.tenantId || !context.organizationId) {
-    throw new Error("Device catalog requires tenantId and organizationId AIoT app context.");
-  }
-
-  return {
-    xSdkworkTenantId: context.tenantId,
-    xSdkworkOrganizationId: context.organizationId,
-    xSdkworkUserId: context.userId,
-    xSdkworkDataScope: context.dataScope,
-    xSdkworkPermissionScope: context.permissionScope ?? "iot.devices.read",
-  };
 }
 
 function normalizeHealth(status: string): SdkworkManagedDevice["healthLevel"] {
@@ -198,7 +169,7 @@ async function loadSdkDevices(options: CreateSdkworkDeviceServiceOptions): Promi
     return undefined;
   }
 
-  const response = await options.aiotClient.iot.devices.list(toListParams(options));
+  const response = await options.aiotClient.iot.devicesList();
   return Array.isArray(response.data) ? response.data.map(mapAiotDeviceToManagedDevice) : [];
 }
 
@@ -227,4 +198,6 @@ export function createSdkworkDeviceService(
   };
 }
 
-export const sdkworkDeviceService = createSdkworkDeviceService();
+export const sdkworkDeviceService = createSdkworkDeviceService({
+  aiotClient: getAiotAppSdkClient(),
+});

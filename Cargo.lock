@@ -1577,6 +1577,7 @@ dependencies = [
  "rusqlite",
  "sdkwork-aiot-adapter-xiaozhi",
  "sdkwork-aiot-observability",
+ "sdkwork-aiot-protocol",
  "sdkwork-aiot-runtime",
  "sdkwork-aiot-storage",
  "sdkwork-aiot-storage-sqlx",

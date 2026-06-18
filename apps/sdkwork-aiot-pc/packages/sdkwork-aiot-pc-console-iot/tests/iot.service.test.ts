@@ -49,16 +49,9 @@ describe("sdkwork-aiot-pc-console-iot service", () => {
     });
 
     const service = createSdkworkIotService({
-      aiotAppContext: {
-        organizationId: "org-1",
-        permissionScope: "iot.devices.read",
-        tenantId: "tenant-1",
-      },
       aiotClient: {
         iot: {
-          devices: {
-            list,
-          },
+          devicesList: list,
         },
       },
       getSessionTokens: () => ({
@@ -68,11 +61,7 @@ describe("sdkwork-aiot-pc-console-iot service", () => {
 
     const catalog = await service.getCatalog({ nodeId: "gateway-42" });
 
-    expect(list).toHaveBeenCalledWith({
-      xSdkworkTenantId: "tenant-1",
-      xSdkworkOrganizationId: "org-1",
-      xSdkworkPermissionScope: "iot.devices.read",
-    });
+    expect(list).toHaveBeenCalledWith();
     expect(catalog).toMatchObject({
       isAuthenticated: true,
       selectedNodeId: "gateway-42",

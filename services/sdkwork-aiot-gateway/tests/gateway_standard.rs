@@ -4,11 +4,13 @@ use sdkwork_aiot_gateway::{
     standard_gateway_server_and_session_options_with_plugins_activation_registry_and_mcp_tools,
     standard_gateway_server_with_plugins,
     standard_gateway_server_with_plugins_activation_registry_and_mcp_tools,
-    xiaozhi_device_token_valid, xiaozhi_mqtt_session_reply, xiaozhi_mqtt_udp_decode_audio,
-    xiaozhi_simulator_http_handler, xiaozhi_websocket_session_reply,
-    xiaozhi_websocket_session_reply_with_mcp_tool_provider, DefaultXiaozhiSimulatorMcpToolProvider,
-    InMemoryXiaozhiActivationChallengeRegistry, WebSocketSessionReply, XiaozhiActivationVerifier,
-    XiaozhiMqttUdpSession, XiaozhiOtaProfileProvider, XiaozhiSessionOptions,
+    xiaozhi_device_token_valid, xiaozhi_mqtt_goodbye_message, xiaozhi_mqtt_server_teardown_reply,
+    xiaozhi_mqtt_session_reply, xiaozhi_mqtt_udp_decode_audio,
+    xiaozhi_mqtt_udp_uplink_speech_reply, xiaozhi_simulator_http_handler,
+    xiaozhi_websocket_session_reply, xiaozhi_websocket_session_reply_with_mcp_tool_provider,
+    DefaultXiaozhiSimulatorMcpToolProvider, InMemoryXiaozhiActivationChallengeRegistry,
+    WebSocketSessionReply, XiaozhiActivationVerifier, XiaozhiMqttUdpSession,
+    XiaozhiOtaProfileProvider, XiaozhiSessionOptions,
 };
 use sdkwork_aiot_storage::AiotStorageAssociation;
 use sdkwork_aiot_storage_sqlx::{SqliteCredentialCreateCommand, SqliteSqlxCredentialRepository};
@@ -976,6 +978,15 @@ fn xiaozhi_websocket_session_acknowledges_listen_mcp_and_audio_frames() {
     assert!(listen_reply_text
         .iter()
         .any(|reply| reply.contains(r#""type":"tts","state":"start""#)));
+    assert!(
+        listen_replies
+            .iter()
+            .any(|reply| matches!(reply, WebSocketSessionReply::Binary(_))),
+        "listen flow must include binary opus downlink after tts start"
+    );
+    assert!(listen_reply_text
+        .iter()
+        .any(|reply| { reply.contains(r#""type":"tts","state":"sentence_start""#) }));
 
     let mcp_replies = xiaozhi_websocket_session_reply(
         &server,
@@ -1544,6 +1555,60 @@ fn xiaozhi_mqtt_session_reply_generates_udp_hello_and_mcp_init() {
 }
 
 #[test]
+fn xiaozhi_mqtt_session_reply_ignores_goodbye_for_mismatched_session_id() {
+    let server = standard_gateway_server().expect("gateway server");
+    let session = XiaozhiMqttUdpSession {
+        device_id: "dev-001".to_string(),
+        client_id: "client-001".to_string(),
+        session_id: "dev-001-client-001".to_string(),
+        udp_server: "127.0.0.1".to_string(),
+        udp_port: 8888,
+        udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
+        udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
+        remote_sequence: 0,
+        local_sequence: 0,
+    };
+
+    let (reply, next_session) = xiaozhi_mqtt_session_reply(
+        &server,
+        Some(&session),
+        r#"{"session_id":"other-session","type":"goodbye"}"#,
+    )
+    .expect("goodbye reply");
+
+    assert!(!reply.close_audio_channel);
+    assert!(next_session.is_some());
+    assert!(reply.outbound_json.is_empty());
+}
+
+#[test]
+fn xiaozhi_mqtt_session_reply_listen_includes_udp_audio_downlink() {
+    let server = standard_gateway_server().expect("gateway server");
+    let session = XiaozhiMqttUdpSession {
+        device_id: "dev-001".to_string(),
+        client_id: "client-001".to_string(),
+        session_id: "dev-001-client-001".to_string(),
+        udp_server: "127.0.0.1".to_string(),
+        udp_port: 8888,
+        udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
+        udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
+        remote_sequence: 0,
+        local_sequence: 0,
+    };
+
+    let (reply, next_session) = xiaozhi_mqtt_session_reply(
+        &server,
+        Some(&session),
+        r#"{"session_id":"dev-001-client-001","type":"listen","state":"start","mode":"manual"}"#,
+    )
+    .expect("listen reply");
+
+    assert_eq!(reply.outbound_udp_packets.len(), 1);
+    assert!(reply.outbound_udp_packets[0].len() >= 16);
+    assert_eq!(next_session.as_ref().unwrap().local_sequence, 1);
+}
+
+#[test]
 fn xiaozhi_mqtt_session_reply_marks_goodbye_as_channel_close() {
     let server = standard_gateway_server().expect("gateway server");
     let session = XiaozhiMqttUdpSession {
@@ -1555,6 +1620,7 @@ fn xiaozhi_mqtt_session_reply_marks_goodbye_as_channel_close() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = xiaozhi_mqtt_session_reply(
@@ -1566,8 +1632,10 @@ fn xiaozhi_mqtt_session_reply_marks_goodbye_as_channel_close() {
 
     assert!(reply.close_audio_channel);
     assert!(next_session.is_none());
-    assert_eq!(reply.outbound_json.len(), 1);
-    assert!(reply.outbound_json[0].contains(r#""type":"goodbye""#));
+    assert!(
+        reply.outbound_json.is_empty(),
+        "device-initiated MQTT goodbye must not echo goodbye back to avoid ping-pong"
+    );
 }
 
 #[test]
@@ -1591,6 +1659,7 @@ fn xiaozhi_mqtt_session_reply_with_options_uses_injected_provider() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = sdkwork_aiot_gateway::xiaozhi_mqtt_session_reply_with_options(
@@ -1631,6 +1700,7 @@ fn xiaozhi_mqtt_session_reply_with_options_surfaces_invoker_error() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = sdkwork_aiot_gateway::xiaozhi_mqtt_session_reply_with_options(
@@ -1672,6 +1742,7 @@ fn xiaozhi_mqtt_session_reply_with_options_passes_invocation_context() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = sdkwork_aiot_gateway::xiaozhi_mqtt_session_reply_with_options(
@@ -1712,6 +1783,7 @@ fn xiaozhi_mqtt_session_reply_with_options_surfaces_policy_rejection() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = sdkwork_aiot_gateway::xiaozhi_mqtt_session_reply_with_options(
@@ -1747,6 +1819,7 @@ fn xiaozhi_mqtt_session_reply_honors_boolean_argument_policy_rules() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = xiaozhi_mqtt_session_reply(
@@ -1775,6 +1848,7 @@ fn xiaozhi_mqtt_session_reply_ignores_mcp_notifications() {
         udp_key_hex: "0123456789ABCDEF0123456789ABCDEF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = xiaozhi_mqtt_session_reply(
@@ -1799,6 +1873,7 @@ fn xiaozhi_mqtt_session_reply_ignores_invalid_jsonrpc_mcp_payload() {
         udp_key_hex: "0123456789ABCDEF0123456789ABCDEF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = xiaozhi_mqtt_session_reply(
@@ -1823,6 +1898,7 @@ fn xiaozhi_mqtt_session_reply_ignores_invalid_params_shape_for_mcp_payload() {
         udp_key_hex: "0123456789ABCDEF0123456789ABCDEF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = xiaozhi_mqtt_session_reply(
@@ -1847,6 +1923,7 @@ fn xiaozhi_mqtt_session_reply_ignores_mcp_payload_without_method_result_or_error
         udp_key_hex: "0123456789ABCDEF0123456789ABCDEF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 0,
+        local_sequence: 0,
     };
 
     let (reply, next_session) = xiaozhi_mqtt_session_reply(
@@ -1870,6 +1947,7 @@ fn xiaozhi_mqtt_udp_audio_decoder_uses_session_crypto_profile() {
         udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
         udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
         remote_sequence: 6,
+        local_sequence: 0,
     };
     let udp_codec = session.udp_codec().expect("udp codec");
     let packet = udp_codec
@@ -1880,6 +1958,105 @@ fn xiaozhi_mqtt_udp_audio_decoder_uses_session_crypto_profile() {
     assert_eq!(decoded.timestamp, 1234);
     assert_eq!(decoded.sequence, 7);
     assert_eq!(decoded.payload, vec![0x11, 0x22, 0x33]);
+}
+
+#[test]
+fn xiaozhi_mqtt_server_teardown_reply_emits_goodbye_and_closes_channel() {
+    let reply = xiaozhi_mqtt_server_teardown_reply("dev-001-client-001");
+
+    assert!(reply.close_audio_channel);
+    assert_eq!(reply.outbound_udp_packets.len(), 0);
+    assert_eq!(reply.outbound_json.len(), 1);
+    assert_eq!(
+        reply.outbound_json[0],
+        xiaozhi_mqtt_goodbye_message("dev-001-client-001")
+    );
+}
+
+#[test]
+fn xiaozhi_mqtt_udp_uplink_speech_reply_generates_full_speech_cycle() {
+    let mut session = XiaozhiMqttUdpSession {
+        device_id: "dev-001".to_string(),
+        client_id: "client-001".to_string(),
+        session_id: "dev-001-client-001".to_string(),
+        udp_server: "127.0.0.1".to_string(),
+        udp_port: 8888,
+        udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
+        udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
+        remote_sequence: 0,
+        local_sequence: 0,
+    };
+
+    let reply = xiaozhi_mqtt_udp_uplink_speech_reply(&mut session, 128).expect("speech reply");
+
+    assert!(!reply.close_audio_channel);
+    assert_eq!(reply.outbound_udp_packets.len(), 1);
+    assert!(reply.outbound_udp_packets[0].len() >= 16);
+    assert_eq!(session.local_sequence, 1);
+    assert!(reply
+        .outbound_json
+        .iter()
+        .any(|message| message.contains(r#""type":"stt""#)
+            && message.contains("received 128 bytes of opus audio")));
+    assert!(reply
+        .outbound_json
+        .iter()
+        .any(|message| message.contains(r#""type":"tts","state":"start""#)));
+    assert!(reply
+        .outbound_json
+        .iter()
+        .any(|message| message.contains(r#""type":"tts","state":"stop""#)));
+}
+
+#[test]
+fn xiaozhi_mqtt_session_reply_listen_detect_uses_wake_word_text() {
+    let server = standard_gateway_server().expect("gateway server");
+    let session = XiaozhiMqttUdpSession {
+        device_id: "dev-001".to_string(),
+        client_id: "client-001".to_string(),
+        session_id: "dev-001-client-001".to_string(),
+        udp_server: "127.0.0.1".to_string(),
+        udp_port: 8888,
+        udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
+        udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
+        remote_sequence: 0,
+        local_sequence: 0,
+    };
+
+    let (reply, _) = xiaozhi_mqtt_session_reply(
+        &server,
+        Some(&session),
+        r#"{"session_id":"dev-001-client-001","type":"listen","state":"detect","text":"你好小智"}"#,
+    )
+    .expect("detect listen reply");
+
+    assert!(reply
+        .outbound_json
+        .iter()
+        .any(|message| message.contains(r#""type":"stt""#) && message.contains("你好小智")));
+}
+
+#[test]
+fn xiaozhi_websocket_session_listen_detect_uses_wake_word_text() {
+    let server = standard_gateway_server().expect("gateway server");
+    let request = sdkwork_aiot_transport::parse_http_request_bytes(
+        b"GET /iot/xiaozhi/ws?protocol_version=3&device_id=dev-001&client_id=browser-001 HTTP/1.1\r\nHost: domain\r\n\r\n",
+    )
+    .expect("request");
+
+    let replies = xiaozhi_websocket_session_reply(
+        &server,
+        &request,
+        sdkwork_aiot_transport::WebSocketFrame::text(
+            r#"{"session_id":"dev-001-browser-001","type":"listen","state":"detect","text":"你好小智"}"#,
+        ),
+    )
+    .expect("detect listen reply");
+    let reply_text = reply_texts(&replies);
+
+    assert!(reply_text
+        .iter()
+        .any(|reply| reply.contains(r#""type":"stt""#) && reply.contains("你好小智")));
 }
 
 #[test]
@@ -1917,6 +2094,68 @@ fn gateway_serves_bridge_health_endpoint() {
     assert!(response.contains(r#""status":"disabled""#));
     assert!(response.contains(r#""bridge_enabled":false"#));
     assert!(response.contains(r#""stats":{"mqtt_reconnects":"#));
+}
+
+#[test]
+fn gateway_serves_bridge_sessions_endpoint_when_bridge_is_disabled() {
+    let bind_addr = reserve_local_bind_addr();
+    let _gateway = GatewayProcess::spawn(&bind_addr);
+
+    wait_for_gateway(&bind_addr, Duration::from_secs(10));
+
+    let mut http = TcpStream::connect(&bind_addr).expect("bridge sessions tcp connection");
+    http.set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("http timeout");
+    http.write_all(b"GET /internal/bridge/sessions HTTP/1.1\r\nHost: local\r\n\r\n")
+        .expect("bridge sessions request write");
+
+    let response = read_http_response(&mut http);
+    assert!(response.starts_with("HTTP/1.1 200 OK"));
+    assert!(response.contains(r#""bridge_enabled":false"#));
+    assert!(response.contains(r#""sessions":[]"#));
+}
+
+#[test]
+fn gateway_bridge_session_disconnect_returns_disabled_when_bridge_is_off() {
+    let bind_addr = reserve_local_bind_addr();
+    let _gateway = GatewayProcess::spawn(&bind_addr);
+
+    wait_for_gateway(&bind_addr, Duration::from_secs(10));
+
+    let mut http = TcpStream::connect(&bind_addr).expect("bridge disconnect tcp connection");
+    http.set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("http timeout");
+    http.write_all(
+        b"DELETE /internal/bridge/sessions/dev-001-client-001 HTTP/1.1\r\nHost: local\r\n\r\n",
+    )
+    .expect("bridge disconnect request write");
+
+    let response = read_http_response(&mut http);
+    assert!(response.starts_with("HTTP/1.1 503"));
+    assert!(response.contains("gateway.bridge.disabled"));
+}
+
+#[test]
+fn gateway_bridge_session_disconnect_returns_not_found_when_bridge_is_enabled() {
+    let bind_addr = reserve_local_bind_addr();
+    let _gateway = GatewayProcess::spawn_with_env(
+        &bind_addr,
+        &[("SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE", Some("1"))],
+    );
+
+    wait_for_gateway(&bind_addr, Duration::from_secs(10));
+
+    let mut http = TcpStream::connect(&bind_addr).expect("bridge disconnect tcp connection");
+    http.set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("http timeout");
+    http.write_all(
+        b"DELETE /internal/bridge/sessions/dev-001-client-001 HTTP/1.1\r\nHost: local\r\n\r\n",
+    )
+    .expect("bridge disconnect request write");
+
+    let response = read_http_response(&mut http);
+    assert!(response.starts_with("HTTP/1.1 404"));
+    assert!(response.contains("gateway.bridge.session.not_found"));
 }
 
 #[test]
@@ -2513,7 +2752,7 @@ fn http_get_or_post(bind_addr: &str, request: &[u8]) -> String {
 fn spawn_gateway_with_env(bind_addr: &str, env_overrides: &[(&str, Option<&str>)]) -> Child {
     let mut command = Command::new(gateway_binary());
     command
-        .env("SDKWORK_AIOT_GATEWAY_BIND", bind_addr)
+        .env("SDKWORK_AIOT_EDGE_DEVICE_INGRESS_BIND", bind_addr)
         .env("SDKWORK_AIOT_DEV_MODE", "1")
         .env_remove("SDKWORK_AIOT_GATEWAY_NO_LISTEN")
         .env_remove("SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE")

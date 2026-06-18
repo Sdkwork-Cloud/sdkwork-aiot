@@ -1,4 +1,5 @@
 import { readPcReactRuntimeSession } from "@sdkwork/core-pc-react";
+import { getAiotAppSdkClient } from "@sdkwork/aiot-pc-core";
 import type {
   AiotDevice,
   SdkworkAiotAppClient,
@@ -15,27 +16,12 @@ export interface GetSdkworkIotCatalogInput {
 }
 
 export interface CreateSdkworkIotServiceOptions {
-  aiotAppContext?: {
-    dataScope?: string;
-    organizationId: string;
-    permissionScope?: string;
-    tenantId: string;
-    userId?: string;
-  };
   aiotClient?: SdkworkAiotAppClient;
   alerts?: readonly SdkworkIotAlert[];
   getSessionTokens?: () => {
     authToken?: string;
   };
   nodes?: readonly SdkworkIotNode[];
-}
-
-interface AiotDevicesListParams {
-  xSdkworkTenantId: string;
-  xSdkworkOrganizationId: string;
-  xSdkworkUserId?: string;
-  xSdkworkDataScope?: string;
-  xSdkworkPermissionScope: string;
 }
 
 export interface SdkworkIotService {
@@ -72,21 +58,6 @@ function readNumber(value: unknown, fallback = 0): number {
     return Number.isFinite(parsed) ? parsed : fallback;
   }
   return fallback;
-}
-
-function toListParams(options: CreateSdkworkIotServiceOptions): AiotDevicesListParams {
-  const context = options.aiotAppContext;
-  if (!context?.tenantId || !context.organizationId) {
-    throw new Error("AIoT catalog requires tenantId and organizationId app context.");
-  }
-
-  return {
-    xSdkworkTenantId: context.tenantId,
-    xSdkworkOrganizationId: context.organizationId,
-    xSdkworkUserId: context.userId,
-    xSdkworkDataScope: context.dataScope,
-    xSdkworkPermissionScope: context.permissionScope ?? "iot.devices.read",
-  };
 }
 
 function normalizeHealth(status: string): SdkworkIotNode["healthLevel"] {
@@ -131,7 +102,7 @@ async function loadSdkNodes(options: CreateSdkworkIotServiceOptions): Promise<Sd
     return undefined;
   }
 
-  const response = await options.aiotClient.iot.devices.list(toListParams(options));
+  const response = await options.aiotClient.iot.devicesList();
   return Array.isArray(response.data) ? response.data.map(mapAiotDeviceToNode) : [];
 }
 
@@ -162,4 +133,6 @@ export function createSdkworkIotService(
   };
 }
 
-export const sdkworkIotService = createSdkworkIotService();
+export const sdkworkIotService = createSdkworkIotService({
+  aiotClient: getAiotAppSdkClient(),
+});

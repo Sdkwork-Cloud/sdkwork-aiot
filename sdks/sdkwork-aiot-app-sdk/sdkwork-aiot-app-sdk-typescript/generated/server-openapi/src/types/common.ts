@@ -1,5 +1,5 @@
 export interface BasePlusVO {
-  id?: string;
+  id?: string | number;
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
@@ -11,7 +11,7 @@ export interface BasePlusEntity extends BasePlusVO {
 }
 
 export interface QueryListForm {
-  q?: string;
+  keyword?: string;
   status?: string | number;
   startTime?: string;
   endTime?: string;

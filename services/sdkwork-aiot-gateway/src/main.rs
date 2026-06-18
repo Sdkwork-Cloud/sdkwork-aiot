@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream, UdpSocket};
+use std::net::{SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -25,6 +25,8 @@ const MAX_WEBSOCKET_FRAME_BUFFER_BYTES: usize = 1_048_576;
 const BRIDGE_STATS_PATH: &str = "/internal/bridge/stats";
 const BRIDGE_METRICS_PATH: &str = "/internal/bridge/metrics";
 const BRIDGE_HEALTH_PATH: &str = "/internal/bridge/health";
+const BRIDGE_SESSIONS_PATH: &str = "/internal/bridge/sessions";
+const BRIDGE_SESSIONS_PATH_PREFIX: &str = "/internal/bridge/sessions/";
 const MCP_POLICY_STATS_PATH: &str = "/internal/xiaozhi/mcp-policy/stats";
 const ACTIVATION_REGISTRY_STATS_PATH: &str = "/internal/xiaozhi/activation-registry/stats";
 const ACTIVATION_REGISTRY_METRICS_PATH: &str = "/internal/xiaozhi/activation-registry/metrics";
@@ -54,17 +56,19 @@ fn main() {
         std::env::var("SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE").as_deref() == Ok("1");
     let bridge_stats = Arc::new(BridgeStats::new(current_unix_time_millis()));
     let bridge_state = Arc::new(BridgeRuntimeState::new(bridge_enabled));
-    if bridge_enabled {
+    let bridge_control = if bridge_enabled {
         start_mqtt_udp_bridge(
             Arc::clone(&server),
             session_options.clone(),
             Arc::clone(&running),
             Arc::clone(&bridge_stats),
             Arc::clone(&bridge_state),
-        );
-    }
+        )
+    } else {
+        Arc::new(BridgeControlHandle::disabled())
+    };
 
-    let bind_addr = std::env::var("SDKWORK_AIOT_GATEWAY_BIND")
+    let bind_addr = std::env::var("SDKWORK_AIOT_EDGE_DEVICE_INGRESS_BIND")
         .unwrap_or_else(|_| "127.0.0.1:18080".to_string());
     let listener = TcpListener::bind(&bind_addr).expect("bind gateway listener");
     listener
@@ -99,6 +103,7 @@ fn main() {
         let session_options = session_options.clone();
         let bridge_stats = Arc::clone(&bridge_stats);
         let bridge_state = Arc::clone(&bridge_state);
+        let bridge_control = Arc::clone(&bridge_control);
         let active_ws_connections = Arc::clone(&active_ws_connections);
         std::thread::spawn(move || {
             handle_client_connection(
@@ -107,6 +112,7 @@ fn main() {
                 stream,
                 bridge_stats,
                 bridge_state,
+                bridge_control,
                 active_ws_connections,
             )
         });
@@ -228,6 +234,7 @@ impl UdpBridgeConfig {
 struct ManagedMqttUdpSession {
     session: XiaozhiMqttUdpSession,
     last_activity_millis: i64,
+    udp_peer: Option<SocketAddr>,
 }
 
 impl ManagedMqttUdpSession {
@@ -235,11 +242,17 @@ impl ManagedMqttUdpSession {
         Self {
             session,
             last_activity_millis: current_unix_time_millis(),
+            udp_peer: None,
         }
     }
 
     fn touch_now(&mut self) {
         self.last_activity_millis = current_unix_time_millis();
+    }
+
+    fn set_udp_peer(&mut self, peer: SocketAddr) {
+        self.udp_peer = Some(peer);
+        self.touch_now();
     }
 }
 
@@ -263,8 +276,176 @@ impl SessionState {
     }
 
     fn upsert_session(&mut self, session_key: String, session: XiaozhiMqttUdpSession) {
-        self.sessions
-            .insert(session_key, ManagedMqttUdpSession::new(session));
+        let udp_peer = self
+            .sessions
+            .get(&session_key)
+            .and_then(|managed| managed.udp_peer);
+        let mut managed = ManagedMqttUdpSession::new(session);
+        managed.udp_peer = udp_peer;
+        self.sessions.insert(session_key, managed);
+    }
+
+    fn remove_session(&mut self, session_key: &str) -> bool {
+        self.sessions.remove(session_key).is_some()
+    }
+}
+
+struct MqttBridgePublisher {
+    inner: Mutex<MqttBridgePublisherState>,
+}
+
+struct MqttBridgePublisherState {
+    client: Option<Client>,
+    publish_topic: String,
+    retry_attempts: u32,
+    retry_delay: Duration,
+    publish_drop_cooldown: Duration,
+    max_outbound_per_event: usize,
+}
+
+impl MqttBridgePublisher {
+    fn new(config: &MqttBridgeConfig) -> Self {
+        Self {
+            inner: Mutex::new(MqttBridgePublisherState {
+                client: None,
+                publish_topic: config.publish_topic.clone(),
+                retry_attempts: config.publish_retry_attempts,
+                retry_delay: config.publish_retry_delay,
+                publish_drop_cooldown: config.publish_drop_cooldown,
+                max_outbound_per_event: config.max_outbound_per_event,
+            }),
+        }
+    }
+
+    fn set_client(&self, client: Option<Client>) {
+        self.inner
+            .lock()
+            .expect("mqtt bridge publisher lock")
+            .client = client;
+    }
+
+    fn publish_reply(&self, reply: sdkwork_aiot_gateway::MqttSessionReply, stats: &BridgeStats) {
+        let state = self.inner.lock().expect("mqtt bridge publisher lock");
+        let Some(client) = state.client.as_ref() else {
+            if !reply.outbound_json.is_empty() {
+                eprintln!("sdkwork-aiot-gateway mqtt_publish_skipped=no_active_client");
+            }
+            return;
+        };
+        publish_bridge_json_messages(
+            client,
+            &state.publish_topic,
+            reply.outbound_json,
+            state.retry_attempts,
+            state.retry_delay,
+            state.publish_drop_cooldown,
+            state.max_outbound_per_event,
+            stats,
+        );
+    }
+}
+
+fn apply_bridge_session_state_locked(
+    session_state: &mut SessionState,
+    session_key: Option<&str>,
+    reply: &sdkwork_aiot_gateway::MqttSessionReply,
+    next_session: Option<sdkwork_aiot_gateway::XiaozhiMqttUdpSession>,
+) {
+    if reply.close_audio_channel {
+        if let Some(key) = session_key {
+            session_state.remove_session(key);
+        }
+        return;
+    }
+    if let Some(session) = next_session {
+        let upsert_key = session_key
+            .map(str::to_string)
+            .unwrap_or_else(|| session.session_id.clone());
+        session_state.upsert_session(upsert_key, session);
+    } else if let Some(key) = session_key {
+        if let Some(managed) = session_state.sessions.get_mut(key) {
+            managed.touch_now();
+        }
+    }
+}
+
+fn apply_bridge_session_state(
+    session_state: &Mutex<SessionState>,
+    session_key: Option<&str>,
+    reply: &sdkwork_aiot_gateway::MqttSessionReply,
+    next_session: Option<sdkwork_aiot_gateway::XiaozhiMqttUdpSession>,
+) {
+    let mut guard = session_state.lock().expect("mqtt session lock");
+    apply_bridge_session_state_locked(&mut guard, session_key, reply, next_session);
+}
+
+fn bridge_udp_peer_for_session(
+    session_state: &Mutex<SessionState>,
+    session_key: Option<&str>,
+) -> Option<SocketAddr> {
+    let key = session_key?;
+    session_state
+        .lock()
+        .expect("mqtt session lock")
+        .sessions
+        .get(key)
+        .and_then(|managed| managed.udp_peer)
+}
+
+fn send_bridge_udp_packets(
+    udp_socket: &UdpSocket,
+    peer: Option<SocketAddr>,
+    packets: &[Vec<u8>],
+    stats: &BridgeStats,
+) {
+    let Some(peer) = peer else {
+        if !packets.is_empty() {
+            eprintln!("sdkwork-aiot-gateway udp_send_skipped=no_session_peer");
+        }
+        return;
+    };
+    for packet in packets {
+        if let Err(error) = udp_socket.send_to(packet, peer) {
+            eprintln!("sdkwork-aiot-gateway udp_send_error={error}");
+        } else {
+            stats.udp_packets_total.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn publish_bridge_json_messages(
+    client: &Client,
+    publish_topic: &str,
+    messages: Vec<String>,
+    retry_attempts: u32,
+    retry_delay: Duration,
+    publish_drop_cooldown: Duration,
+    max_outbound_per_event: usize,
+    stats: &BridgeStats,
+) {
+    let (bounded_outbound, dropped) = bounded_outbound_messages(messages, max_outbound_per_event);
+    if dropped > 0 {
+        stats
+            .mqtt_publish_dropped
+            .fetch_add(dropped, Ordering::Relaxed);
+    }
+
+    for outbound in bounded_outbound {
+        stats.mqtt_publish_attempts.fetch_add(1, Ordering::Relaxed);
+        if let Err(error) = publish_with_retry(
+            client,
+            publish_topic,
+            outbound,
+            retry_attempts,
+            retry_delay,
+            stats,
+        ) {
+            eprintln!("sdkwork-aiot-gateway mqtt_publish_error={error}");
+            if duration_millis_u64(publish_drop_cooldown) > 0 {
+                std::thread::sleep(publish_drop_cooldown);
+            }
+        }
     }
 }
 
@@ -281,6 +462,7 @@ struct BridgeStatsSnapshot {
     udp_packets_total: u64,
     udp_decode_failures: u64,
     session_idle_purges: u64,
+    udp_uplink_replies: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -323,6 +505,102 @@ impl BridgeRuntimeState {
     }
 }
 
+struct BridgeControlInner {
+    session_state: Arc<Mutex<SessionState>>,
+    mqtt_publisher: Arc<MqttBridgePublisher>,
+}
+
+struct BridgeControlHandle {
+    inner: Option<BridgeControlInner>,
+}
+
+impl BridgeControlHandle {
+    fn disabled() -> Self {
+        Self { inner: None }
+    }
+
+    fn enabled(
+        session_state: Arc<Mutex<SessionState>>,
+        mqtt_publisher: Arc<MqttBridgePublisher>,
+    ) -> Self {
+        Self {
+            inner: Some(BridgeControlInner {
+                session_state,
+                mqtt_publisher,
+            }),
+        }
+    }
+
+    fn list_sessions_json(&self) -> String {
+        let Some(inner) = &self.inner else {
+            return r#"{"bridge_enabled":false,"sessions":[]}"#.to_string();
+        };
+        let guard = inner.session_state.lock().expect("mqtt session lock");
+        let mut sessions = Vec::with_capacity(guard.sessions.len());
+        for (session_key, managed) in &guard.sessions {
+            let udp_peer = managed
+                .udp_peer
+                .map(|peer| format!(r#""{peer}""#))
+                .unwrap_or_else(|| "null".to_string());
+            sessions.push(format!(
+                r#"{{"session_key":"{session_key}","session_id":"{}","device_id":"{}","client_id":"{}","remote_sequence":{},"local_sequence":{},"udp_peer":{udp_peer}}}"#,
+                json_escape(&managed.session.session_id),
+                json_escape(&managed.session.device_id),
+                json_escape(&managed.session.client_id),
+                managed.session.remote_sequence,
+                managed.session.local_sequence,
+            ));
+        }
+        format!(
+            r#"{{"bridge_enabled":true,"sessions":[{}]}}"#,
+            sessions.join(",")
+        )
+    }
+
+    fn disconnect_session(
+        &self,
+        session_id: &str,
+        stats: &BridgeStats,
+    ) -> BridgeSessionDisconnectOutcome {
+        let Some(inner) = &self.inner else {
+            return BridgeSessionDisconnectOutcome::BridgeDisabled;
+        };
+        let mut guard = inner.session_state.lock().expect("mqtt session lock");
+        let session_key = guard.sessions.iter().find_map(|(key, managed)| {
+            if managed.session.session_id == session_id || key == session_id {
+                Some(key.clone())
+            } else {
+                None
+            }
+        });
+        let Some(session_key) = session_key else {
+            return BridgeSessionDisconnectOutcome::NotFound;
+        };
+        let session_id_for_teardown = guard
+            .sessions
+            .get(&session_key)
+            .map(|managed| managed.session.session_id.clone())
+            .unwrap_or_else(|| session_key.clone());
+        let reply =
+            sdkwork_aiot_gateway::xiaozhi_mqtt_server_teardown_reply(&session_id_for_teardown);
+        inner.mqtt_publisher.publish_reply(reply.clone(), stats);
+        apply_bridge_session_state_locked(&mut guard, Some(session_key.as_str()), &reply, None);
+        BridgeSessionDisconnectOutcome::Disconnected
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BridgeSessionDisconnectOutcome {
+    Disconnected,
+    NotFound,
+    BridgeDisabled,
+}
+
+fn bridge_session_id_from_path(path: &str) -> Option<&str> {
+    path.strip_prefix(BRIDGE_SESSIONS_PATH_PREFIX)
+        .filter(|session_id| !session_id.is_empty() && !session_id.contains('/'))
+}
+
 #[derive(Debug)]
 struct BridgeStats {
     mqtt_reconnects: AtomicU64,
@@ -336,6 +614,7 @@ struct BridgeStats {
     udp_packets_total: AtomicU64,
     udp_decode_failures: AtomicU64,
     session_idle_purges: AtomicU64,
+    udp_uplink_replies: AtomicU64,
     last_log_millis: AtomicU64,
 }
 
@@ -353,6 +632,7 @@ impl BridgeStats {
             udp_packets_total: AtomicU64::new(0),
             udp_decode_failures: AtomicU64::new(0),
             session_idle_purges: AtomicU64::new(0),
+            udp_uplink_replies: AtomicU64::new(0),
             last_log_millis: AtomicU64::new(now_millis.max(0) as u64),
         }
     }
@@ -375,7 +655,7 @@ impl BridgeStats {
 
         let snapshot = self.snapshot();
         eprintln!(
-            "sdkwork-aiot-gateway bridge_stats reconnects={} mqtt_events={} mqtt_event_errors={} mqtt_session_errors={} publish_attempts={} publish_failures={} publish_retries={} publish_dropped={} udp_packets={} udp_decode_failures={} session_idle_purges={}",
+            "sdkwork-aiot-gateway bridge_stats reconnects={} mqtt_events={} mqtt_event_errors={} mqtt_session_errors={} publish_attempts={} publish_failures={} publish_retries={} publish_dropped={} udp_packets={} udp_decode_failures={} session_idle_purges={} udp_uplink_replies={}",
             snapshot.mqtt_reconnects,
             snapshot.mqtt_events_total,
             snapshot.mqtt_events_errors,
@@ -387,6 +667,7 @@ impl BridgeStats {
             snapshot.udp_packets_total,
             snapshot.udp_decode_failures,
             snapshot.session_idle_purges,
+            snapshot.udp_uplink_replies,
         );
     }
 
@@ -403,6 +684,7 @@ impl BridgeStats {
             udp_packets_total: self.udp_packets_total.load(Ordering::Relaxed),
             udp_decode_failures: self.udp_decode_failures.load(Ordering::Relaxed),
             session_idle_purges: self.session_idle_purges.load(Ordering::Relaxed),
+            udp_uplink_replies: self.udp_uplink_replies.load(Ordering::Relaxed),
         }
     }
 }
@@ -413,23 +695,51 @@ fn start_mqtt_udp_bridge(
     running: Arc<AtomicBool>,
     stats: Arc<BridgeStats>,
     state: Arc<BridgeRuntimeState>,
-) {
+) -> Arc<BridgeControlHandle> {
     let mqtt_config = MqttBridgeConfig::from_env();
     let udp_config = UdpBridgeConfig::from_env();
     let session_state = Arc::new(Mutex::new(SessionState::new()));
+    let mqtt_publisher = Arc::new(MqttBridgePublisher::new(&mqtt_config));
+    let bridge_control = Arc::new(BridgeControlHandle::enabled(
+        Arc::clone(&session_state),
+        Arc::clone(&mqtt_publisher),
+    ));
+    let udp_socket = match UdpSocket::bind(&udp_config.bind_addr) {
+        Ok(socket) => Arc::new(socket),
+        Err(error) => {
+            eprintln!("sdkwork-aiot-gateway udp_bind_error={error}");
+            return Arc::clone(&bridge_control);
+        }
+    };
+    if let Err(error) = udp_socket.set_read_timeout(Some(udp_config.read_timeout)) {
+        eprintln!("sdkwork-aiot-gateway udp_timeout_error={error}");
+        return Arc::clone(&bridge_control);
+    }
 
     let udp_state = Arc::clone(&session_state);
     let udp_running = Arc::clone(&running);
     let udp_stats = Arc::clone(&stats);
     let udp_runtime = Arc::clone(&state);
+    let udp_shared_socket = Arc::clone(&udp_socket);
+    let udp_publisher = Arc::clone(&mqtt_publisher);
     std::thread::spawn(move || {
-        run_udp_bridge_loop(udp_state, udp_running, udp_config, udp_stats, udp_runtime)
+        run_udp_bridge_loop(
+            udp_state,
+            udp_running,
+            udp_config,
+            udp_stats,
+            udp_runtime,
+            udp_shared_socket,
+            udp_publisher,
+        )
     });
 
     let mqtt_state = Arc::clone(&session_state);
     let mqtt_running = Arc::clone(&running);
     let mqtt_stats = Arc::clone(&stats);
     let mqtt_runtime = Arc::clone(&state);
+    let mqtt_udp_socket = Arc::clone(&udp_socket);
+    let mqtt_publisher_for_loop = Arc::clone(&mqtt_publisher);
     std::thread::spawn(move || {
         run_mqtt_bridge_loop(
             server,
@@ -439,10 +749,14 @@ fn start_mqtt_udp_bridge(
             mqtt_config,
             mqtt_stats,
             mqtt_runtime,
-        );
+            mqtt_udp_socket,
+            mqtt_publisher_for_loop,
+        )
     });
+    bridge_control
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_mqtt_bridge_loop(
     server: Arc<sdkwork_aiot_transport::TransportServer>,
     session_options: sdkwork_aiot_gateway::XiaozhiSessionOptions,
@@ -451,6 +765,8 @@ fn run_mqtt_bridge_loop(
     config: MqttBridgeConfig,
     stats: Arc<BridgeStats>,
     state: Arc<BridgeRuntimeState>,
+    udp_socket: Arc<UdpSocket>,
+    mqtt_publisher: Arc<MqttBridgePublisher>,
 ) {
     state.mqtt_loop_running.store(true, Ordering::Relaxed);
     let mut reconnect_attempt = 0u32;
@@ -462,7 +778,9 @@ fn run_mqtt_bridge_loop(
             MqttOptions::new(config.client_id.clone(), config.host.clone(), config.port);
         options.set_keep_alive(Duration::from_secs(config.keep_alive_seconds));
         let (client, mut connection) = Client::new(options, config.queue_capacity);
+        mqtt_publisher.set_client(Some(client.clone()));
         if let Err(error) = client.subscribe(config.subscribe_topic.clone(), QoS::AtMostOnce) {
+            mqtt_publisher.set_client(None);
             eprintln!("sdkwork-aiot-gateway mqtt_subscribe_error={error}");
             state.mqtt_session_active.store(false, Ordering::Relaxed);
             sleep_reconnect_delay(
@@ -516,43 +834,33 @@ fn run_mqtt_bridge_loop(
                     }
                 };
 
-                if let Some(session) = next_session {
-                    let mut guard = session_state.lock().expect("mqtt session lock");
-                    guard.upsert_session(session.session_id.clone(), session);
-                } else if let Some(key) = session_key {
-                    let mut guard = session_state.lock().expect("mqtt session lock");
-                    if let Some(managed) = guard.sessions.get_mut(&key) {
-                        managed.touch_now();
-                    }
-                }
-
-                let (bounded_outbound, dropped) =
-                    bounded_outbound_messages(reply.outbound_json, config.max_outbound_per_event);
-                if dropped > 0 {
-                    stats
-                        .mqtt_publish_dropped
-                        .fetch_add(dropped, Ordering::Relaxed);
-                }
-
-                for outbound in bounded_outbound {
-                    stats.mqtt_publish_attempts.fetch_add(1, Ordering::Relaxed);
-                    if let Err(error) = publish_with_retry(
-                        &client,
-                        &config.publish_topic,
-                        outbound,
-                        config.publish_retry_attempts,
-                        config.publish_retry_delay,
-                        stats.as_ref(),
-                    ) {
-                        eprintln!("sdkwork-aiot-gateway mqtt_publish_error={error}");
-                        if duration_millis_u64(config.publish_drop_cooldown) > 0 {
-                            std::thread::sleep(config.publish_drop_cooldown);
-                        }
-                    }
-                }
+                apply_bridge_session_state(
+                    &session_state,
+                    session_key.as_deref(),
+                    &reply,
+                    next_session,
+                );
+                let udp_peer = bridge_udp_peer_for_session(&session_state, session_key.as_deref());
+                send_bridge_udp_packets(
+                    udp_socket.as_ref(),
+                    udp_peer,
+                    &reply.outbound_udp_packets,
+                    stats.as_ref(),
+                );
+                publish_bridge_json_messages(
+                    &client,
+                    &config.publish_topic,
+                    reply.outbound_json,
+                    config.publish_retry_attempts,
+                    config.publish_retry_delay,
+                    config.publish_drop_cooldown,
+                    config.max_outbound_per_event,
+                    stats.as_ref(),
+                );
             }
             stats.maybe_log_snapshot(config.stats_log_interval);
         }
+        mqtt_publisher.set_client(None);
         state.mqtt_session_active.store(false, Ordering::Relaxed);
 
         sleep_reconnect_delay(
@@ -572,24 +880,11 @@ fn run_udp_bridge_loop(
     config: UdpBridgeConfig,
     stats: Arc<BridgeStats>,
     state: Arc<BridgeRuntimeState>,
+    udp_socket: Arc<UdpSocket>,
+    mqtt_publisher: Arc<MqttBridgePublisher>,
 ) {
     state.udp_loop_running.store(true, Ordering::Relaxed);
-    let socket = match UdpSocket::bind(&config.bind_addr) {
-        Ok(socket) => socket,
-        Err(error) => {
-            eprintln!("sdkwork-aiot-gateway udp_bind_error={error}");
-            state.udp_socket_bound.store(false, Ordering::Relaxed);
-            state.udp_loop_running.store(false, Ordering::Relaxed);
-            return;
-        }
-    };
     state.udp_socket_bound.store(true, Ordering::Relaxed);
-    if let Err(error) = socket.set_read_timeout(Some(config.read_timeout)) {
-        eprintln!("sdkwork-aiot-gateway udp_timeout_error={error}");
-        state.udp_socket_bound.store(false, Ordering::Relaxed);
-        state.udp_loop_running.store(false, Ordering::Relaxed);
-        return;
-    }
 
     let mut buf = [0u8; 2048];
     while running.load(Ordering::Relaxed) {
@@ -600,7 +895,7 @@ fn run_udp_bridge_loop(
                 .fetch_add(purged, Ordering::Relaxed);
         }
 
-        let (len, from) = match socket.recv_from(&mut buf) {
+        let (len, from) = match udp_socket.recv_from(&mut buf) {
             Ok(value) => value,
             Err(error)
                 if error.kind() == std::io::ErrorKind::WouldBlock
@@ -615,31 +910,72 @@ fn run_udp_bridge_loop(
         };
         stats.udp_packets_total.fetch_add(1, Ordering::Relaxed);
 
-        let mut guard = session_state.lock().expect("udp session lock");
-        if guard.sessions.is_empty() {
+        struct UdpUplinkReplyAction {
+            session_key: String,
+            reply: sdkwork_aiot_gateway::MqttSessionReply,
+            session: sdkwork_aiot_gateway::XiaozhiMqttUdpSession,
+            peer: SocketAddr,
+        }
+
+        let mut uplink_action = None;
+        {
+            let mut guard = session_state.lock().expect("udp session lock");
+            if guard.sessions.is_empty() {
+                continue;
+            }
+
+            for (session_key, managed) in guard.sessions.iter_mut() {
+                let packet = match sdkwork_aiot_gateway::xiaozhi_mqtt_udp_decode_audio(
+                    &managed.session,
+                    &buf[..len],
+                ) {
+                    Ok(packet) => packet,
+                    Err(_) => continue,
+                };
+                managed.session.remote_sequence = packet.sequence;
+                managed.set_udp_peer(from);
+                let mut session = managed.session.clone();
+                match sdkwork_aiot_gateway::xiaozhi_mqtt_udp_uplink_speech_reply(
+                    &mut session,
+                    packet.payload.len(),
+                ) {
+                    Ok(reply) => {
+                        managed.session = session.clone();
+                        uplink_action = Some(UdpUplinkReplyAction {
+                            session_key: session_key.clone(),
+                            reply,
+                            session,
+                            peer: from,
+                        });
+                        break;
+                    }
+                    Err(error) => {
+                        eprintln!("sdkwork-aiot-gateway udp_uplink_reply_error={}", error.code);
+                    }
+                }
+            }
+        }
+
+        if let Some(action) = uplink_action {
+            apply_bridge_session_state(
+                &session_state,
+                Some(action.session_key.as_str()),
+                &action.reply,
+                Some(action.session),
+            );
+            send_bridge_udp_packets(
+                udp_socket.as_ref(),
+                Some(action.peer),
+                &action.reply.outbound_udp_packets,
+                stats.as_ref(),
+            );
+            mqtt_publisher.publish_reply(action.reply, stats.as_ref());
+            stats.udp_uplink_replies.fetch_add(1, Ordering::Relaxed);
             continue;
         }
 
-        let mut matched = false;
-        for managed in guard.sessions.values_mut() {
-            let packet = match sdkwork_aiot_gateway::xiaozhi_mqtt_udp_decode_audio(
-                &managed.session,
-                &buf[..len],
-            ) {
-                Ok(packet) => packet,
-                Err(_) => continue,
-            };
-            managed.session.remote_sequence = packet.sequence;
-            managed.touch_now();
-            matched = true;
-            break;
-        }
-        if !matched {
-            stats.udp_decode_failures.fetch_add(1, Ordering::Relaxed);
-            eprintln!(
-                "sdkwork-aiot-gateway udp_decode_error=transport.udp.decode_failed from={from}"
-            );
-        }
+        stats.udp_decode_failures.fetch_add(1, Ordering::Relaxed);
+        eprintln!("sdkwork-aiot-gateway udp_decode_error=transport.udp.decode_failed from={from}");
         stats.maybe_log_snapshot(config.stats_log_interval);
     }
     state.udp_socket_bound.store(false, Ordering::Relaxed);
@@ -664,6 +1000,7 @@ fn handle_client_connection(
     mut stream: TcpStream,
     bridge_stats: Arc<BridgeStats>,
     bridge_state: Arc<BridgeRuntimeState>,
+    bridge_control: Arc<BridgeControlHandle>,
     active_ws_connections: Arc<AtomicU64>,
 ) {
     let _ = stream.set_read_timeout(Some(HTTP_READ_TIMEOUT));
@@ -711,6 +1048,24 @@ fn handle_client_connection(
             let response = format_response(&response);
             let _ = stream.write_all(response.as_bytes());
             return;
+        }
+        if request.method == "GET" && request.path == BRIDGE_SESSIONS_PATH {
+            let response = bridge_sessions_response(bridge_control.as_ref());
+            let response = format_response(&response);
+            let _ = stream.write_all(response.as_bytes());
+            return;
+        }
+        if request.method == "DELETE" {
+            if let Some(session_id) = bridge_session_id_from_path(&request.path) {
+                let response = bridge_session_disconnect_response(
+                    bridge_control.as_ref(),
+                    bridge_stats.as_ref(),
+                    session_id,
+                );
+                let response = format_response(&response);
+                let _ = stream.write_all(response.as_bytes());
+                return;
+            }
         }
         if request.method == "GET" && request.path == MCP_POLICY_STATS_PATH {
             let response = mcp_policy_stats_response(session_options);
@@ -964,6 +1319,53 @@ fn bridge_metrics_response(stats: &BridgeStats) -> sdkwork_aiot_transport::HttpR
         .with_body(body)
 }
 
+fn bridge_sessions_response(
+    bridge_control: &BridgeControlHandle,
+) -> sdkwork_aiot_transport::HttpResponse {
+    sdkwork_aiot_transport::HttpResponse::new(sdkwork_aiot_transport::HttpStatus::Ok)
+        .with_header("content-type", "application/json")
+        .with_body(bridge_control.list_sessions_json())
+}
+
+fn bridge_session_disconnect_response(
+    bridge_control: &BridgeControlHandle,
+    stats: &BridgeStats,
+    session_id: &str,
+) -> sdkwork_aiot_transport::HttpResponse {
+    match bridge_control.disconnect_session(session_id, stats) {
+        BridgeSessionDisconnectOutcome::Disconnected => {
+            sdkwork_aiot_transport::HttpResponse::new(sdkwork_aiot_transport::HttpStatus::NoContent)
+        }
+        BridgeSessionDisconnectOutcome::NotFound => problem_json_response(
+            sdkwork_aiot_transport::HttpStatus::NotFound,
+            "gateway.bridge.session.not_found",
+            &format!(r#""sessionId":"{}""#, json_escape(session_id)),
+        ),
+        BridgeSessionDisconnectOutcome::BridgeDisabled => problem_json_response(
+            sdkwork_aiot_transport::HttpStatus::ServiceUnavailable,
+            "gateway.bridge.disabled",
+            r#""detail":"MQTT bridge is not enabled""#,
+        ),
+    }
+}
+
+fn problem_json_response(
+    status: sdkwork_aiot_transport::HttpStatus,
+    code: &str,
+    extensions: &str,
+) -> sdkwork_aiot_transport::HttpResponse {
+    let body = format!(
+        r#"{{"type":"about:blank","title":"{}","status":{},"code":"{}",{}}}"#,
+        code,
+        status.code(),
+        code,
+        extensions
+    );
+    sdkwork_aiot_transport::HttpResponse::new(status)
+        .with_header("content-type", "application/problem+json")
+        .with_body(body)
+}
+
 fn mcp_policy_stats_response(
     session_options: &sdkwork_aiot_gateway::XiaozhiSessionOptions,
 ) -> sdkwork_aiot_transport::HttpResponse {
@@ -1053,7 +1455,7 @@ fn bridge_health_snapshot_json(
 
 fn bridge_stats_snapshot_json(snapshot: &BridgeStatsSnapshot) -> String {
     format!(
-        r#"{{"mqtt_reconnects":{},"mqtt_events_total":{},"mqtt_events_errors":{},"mqtt_session_errors":{},"mqtt_publish_attempts":{},"mqtt_publish_failures":{},"mqtt_publish_retries":{},"mqtt_publish_dropped":{},"udp_packets_total":{},"udp_decode_failures":{},"session_idle_purges":{}}}"#,
+        r#"{{"mqtt_reconnects":{},"mqtt_events_total":{},"mqtt_events_errors":{},"mqtt_session_errors":{},"mqtt_publish_attempts":{},"mqtt_publish_failures":{},"mqtt_publish_retries":{},"mqtt_publish_dropped":{},"udp_packets_total":{},"udp_decode_failures":{},"session_idle_purges":{},"udp_uplink_replies":{}}}"#,
         snapshot.mqtt_reconnects,
         snapshot.mqtt_events_total,
         snapshot.mqtt_events_errors,
@@ -1064,7 +1466,8 @@ fn bridge_stats_snapshot_json(snapshot: &BridgeStatsSnapshot) -> String {
         snapshot.mqtt_publish_dropped,
         snapshot.udp_packets_total,
         snapshot.udp_decode_failures,
-        snapshot.session_idle_purges
+        snapshot.session_idle_purges,
+        snapshot.udp_uplink_replies
     )
 }
 
@@ -1113,6 +1516,10 @@ fn bridge_stats_prometheus_text(snapshot: &BridgeStatsSnapshot) -> String {
         (
             "sdkwork_aiot_bridge_session_idle_purges_total",
             snapshot.session_idle_purges,
+        ),
+        (
+            "sdkwork_aiot_bridge_udp_uplink_replies_total",
+            snapshot.udp_uplink_replies,
         ),
     ];
 
@@ -1338,6 +1745,7 @@ mod tests {
             udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
             udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
             remote_sequence: 42,
+            local_sequence: 0,
         };
         let state = Arc::new(Mutex::new(SessionState {
             sessions: HashMap::from([(
@@ -1345,6 +1753,7 @@ mod tests {
                 ManagedMqttUdpSession {
                     session,
                     last_activity_millis: 0,
+                    udp_peer: None,
                 },
             )]),
         }));
@@ -1369,6 +1778,7 @@ mod tests {
             udp_packets_total: 9,
             udp_decode_failures: 10,
             session_idle_purges: 11,
+            udp_uplink_replies: 0,
         };
 
         let json = bridge_stats_snapshot_json(&snapshot);
@@ -1399,6 +1809,7 @@ mod tests {
             udp_packets_total: 9,
             udp_decode_failures: 10,
             session_idle_purges: 11,
+            udp_uplink_replies: 0,
         };
 
         let text = bridge_stats_prometheus_text(&snapshot);
@@ -1436,6 +1847,7 @@ mod tests {
             udp_packets_total: 9,
             udp_decode_failures: 10,
             session_idle_purges: 11,
+            udp_uplink_replies: 0,
         };
 
         let json = bridge_health_snapshot_json(&runtime, &stats);
@@ -1467,6 +1879,7 @@ mod tests {
             udp_packets_total: 0,
             udp_decode_failures: 0,
             session_idle_purges: 0,
+            udp_uplink_replies: 0,
         };
 
         let json = bridge_health_snapshot_json(&runtime, &stats);
@@ -1485,5 +1898,107 @@ mod tests {
         let (bounded, dropped) = bounded_outbound_messages(messages, 2);
         assert_eq!(bounded, vec!["a".to_string(), "b".to_string()]);
         assert_eq!(dropped, 2);
+    }
+
+    #[test]
+    fn bridge_session_id_from_path_extracts_session_identifier() {
+        assert_eq!(
+            bridge_session_id_from_path("/internal/bridge/sessions/dev-001-client-001"),
+            Some("dev-001-client-001")
+        );
+        assert_eq!(
+            bridge_session_id_from_path("/internal/bridge/sessions/"),
+            None
+        );
+        assert_eq!(
+            bridge_session_id_from_path("/internal/bridge/sessions/a/b"),
+            None
+        );
+    }
+
+    #[test]
+    fn bridge_control_disconnect_publishes_goodbye_and_removes_session() {
+        let config = MqttBridgeConfig::from_env();
+        let session_state = Arc::new(Mutex::new(SessionState::new()));
+        let mqtt_publisher = Arc::new(MqttBridgePublisher::new(&config));
+        let stats = BridgeStats::new(current_unix_time_millis());
+        let control =
+            BridgeControlHandle::enabled(Arc::clone(&session_state), Arc::clone(&mqtt_publisher));
+        let session = XiaozhiMqttUdpSession {
+            device_id: "dev-001".to_string(),
+            client_id: "client-001".to_string(),
+            session_id: "dev-001-client-001".to_string(),
+            udp_server: "127.0.0.1".to_string(),
+            udp_port: 8888,
+            udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
+            udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
+            remote_sequence: 0,
+            local_sequence: 0,
+        };
+        session_state
+            .lock()
+            .expect("state lock")
+            .upsert_session(session.session_id.clone(), session);
+
+        let outcome = control.disconnect_session("dev-001-client-001", &stats);
+        assert_eq!(outcome, BridgeSessionDisconnectOutcome::Disconnected);
+        assert!(session_state
+            .lock()
+            .expect("state lock")
+            .sessions
+            .is_empty());
+    }
+
+    #[test]
+    fn bridge_control_disconnect_returns_not_found_for_unknown_session() {
+        let config = MqttBridgeConfig::from_env();
+        let session_state = Arc::new(Mutex::new(SessionState::new()));
+        let mqtt_publisher = Arc::new(MqttBridgePublisher::new(&config));
+        let stats = BridgeStats::new(current_unix_time_millis());
+        let control = BridgeControlHandle::enabled(session_state, mqtt_publisher);
+
+        let outcome = control.disconnect_session("missing-session", &stats);
+        assert_eq!(outcome, BridgeSessionDisconnectOutcome::NotFound);
+    }
+
+    #[test]
+    fn bridge_control_list_sessions_reports_disabled_state() {
+        let control = BridgeControlHandle::disabled();
+        assert_eq!(
+            control.list_sessions_json(),
+            r#"{"bridge_enabled":false,"sessions":[]}"#
+        );
+    }
+
+    #[test]
+    fn apply_bridge_session_state_removes_session_when_channel_closes() {
+        let session = XiaozhiMqttUdpSession {
+            device_id: "dev-001".to_string(),
+            client_id: "client-001".to_string(),
+            session_id: "dev-001-client-001".to_string(),
+            udp_server: "127.0.0.1".to_string(),
+            udp_port: 8888,
+            udp_key_hex: "00112233445566778899AABBCCDDEEFF".to_string(),
+            udp_nonce_hex: "01000000A1A2A3A40000000000000000".to_string(),
+            remote_sequence: 0,
+            local_sequence: 0,
+        };
+        let session_key = session.session_id.clone();
+        let state = Mutex::new(SessionState {
+            sessions: HashMap::from([(
+                session_key.clone(),
+                ManagedMqttUdpSession {
+                    session,
+                    last_activity_millis: 0,
+                    udp_peer: None,
+                },
+            )]),
+        });
+        let reply = sdkwork_aiot_gateway::xiaozhi_mqtt_server_teardown_reply(&session_key);
+
+        apply_bridge_session_state(&state, Some(&session_key), &reply, None);
+
+        let guard = state.lock().expect("state lock");
+        assert!(guard.sessions.is_empty());
     }
 }

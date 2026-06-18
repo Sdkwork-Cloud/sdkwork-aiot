@@ -35,7 +35,7 @@ fn main() {
         return;
     }
 
-    let bind_addr = std::env::var("SDKWORK_AIOT_APP_API_BIND")
+    let bind_addr = std::env::var("SDKWORK_AIOT_APPLICATION_APP_HTTP_BIND")
         .unwrap_or_else(|_| "127.0.0.1:18082".to_string());
     serve(&server, &bind_addr, running);
 }

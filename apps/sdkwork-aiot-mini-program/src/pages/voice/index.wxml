@@ -1,0 +1,8 @@
+<view class="card">
+  <view class="title">语音对话</view>
+  <picker mode="selector" range="{{devices}}" range-key="displayName" bindchange="onDeviceChange">
+    <view class="muted">选择设备：{{selectedDeviceId || '未选择'}}</view>
+  </picker>
+  <textarea class="card" placeholder="输入语音文本" value="{{draft}}" bindinput="onInput" />
+  <button class="button-primary" bindtap="onSpeak">发送并播放</button>
+</view>

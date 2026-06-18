@@ -8,6 +8,7 @@ license.workspace = true
 sdkwork-aiot-runtime = { path = "../../crates/sdkwork-aiot-runtime" }
 sdkwork-aiot-observability = { path = "../../crates/sdkwork-aiot-observability" }
 sdkwork-aiot-adapter-xiaozhi = { path = "../../crates/sdkwork-aiot-adapter-xiaozhi" }
+sdkwork-aiot-protocol = { path = "../../crates/sdkwork-aiot-protocol" }
 sdkwork-aiot-storage = { path = "../../crates/sdkwork-aiot-storage" }
 sdkwork-aiot-storage-sqlx = { path = "../../crates/sdkwork-aiot-storage-sqlx" }
 sdkwork-aiot-transport = { path = "../../crates/sdkwork-aiot-transport" }

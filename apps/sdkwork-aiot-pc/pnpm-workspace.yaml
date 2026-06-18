@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript"
+  - "../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core"
   - "../../../sdkwork-core/sdkwork-core-pc-react"
   - "../../../sdkwork-ui/sdkwork-ui-pc-react"
 

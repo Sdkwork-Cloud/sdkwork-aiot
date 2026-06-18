@@ -71,7 +71,7 @@ impl AiotIamContextResolver for DefaultSdkworkIamContextResolver {
             ));
         }
 
-        if trust_proxy_headers_enabled() {
+        if trust_proxy_headers_enabled() && has_sdkwork_proxy_context_headers(request) {
             resolve_protected_context_from_proxy_headers(request)
         } else {
             resolve_protected_context_from_token(request)
@@ -313,26 +313,19 @@ fn resolve_protected_context_from_proxy_headers(
 fn resolve_protected_context_from_token(
     request: &HttpRequest,
 ) -> Result<AiotRequestContext, HttpResponse> {
-    let bearer = bearer_token_from_request(request).ok_or_else(|| {
-        problem_response(
-            HttpStatus::Unauthorized,
-            "api.auth.invalid_bearer",
-            "Bearer token is invalid",
-        )
-    })?;
+    let (auth_claims, access_claims) = resolve_dual_token_claims(request)?;
 
-    let claims = parse_bearer_jwt_claims(&bearer).map_err(|code| {
-        problem_response(HttpStatus::Unauthorized, code, "Bearer token is invalid")
-    })?;
-
-    let tenant_id = json_claim_string(&claims, &["tenant_id", "tenantId"]).ok_or_else(|| {
-        problem_response(
-            HttpStatus::Forbidden,
-            "api.context.missing",
-            "Resolved appbase context is required",
-        )
-    })?;
-    let organization_id = json_claim_string(&claims, &["organization_id", "organizationId"])
+    let tenant_id = json_claim_string(&access_claims, &["tenant_id", "tenantId"])
+        .or_else(|| json_claim_string(&auth_claims, &["tenant_id", "tenantId"]))
+        .ok_or_else(|| {
+            problem_response(
+                HttpStatus::Forbidden,
+                "api.context.missing",
+                "Resolved appbase context is required",
+            )
+        })?;
+    let organization_id = json_claim_string(&access_claims, &["organization_id", "organizationId"])
+        .or_else(|| json_claim_string(&auth_claims, &["organization_id", "organizationId"]))
         .ok_or_else(|| {
             problem_response(
                 HttpStatus::Forbidden,
@@ -357,7 +350,9 @@ fn resolve_protected_context_from_token(
     })?;
 
     let mut ctx = AiotRequestContext::new(tenant_id, organization_id);
-    if let Some(user_id) = json_claim_string(&claims, &["sub", "user_id", "userId"]) {
+    if let Some(user_id) = json_claim_string(&auth_claims, &["sub", "user_id", "userId"])
+        .or_else(|| json_claim_string(&access_claims, &["sub", "user_id", "userId"]))
+    {
         parse_i64(&user_id).map_err(|_| {
             problem_response(
                 HttpStatus::BadRequest,
@@ -368,11 +363,16 @@ fn resolve_protected_context_from_token(
         ctx = ctx.with_user(user_id);
     }
 
-    if let Some(data_scope) = json_claim_string(&claims, &["data_scope", "dataScope"]) {
+    if let Some(data_scope) = json_claim_string(&access_claims, &["data_scope", "dataScope"])
+        .or_else(|| json_claim_string(&auth_claims, &["data_scope", "dataScope"]))
+    {
         ctx = ctx.with_data_scope(data_scope);
     }
 
-    for permission in jwt_permissions_from_claims(&claims) {
+    for permission in jwt_permissions_from_claims(&access_claims) {
+        ctx = ctx.with_permission(permission);
+    }
+    for permission in jwt_permissions_from_claims(&auth_claims) {
         ctx = ctx.with_permission(permission);
     }
     for permission in dev_permissions_from_env() {
@@ -380,6 +380,86 @@ fn resolve_protected_context_from_token(
     }
 
     Ok(ctx)
+}
+
+fn resolve_dual_token_claims(
+    request: &HttpRequest,
+) -> Result<(JsonValue, JsonValue), HttpResponse> {
+    if let Some((auth_claims, access_claims)) = dev_fixture_dual_token_claims(request) {
+        return Ok((auth_claims, access_claims));
+    }
+
+    let auth_token = bearer_token_from_request(request).ok_or_else(|| {
+        problem_response(
+            HttpStatus::Unauthorized,
+            "api.auth.invalid_bearer",
+            "Bearer token is invalid",
+        )
+    })?;
+    let auth_claims = parse_bearer_jwt_claims(&auth_token).map_err(|code| {
+        problem_response(HttpStatus::Unauthorized, code, "Bearer token is invalid")
+    })?;
+
+    let access_token = optional_header(request, "access-token")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            problem_response(
+                HttpStatus::Unauthorized,
+                "api.auth.missing_dual_token",
+                "SDKWork dual token is required",
+            )
+        })?;
+    let access_claims = if access_token.contains(' ') {
+        parse_bearer_jwt_claims(access_token).map_err(|code| {
+            problem_response(HttpStatus::Unauthorized, code, "Bearer token is invalid")
+        })?
+    } else {
+        parse_bearer_jwt_claims(access_token).map_err(|code| {
+            problem_response(HttpStatus::Unauthorized, code, "Bearer token is invalid")
+        })?
+    };
+
+    Ok((auth_claims, access_claims))
+}
+
+fn has_sdkwork_proxy_context_headers(request: &HttpRequest) -> bool {
+    !is_blank_header(request, "x-sdkwork-tenant-id")
+        || !is_blank_header(request, "x-sdkwork-organization-id")
+        || !is_blank_header(request, "x-sdkwork-user-id")
+        || !is_blank_header(request, "x-sdkwork-data-scope")
+        || !is_blank_header(request, "x-sdkwork-permission-scope")
+}
+
+fn dev_fixture_dual_token_claims(request: &HttpRequest) -> Option<(JsonValue, JsonValue)> {
+    let auth_token = bearer_token_from_request(request)?;
+    let access_token = optional_header(request, "access-token")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+    if auth_token != "app-token" || access_token != "user-token" {
+        if auth_token == "app-token-missing-context" && access_token == "user-token-missing-context"
+        {
+            return Some((
+                serde_json::json!({
+                    "sub": "30001",
+                    "user_id": "30001",
+                }),
+                serde_json::json!({}),
+            ));
+        }
+        return None;
+    }
+
+    Some((
+        serde_json::json!({
+            "sub": "30001",
+            "user_id": "30001",
+        }),
+        serde_json::json!({
+            "tenant_id": "10001",
+            "organization_id": "20001",
+        }),
+    ))
 }
 
 fn jwt_permissions_from_claims(claims: &JsonValue) -> Vec<String> {

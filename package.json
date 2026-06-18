@@ -1,0 +1,18 @@
+{
+  "name": "sdkwork-aiot",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SDKWork AIoT server workspace with topology v2 dev orchestration.",
+  "dependencies": {
+    "@sdkwork/app-topology": "file:../sdkwork-app-topology"
+  },
+  "scripts": {
+    "aiot:dev": "node scripts/aiot-dev.mjs --hosting self-hosted",
+    "aiot:dev:cloud": "node scripts/aiot-dev.mjs --hosting cloud-hosted",
+    "aiot:dev:simulator": "node scripts/aiot-dev.mjs --hosting self-hosted --with-simulator",
+    "test:topology-baggage": "node --test scripts/dev/sdkwork-aiot-topology-baggage.test.mjs",
+    "test:app-openapi-context": "node --test scripts/dev/sdkwork-aiot-app-openapi-context.test.mjs",
+    "test:topology-validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root ."
+  }
+}

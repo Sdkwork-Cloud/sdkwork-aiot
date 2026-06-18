@@ -1,0 +1,10 @@
+<view class="card">
+  <view class="title">设备</view>
+  <block wx:for="{{devices}}" wx:key="deviceId">
+    <view class="card" style="margin: 24rpx 0 0;">
+      <view>{{item.displayName || item.deviceId || item.id}}</view>
+      <view class="muted">{{item.status}}</view>
+    </view>
+  </block>
+  <view wx:if="{{devices.length === 0}}" class="muted">暂无设备</view>
+</view>

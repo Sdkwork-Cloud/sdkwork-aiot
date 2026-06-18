@@ -12,329 +12,114 @@ export class IotApi {
   }
 
 /** List AIoT products */
-  async productsList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProductListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotProductListResponse>(backendApiPath(`/iot/products`), undefined, requestHeaders);
+  async productsList(): Promise<AiotProductListResponse> {
+    return this.client.get<AiotProductListResponse>(backendApiPath(`/iot/products`));
   }
 
 /** Create AIoT product */
-  async productsCreate(body: AiotProductCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProductResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.post<AiotProductResponse>(backendApiPath(`/iot/products`), body, undefined, requestHeaders, 'application/json');
+  async productsCreate(body: AiotProductCreateRequest): Promise<AiotProductResponse> {
+    return this.client.post<AiotProductResponse>(backendApiPath(`/iot/products`), body, undefined, undefined, 'application/json');
   }
 
 /** Retrieve AIoT product */
-  async productsRetrieve(productId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProductResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotProductResponse>(backendApiPath(`/iot/products/${serializePathParameter(productId, { name: 'productId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async productsRetrieve(productId: string): Promise<AiotProductResponse> {
+    return this.client.get<AiotProductResponse>(backendApiPath(`/iot/products/${serializePathParameter(productId, { name: 'productId', style: 'simple', explode: false })}`));
   }
 
 /** Update AIoT product */
-  async productsUpdate(productId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, body?: AiotProductUpdateRequest, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProductResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.put<AiotProductResponse>(backendApiPath(`/iot/products/${serializePathParameter(productId, { name: 'productId', style: 'simple', explode: false })}`), body, undefined, requestHeaders, 'application/json');
+  async productsUpdate(productId: string, body?: AiotProductUpdateRequest): Promise<AiotProductResponse> {
+    return this.client.put<AiotProductResponse>(backendApiPath(`/iot/products/${serializePathParameter(productId, { name: 'productId', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
   }
 
 /** Delete AIoT product */
-  async productsDelete(productId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/products/${serializePathParameter(productId, { name: 'productId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async productsDelete(productId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/products/${serializePathParameter(productId, { name: 'productId', style: 'simple', explode: false })}`));
   }
 
 /** List hardware profiles */
-  async hardwareProfilesList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotHardwareProfileListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotHardwareProfileListResponse>(backendApiPath(`/iot/hardware_profiles`), undefined, requestHeaders);
+  async hardwareProfilesList(): Promise<AiotHardwareProfileListResponse> {
+    return this.client.get<AiotHardwareProfileListResponse>(backendApiPath(`/iot/hardware_profiles`));
   }
 
 /** Create hardware profile */
-  async hardwareProfilesCreate(body: AiotHardwareProfileCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotHardwareProfileResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.post<AiotHardwareProfileResponse>(backendApiPath(`/iot/hardware_profiles`), body, undefined, requestHeaders, 'application/json');
+  async hardwareProfilesCreate(body: AiotHardwareProfileCreateRequest): Promise<AiotHardwareProfileResponse> {
+    return this.client.post<AiotHardwareProfileResponse>(backendApiPath(`/iot/hardware_profiles`), body, undefined, undefined, 'application/json');
   }
 
 /** Retrieve hardware profile */
-  async hardwareProfilesRetrieve(hardwareProfileId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotHardwareProfileResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotHardwareProfileResponse>(backendApiPath(`/iot/hardware_profiles/${serializePathParameter(hardwareProfileId, { name: 'hardwareProfileId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async hardwareProfilesRetrieve(hardwareProfileId: string): Promise<AiotHardwareProfileResponse> {
+    return this.client.get<AiotHardwareProfileResponse>(backendApiPath(`/iot/hardware_profiles/${serializePathParameter(hardwareProfileId, { name: 'hardwareProfileId', style: 'simple', explode: false })}`));
   }
 
 /** Update hardware profile */
-  async hardwareProfilesUpdate(hardwareProfileId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, body?: AiotHardwareProfileUpdateRequest, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotHardwareProfileResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.put<AiotHardwareProfileResponse>(backendApiPath(`/iot/hardware_profiles/${serializePathParameter(hardwareProfileId, { name: 'hardwareProfileId', style: 'simple', explode: false })}`), body, undefined, requestHeaders, 'application/json');
+  async hardwareProfilesUpdate(hardwareProfileId: string, body?: AiotHardwareProfileUpdateRequest): Promise<AiotHardwareProfileResponse> {
+    return this.client.put<AiotHardwareProfileResponse>(backendApiPath(`/iot/hardware_profiles/${serializePathParameter(hardwareProfileId, { name: 'hardwareProfileId', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
   }
 
 /** Delete hardware profile */
-  async hardwareProfilesDelete(hardwareProfileId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/hardware_profiles/${serializePathParameter(hardwareProfileId, { name: 'hardwareProfileId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async hardwareProfilesDelete(hardwareProfileId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/hardware_profiles/${serializePathParameter(hardwareProfileId, { name: 'hardwareProfileId', style: 'simple', explode: false })}`));
   }
 
 /** List protocol profiles */
-  async protocolProfilesList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProtocolProfileListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotProtocolProfileListResponse>(backendApiPath(`/iot/protocol_profiles`), undefined, requestHeaders);
+  async protocolProfilesList(): Promise<AiotProtocolProfileListResponse> {
+    return this.client.get<AiotProtocolProfileListResponse>(backendApiPath(`/iot/protocol_profiles`));
   }
 
 /** Create protocol profile */
-  async protocolProfilesCreate(body: AiotProtocolProfileCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProtocolProfileResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.post<AiotProtocolProfileResponse>(backendApiPath(`/iot/protocol_profiles`), body, undefined, requestHeaders, 'application/json');
+  async protocolProfilesCreate(body: AiotProtocolProfileCreateRequest): Promise<AiotProtocolProfileResponse> {
+    return this.client.post<AiotProtocolProfileResponse>(backendApiPath(`/iot/protocol_profiles`), body, undefined, undefined, 'application/json');
   }
 
 /** Retrieve protocol profile */
-  async protocolProfilesRetrieve(protocolProfileId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProtocolProfileResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotProtocolProfileResponse>(backendApiPath(`/iot/protocol_profiles/${serializePathParameter(protocolProfileId, { name: 'protocolProfileId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async protocolProfilesRetrieve(protocolProfileId: string): Promise<AiotProtocolProfileResponse> {
+    return this.client.get<AiotProtocolProfileResponse>(backendApiPath(`/iot/protocol_profiles/${serializePathParameter(protocolProfileId, { name: 'protocolProfileId', style: 'simple', explode: false })}`));
   }
 
 /** Update protocol profile */
-  async protocolProfilesUpdate(protocolProfileId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, body?: AiotProtocolProfileUpdateRequest, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProtocolProfileResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.put<AiotProtocolProfileResponse>(backendApiPath(`/iot/protocol_profiles/${serializePathParameter(protocolProfileId, { name: 'protocolProfileId', style: 'simple', explode: false })}`), body, undefined, requestHeaders, 'application/json');
+  async protocolProfilesUpdate(protocolProfileId: string, body?: AiotProtocolProfileUpdateRequest): Promise<AiotProtocolProfileResponse> {
+    return this.client.put<AiotProtocolProfileResponse>(backendApiPath(`/iot/protocol_profiles/${serializePathParameter(protocolProfileId, { name: 'protocolProfileId', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
   }
 
 /** Delete protocol profile */
-  async protocolProfilesDelete(protocolProfileId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/protocol_profiles/${serializePathParameter(protocolProfileId, { name: 'protocolProfileId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async protocolProfilesDelete(protocolProfileId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/protocol_profiles/${serializePathParameter(protocolProfileId, { name: 'protocolProfileId', style: 'simple', explode: false })}`));
   }
 
 /** List capability models */
-  async capabilityModelsList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotCapabilityModelListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotCapabilityModelListResponse>(backendApiPath(`/iot/capability_models`), undefined, requestHeaders);
+  async capabilityModelsList(): Promise<AiotCapabilityModelListResponse> {
+    return this.client.get<AiotCapabilityModelListResponse>(backendApiPath(`/iot/capability_models`));
   }
 
 /** Create capability model */
-  async capabilityModelsCreate(body: AiotCapabilityModelCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotCapabilityModelResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.post<AiotCapabilityModelResponse>(backendApiPath(`/iot/capability_models`), body, undefined, requestHeaders, 'application/json');
+  async capabilityModelsCreate(body: AiotCapabilityModelCreateRequest): Promise<AiotCapabilityModelResponse> {
+    return this.client.post<AiotCapabilityModelResponse>(backendApiPath(`/iot/capability_models`), body, undefined, undefined, 'application/json');
   }
 
 /** Retrieve capability model */
-  async capabilityModelsRetrieve(capabilityModelId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotCapabilityModelResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotCapabilityModelResponse>(backendApiPath(`/iot/capability_models/${serializePathParameter(capabilityModelId, { name: 'capabilityModelId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async capabilityModelsRetrieve(capabilityModelId: string): Promise<AiotCapabilityModelResponse> {
+    return this.client.get<AiotCapabilityModelResponse>(backendApiPath(`/iot/capability_models/${serializePathParameter(capabilityModelId, { name: 'capabilityModelId', style: 'simple', explode: false })}`));
   }
 
 /** Update capability model */
-  async capabilityModelsUpdate(capabilityModelId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, body?: AiotCapabilityModelUpdateRequest, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotCapabilityModelResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.put<AiotCapabilityModelResponse>(backendApiPath(`/iot/capability_models/${serializePathParameter(capabilityModelId, { name: 'capabilityModelId', style: 'simple', explode: false })}`), body, undefined, requestHeaders, 'application/json');
+  async capabilityModelsUpdate(capabilityModelId: string, body?: AiotCapabilityModelUpdateRequest): Promise<AiotCapabilityModelResponse> {
+    return this.client.put<AiotCapabilityModelResponse>(backendApiPath(`/iot/capability_models/${serializePathParameter(capabilityModelId, { name: 'capabilityModelId', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
   }
 
 /** Delete capability model */
-  async capabilityModelsDelete(capabilityModelId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/capability_models/${serializePathParameter(capabilityModelId, { name: 'capabilityModelId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async capabilityModelsDelete(capabilityModelId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/capability_models/${serializePathParameter(capabilityModelId, { name: 'capabilityModelId', style: 'simple', explode: false })}`));
   }
 
 /** List AIoT devices */
-  async devicesList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotDeviceListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotDeviceListResponse>(backendApiPath(`/iot/devices`), undefined, requestHeaders);
+  async devicesList(): Promise<AiotDeviceListResponse> {
+    return this.client.get<AiotDeviceListResponse>(backendApiPath(`/iot/devices`));
   }
 
 /** Create AIoT device */
-  async devicesCreate(body: AiotDeviceCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string, idempotencyKey?: string): Promise<StandardResourceResponse> {
+  async devicesCreate(body: AiotDeviceCreateRequest, idempotencyKey?: string): Promise<StandardResourceResponse> {
     const requestHeaders = buildRequestHeaders(
       {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
         'Idempotency-Key': { value: idempotencyKey, style: 'simple', explode: false },
       },
       {}
@@ -343,29 +128,14 @@ export class IotApi {
   }
 
 /** Retrieve AIoT device */
-  async devicesRetrieve(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardResourceResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async devicesRetrieve(deviceId: string): Promise<StandardResourceResponse> {
+    return this.client.get<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}`));
   }
 
 /** Update AIoT device */
-  async devicesUpdate(deviceId: string, body: AiotDeviceUpdateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string, idempotencyKey?: string): Promise<StandardResourceResponse> {
+  async devicesUpdate(deviceId: string, body: AiotDeviceUpdateRequest, idempotencyKey?: string): Promise<StandardResourceResponse> {
     const requestHeaders = buildRequestHeaders(
       {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
         'Idempotency-Key': { value: idempotencyKey, style: 'simple', explode: false },
       },
       {}
@@ -374,44 +144,19 @@ export class IotApi {
   }
 
 /** Delete AIoT device */
-  async devicesDelete(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async devicesDelete(deviceId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}`));
   }
 
 /** List device credentials */
-  async devicesCredentialsList(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardCollectionResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/credentials`), undefined, requestHeaders);
+  async devicesCredentialsList(deviceId: string): Promise<StandardCollectionResponse> {
+    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/credentials`));
   }
 
 /** Create device credential */
-  async devicesCredentialsCreate(deviceId: string, body: AiotCredentialCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string, idempotencyKey?: string): Promise<AiotCredentialResponse> {
+  async devicesCredentialsCreate(deviceId: string, body: AiotCredentialCreateRequest, idempotencyKey?: string): Promise<AiotCredentialResponse> {
     const requestHeaders = buildRequestHeaders(
       {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
         'Idempotency-Key': { value: idempotencyKey, style: 'simple', explode: false },
       },
       {}
@@ -420,164 +165,59 @@ export class IotApi {
   }
 
 /** Retrieve device credential */
-  async devicesCredentialsRetrieve(deviceId: string, credentialId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardResourceResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/credentials/${serializePathParameter(credentialId, { name: 'credentialId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async devicesCredentialsRetrieve(deviceId: string, credentialId: string): Promise<StandardResourceResponse> {
+    return this.client.get<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/credentials/${serializePathParameter(credentialId, { name: 'credentialId', style: 'simple', explode: false })}`));
   }
 
 /** Revoke device credential */
-  async devicesCredentialsDelete(deviceId: string, credentialId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/credentials/${serializePathParameter(credentialId, { name: 'credentialId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async devicesCredentialsDelete(deviceId: string, credentialId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/credentials/${serializePathParameter(credentialId, { name: 'credentialId', style: 'simple', explode: false })}`));
   }
 
 /** List device sessions */
-  async devicesSessionsList(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardCollectionResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/sessions`), undefined, requestHeaders);
+  async devicesSessionsList(deviceId: string): Promise<StandardCollectionResponse> {
+    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/sessions`));
   }
 
 /** Disconnect device session */
-  async devicesSessionsDisconnect(deviceId: string, sessionId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async devicesSessionsDisconnect(deviceId: string, sessionId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}`));
   }
 
 /** List device capabilities */
-  async devicesCapabilitiesList(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardCollectionResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/capabilities`), undefined, requestHeaders);
+  async devicesCapabilitiesList(deviceId: string): Promise<StandardCollectionResponse> {
+    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/capabilities`));
   }
 
 /** List device commands */
-  async devicesCommandsList(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotCommandListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotCommandListResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/commands`), undefined, requestHeaders);
+  async devicesCommandsList(deviceId: string): Promise<AiotCommandListResponse> {
+    return this.client.get<AiotCommandListResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/commands`));
   }
 
 /** Cancel device command */
-  async devicesCommandsCancel(deviceId: string, commandId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardResourceResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.post<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/commands/${serializePathParameter(commandId, { name: 'commandId', style: 'simple', explode: false })}/cancel`), undefined, undefined, requestHeaders);
+  async devicesCommandsCancel(deviceId: string, commandId: string): Promise<StandardResourceResponse> {
+    return this.client.post<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/commands/${serializePathParameter(commandId, { name: 'commandId', style: 'simple', explode: false })}/cancel`));
   }
 
 /** Update backend device twin */
-  async devicesTwinUpdate(deviceId: string, body: AiotTwinUpdateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardResourceResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.patch<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/twin`), body, undefined, requestHeaders, 'application/json');
+  async devicesTwinUpdate(deviceId: string, body: AiotTwinUpdateRequest): Promise<StandardResourceResponse> {
+    return this.client.patch<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/twin`), body, undefined, undefined, 'application/json');
   }
 
 /** Retrieve backend device twin */
-  async devicesTwinRetrieve(deviceId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardResourceResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/twin`), undefined, requestHeaders);
+  async devicesTwinRetrieve(deviceId: string): Promise<StandardResourceResponse> {
+    return this.client.get<StandardResourceResponse>(backendApiPath(`/iot/devices/${serializePathParameter(deviceId, { name: 'deviceId', style: 'simple', explode: false })}/twin`));
   }
 
 /** List firmware artifacts */
-  async firmwareArtifactsList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardCollectionResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/firmware_artifacts`), undefined, requestHeaders);
+  async firmwareArtifactsList(): Promise<StandardCollectionResponse> {
+    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/firmware_artifacts`));
   }
 
 /** Create firmware artifact metadata */
-  async firmwareArtifactsCreate(body: AiotFirmwareArtifactCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string, idempotencyKey?: string): Promise<AiotFirmwareArtifactResponse> {
+  async firmwareArtifactsCreate(body: AiotFirmwareArtifactCreateRequest, idempotencyKey?: string): Promise<AiotFirmwareArtifactResponse> {
     const requestHeaders = buildRequestHeaders(
       {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
         'Idempotency-Key': { value: idempotencyKey, style: 'simple', explode: false },
       },
       {}
@@ -586,74 +226,29 @@ export class IotApi {
   }
 
 /** Retrieve firmware artifact */
-  async firmwareArtifactsRetrieve(artifactId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotFirmwareArtifactResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotFirmwareArtifactResponse>(backendApiPath(`/iot/firmware_artifacts/${serializePathParameter(artifactId, { name: 'artifactId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async firmwareArtifactsRetrieve(artifactId: string): Promise<AiotFirmwareArtifactResponse> {
+    return this.client.get<AiotFirmwareArtifactResponse>(backendApiPath(`/iot/firmware_artifacts/${serializePathParameter(artifactId, { name: 'artifactId', style: 'simple', explode: false })}`));
   }
 
 /** Update firmware artifact metadata */
-  async firmwareArtifactsUpdate(artifactId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, body?: AiotFirmwareArtifactUpdateRequest, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotFirmwareArtifactResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.put<AiotFirmwareArtifactResponse>(backendApiPath(`/iot/firmware_artifacts/${serializePathParameter(artifactId, { name: 'artifactId', style: 'simple', explode: false })}`), body, undefined, requestHeaders, 'application/json');
+  async firmwareArtifactsUpdate(artifactId: string, body?: AiotFirmwareArtifactUpdateRequest): Promise<AiotFirmwareArtifactResponse> {
+    return this.client.put<AiotFirmwareArtifactResponse>(backendApiPath(`/iot/firmware_artifacts/${serializePathParameter(artifactId, { name: 'artifactId', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
   }
 
 /** Delete firmware artifact metadata */
-  async firmwareArtifactsDelete(artifactId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/firmware_artifacts/${serializePathParameter(artifactId, { name: 'artifactId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async firmwareArtifactsDelete(artifactId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/firmware_artifacts/${serializePathParameter(artifactId, { name: 'artifactId', style: 'simple', explode: false })}`));
   }
 
 /** List firmware rollouts */
-  async firmwareRolloutsList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<StandardCollectionResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/firmware_rollouts`), undefined, requestHeaders);
+  async firmwareRolloutsList(): Promise<StandardCollectionResponse> {
+    return this.client.get<StandardCollectionResponse>(backendApiPath(`/iot/firmware_rollouts`));
   }
 
 /** Create firmware rollout */
-  async firmwareRolloutsCreate(body: AiotFirmwareRolloutCreateRequest, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string, idempotencyKey?: string): Promise<AiotFirmwareRolloutResponse> {
+  async firmwareRolloutsCreate(body: AiotFirmwareRolloutCreateRequest, idempotencyKey?: string): Promise<AiotFirmwareRolloutResponse> {
     const requestHeaders = buildRequestHeaders(
       {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
         'Idempotency-Key': { value: idempotencyKey, style: 'simple', explode: false },
       },
       {}
@@ -662,93 +257,33 @@ export class IotApi {
   }
 
 /** Retrieve firmware rollout */
-  async firmwareRolloutsRetrieve(rolloutId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotFirmwareRolloutResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotFirmwareRolloutResponse>(backendApiPath(`/iot/firmware_rollouts/${serializePathParameter(rolloutId, { name: 'rolloutId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async firmwareRolloutsRetrieve(rolloutId: string): Promise<AiotFirmwareRolloutResponse> {
+    return this.client.get<AiotFirmwareRolloutResponse>(backendApiPath(`/iot/firmware_rollouts/${serializePathParameter(rolloutId, { name: 'rolloutId', style: 'simple', explode: false })}`));
   }
 
 /** Update firmware rollout */
-  async firmwareRolloutsUpdate(rolloutId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, body?: AiotFirmwareRolloutUpdateRequest, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotFirmwareRolloutResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.put<AiotFirmwareRolloutResponse>(backendApiPath(`/iot/firmware_rollouts/${serializePathParameter(rolloutId, { name: 'rolloutId', style: 'simple', explode: false })}`), body, undefined, requestHeaders, 'application/json');
+  async firmwareRolloutsUpdate(rolloutId: string, body?: AiotFirmwareRolloutUpdateRequest): Promise<AiotFirmwareRolloutResponse> {
+    return this.client.put<AiotFirmwareRolloutResponse>(backendApiPath(`/iot/firmware_rollouts/${serializePathParameter(rolloutId, { name: 'rolloutId', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
   }
 
 /** Delete firmware rollout */
-  async firmwareRolloutsDelete(rolloutId: string, xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<void> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.delete<void>(backendApiPath(`/iot/firmware_rollouts/${serializePathParameter(rolloutId, { name: 'rolloutId', style: 'simple', explode: false })}`), undefined, requestHeaders);
+  async firmwareRolloutsDelete(rolloutId: string): Promise<void> {
+    return this.client.delete<void>(backendApiPath(`/iot/firmware_rollouts/${serializePathParameter(rolloutId, { name: 'rolloutId', style: 'simple', explode: false })}`));
   }
 
 /** List platform IoT events */
-  async eventsList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotEventListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotEventListResponse>(backendApiPath(`/iot/events`), undefined, requestHeaders);
+  async eventsList(): Promise<AiotEventListResponse> {
+    return this.client.get<AiotEventListResponse>(backendApiPath(`/iot/events`));
   }
 
 /** List protocol adapters */
-  async protocolAdaptersList(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotProtocolAdapterListResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotProtocolAdapterListResponse>(backendApiPath(`/iot/protocol_adapters`), undefined, requestHeaders);
+  async protocolAdaptersList(): Promise<AiotProtocolAdapterListResponse> {
+    return this.client.get<AiotProtocolAdapterListResponse>(backendApiPath(`/iot/protocol_adapters`));
   }
 
 /** Retrieve AIoT runtime capacity and backpressure policy */
-  async runtimeCapacityRetrieve(xSdkworkTenantId: string, xSdkworkOrganizationId: string, xSdkworkPermissionScope: string, xSdkworkUserId?: string, xSdkworkDataScope?: string): Promise<AiotRuntimeCapacityPolicyResponse> {
-    const requestHeaders = buildRequestHeaders(
-      {
-        'X-Sdkwork-Tenant-Id': { value: xSdkworkTenantId, style: 'simple', explode: false },
-        'X-Sdkwork-Organization-Id': { value: xSdkworkOrganizationId, style: 'simple', explode: false },
-        'X-Sdkwork-User-Id': { value: xSdkworkUserId, style: 'simple', explode: false },
-        'X-Sdkwork-Data-Scope': { value: xSdkworkDataScope, style: 'simple', explode: false },
-        'X-Sdkwork-Permission-Scope': { value: xSdkworkPermissionScope, style: 'simple', explode: false },
-      },
-      {}
-    );
-    return this.client.get<AiotRuntimeCapacityPolicyResponse>(backendApiPath(`/iot/runtime/capacity`), undefined, requestHeaders);
+  async runtimeCapacityRetrieve(): Promise<AiotRuntimeCapacityPolicyResponse> {
+    return this.client.get<AiotRuntimeCapacityPolicyResponse>(backendApiPath(`/iot/runtime/capacity`));
   }
 }
 

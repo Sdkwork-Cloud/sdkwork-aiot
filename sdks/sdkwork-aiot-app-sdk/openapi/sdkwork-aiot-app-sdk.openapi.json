@@ -18,25 +18,10 @@
   ],
   "paths": {
     "/app/v3/api/iot/devices": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/SdkworkTenantId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkOrganizationId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkUserId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkDataScope"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkPermissionScope"
-        }
-      ],
       "get": {
-        "tags": ["iot"],
+        "tags": [
+          "iot"
+        ],
         "operationId": "devices.list",
         "x-sdkwork-owner": "sdkwork-aiot",
         "x-sdkwork-api-authority": "sdkwork-aiot-app-api",
@@ -66,25 +51,10 @@
       }
     },
     "/app/v3/api/iot/devices/{deviceId}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/SdkworkTenantId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkOrganizationId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkUserId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkDataScope"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkPermissionScope"
-        }
-      ],
       "get": {
-        "tags": ["iot"],
+        "tags": [
+          "iot"
+        ],
         "operationId": "devices.retrieve",
         "x-sdkwork-owner": "sdkwork-aiot",
         "x-sdkwork-api-authority": "sdkwork-aiot-app-api",
@@ -119,25 +89,10 @@
       }
     },
     "/app/v3/api/iot/devices/{deviceId}/commands": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/SdkworkTenantId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkOrganizationId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkUserId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkDataScope"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkPermissionScope"
-        }
-      ],
       "post": {
-        "tags": ["iot"],
+        "tags": [
+          "iot"
+        ],
         "operationId": "devices.commands.create",
         "x-sdkwork-owner": "sdkwork-aiot",
         "x-sdkwork-api-authority": "sdkwork-aiot-app-api",
@@ -185,25 +140,10 @@
       }
     },
     "/app/v3/api/iot/devices/{deviceId}/twin": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/SdkworkTenantId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkOrganizationId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkUserId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkDataScope"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkPermissionScope"
-        }
-      ],
       "get": {
-        "tags": ["iot"],
+        "tags": [
+          "iot"
+        ],
         "operationId": "devices.twin.retrieve",
         "x-sdkwork-owner": "sdkwork-aiot",
         "x-sdkwork-api-authority": "sdkwork-aiot-app-api",
@@ -238,25 +178,10 @@
       }
     },
     "/app/v3/api/iot/devices/{deviceId}/events": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/SdkworkTenantId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkOrganizationId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkUserId"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkDataScope"
-        },
-        {
-          "$ref": "#/components/parameters/SdkworkPermissionScope"
-        }
-      ],
       "get": {
-        "tags": ["iot"],
+        "tags": [
+          "iot"
+        ],
         "operationId": "devices.events.list",
         "x-sdkwork-owner": "sdkwork-aiot",
         "x-sdkwork-api-authority": "sdkwork-aiot-app-api",
@@ -307,56 +232,6 @@
       }
     },
     "parameters": {
-      "SdkworkTenantId": {
-        "name": "X-Sdkwork-Tenant-Id",
-        "in": "header",
-        "required": true,
-        "description": "Resolved tenant id provided by sdkwork-appbase IAM context.",
-        "schema": {
-          "type": "string",
-          "pattern": "^[0-9]+$"
-        }
-      },
-      "SdkworkOrganizationId": {
-        "name": "X-Sdkwork-Organization-Id",
-        "in": "header",
-        "required": true,
-        "description": "Resolved organization id provided by sdkwork-appbase IAM context.",
-        "schema": {
-          "type": "string",
-          "pattern": "^[0-9]+$"
-        }
-      },
-      "SdkworkUserId": {
-        "name": "X-Sdkwork-User-Id",
-        "in": "header",
-        "required": false,
-        "description": "Optional resolved user id provided by sdkwork-appbase IAM context.",
-        "schema": {
-          "type": "string",
-          "pattern": "^[0-9]+$"
-        }
-      },
-      "SdkworkDataScope": {
-        "name": "X-Sdkwork-Data-Scope",
-        "in": "header",
-        "required": false,
-        "description": "Optional resolved SDKWork data-scope integer.",
-        "schema": {
-          "type": "string",
-          "pattern": "^-?[0-9]+$"
-        }
-      },
-      "SdkworkPermissionScope": {
-        "name": "X-Sdkwork-Permission-Scope",
-        "in": "header",
-        "required": true,
-        "description": "Comma-separated permissions resolved by sdkwork-appbase IAM context.",
-        "schema": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
       "DeviceId": {
         "name": "deviceId",
         "in": "path",
@@ -447,20 +322,42 @@
       },
       "MediaKind": {
         "type": "string",
-        "enum": ["image", "video", "audio", "voice", "document", "archive", "model", "other"]
+        "enum": [
+          "image",
+          "video",
+          "audio",
+          "voice",
+          "document",
+          "archive",
+          "model",
+          "other"
+        ]
       },
       "MediaSource": {
         "type": "string",
-        "enum": ["object_storage", "external_url", "data_url", "provider_asset", "generated"]
+        "enum": [
+          "object_storage",
+          "external_url",
+          "data_url",
+          "provider_asset",
+          "generated"
+        ]
       },
       "MediaChecksum": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["algorithm", "value"],
+        "required": [
+          "algorithm",
+          "value"
+        ],
         "properties": {
           "algorithm": {
             "type": "string",
-            "enum": ["sha256", "md5", "etag"]
+            "enum": [
+              "sha256",
+              "md5",
+              "etag"
+            ]
           },
           "value": {
             "type": "string"
@@ -470,11 +367,19 @@
       "MediaAccess": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["visibility"],
+        "required": [
+          "visibility"
+        ],
         "properties": {
           "visibility": {
             "type": "string",
-            "enum": ["private", "tenant", "organization", "public", "signed"]
+            "enum": [
+              "private",
+              "tenant",
+              "organization",
+              "public",
+              "signed"
+            ]
           },
           "expiresAt": {
             "type": "string",
@@ -488,7 +393,12 @@
         "properties": {
           "provenance": {
             "type": "string",
-            "enum": ["uploaded", "generated", "edited", "imported"]
+            "enum": [
+              "uploaded",
+              "generated",
+              "edited",
+              "imported"
+            ]
           },
           "provider": {
             "type": "string"
@@ -513,7 +423,13 @@
           },
           "moderationStatus": {
             "type": "string",
-            "enum": ["unknown", "pending", "approved", "rejected", "blocked"]
+            "enum": [
+              "unknown",
+              "pending",
+              "approved",
+              "rejected",
+              "blocked"
+            ]
           },
           "safetyLabels": {
             "type": "array",
@@ -526,7 +442,10 @@
       "MediaResource": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "source"],
+        "required": [
+          "kind",
+          "source"
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -610,7 +529,10 @@
       "AiotDeviceListResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "data"],
+        "required": [
+          "code",
+          "data"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -629,7 +551,10 @@
       "AiotDeviceResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "data"],
+        "required": [
+          "code",
+          "data"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -645,7 +570,11 @@
       "AiotCommandCreateRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["capabilityName", "commandName", "payload"],
+        "required": [
+          "capabilityName",
+          "commandName",
+          "payload"
+        ],
         "properties": {
           "capabilityName": {
             "type": "string",
@@ -781,7 +710,10 @@
       "AiotCommandResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "data"],
+        "required": [
+          "code",
+          "data"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -797,7 +729,10 @@
       "AiotTwinResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "data"],
+        "required": [
+          "code",
+          "data"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -858,7 +793,10 @@
           },
           "direction": {
             "type": "string",
-            "enum": ["device_to_cloud", "cloud_to_device"]
+            "enum": [
+              "device_to_cloud",
+              "cloud_to_device"
+            ]
           },
           "messageId": {
             "type": "string"
@@ -895,7 +833,10 @@
       "AiotEventListResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "data"],
+        "required": [
+          "code",
+          "data"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -941,7 +882,11 @@
       "ProblemDetails": {
         "type": "object",
         "additionalProperties": true,
-        "required": ["type", "title", "status"],
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
         "properties": {
           "type": {
             "type": "string",

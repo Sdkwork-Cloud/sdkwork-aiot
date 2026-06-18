@@ -92,12 +92,13 @@ This repository is a Rust workspace for the SDKWork AIoT server. Shared librarie
 
 ### Build, Test, and Development Commands
 
+- `pnpm aiot:dev`: topology-aware dev entry (`self-hosted.split-services.development`).
+- `pnpm aiot:dev:cloud`: cloud-hosted development profile.
+- `pnpm test:topology-validate`: validate `specs/topology.spec.json`.
+- `pnpm test:topology-baggage`: scan active paths for retired topology vocabulary.
 - `cargo build --workspace`: compile all workspace crates and services.
 - `cargo test --workspace`: run the full Rust test suite.
 - `cargo test -p sdkwork-aiot-gateway`: run tests for one package.
-- `cargo run -p sdkwork-aiot-gateway`: start the local gateway service.
-- `cargo run -p sdkwork-aiot-xiaozhi-simulator-ui`: launch the cross-platform Xiaozhi simulator UI.
-- PowerShell gateway bind example: `$env:SDKWORK_AIOT_GATEWAY_BIND='127.0.0.1:18080'; cargo run -p sdkwork-aiot-gateway`.
 - Optional persistent device DB: `$env:SDKWORK_AIOT_DEVICE_DB_PATH='D:\\data\\aiot-device.db'`.
 
 ### Coding Style & Naming Conventions

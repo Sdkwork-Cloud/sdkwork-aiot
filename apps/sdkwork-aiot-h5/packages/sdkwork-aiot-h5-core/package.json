@@ -1,0 +1,28 @@
+{
+  "name": "@sdkwork/aiot-h5-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sdkwork/aiot-app-core": "workspace:*",
+    "@sdkwork/aiot-app-sdk": "workspace:*"
+  },
+  "sdkwork": {
+    "workspace": "sdkwork-aiot",
+    "product": "sdkwork-aiot",
+    "architecture": "h5",
+    "domain": "iot",
+    "capability": "core",
+    "status": "ready"
+  }
+}

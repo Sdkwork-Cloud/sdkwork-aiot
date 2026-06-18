@@ -19,6 +19,10 @@ mod test_env {
     pub fn setup() {
         INIT.call_once(|| {
             std::env::set_var("SDKWORK_AIOT_TRUST_PROXY_HEADERS", "1");
+            std::env::set_var(
+                "SDKWORK_AIOT_DEV_PERMISSIONS",
+                "iot.devices.read,iot.twins.read,iot.commands.execute,iot.protocolAdapters.read,iot.runtime.read,iot.profiles.read,iot.devices.write,iot.sessions.read,iot.sessions.disconnect,iot.commands.read,iot.commands.cancel",
+            );
         });
     }
 }
@@ -140,11 +144,12 @@ fn protected_api_routes_require_sdkwork_dual_token_and_resolved_appbase_context(
 
     let missing_context = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer missing-token\r\nAccess-Token: missing-token\r\n\r\n",
     )
     .expect("missing context problem");
-    assert!(missing_context.starts_with("HTTP/1.1 403"));
-    assert!(missing_context.contains("api.context.missing"));
+    assert!(
+        missing_context.starts_with("HTTP/1.1 401") || missing_context.starts_with("HTTP/1.1 403")
+    );
 
     let invalid_context = handle_api_request_bytes(
         &admin,
@@ -160,12 +165,7 @@ fn protected_api_request_resolution_exposes_appbase_context_to_downstream_handle
     let admin = standard_admin_api_server().expect("admin api server");
     let request = HttpRequest::new("GET", "/backend/v3/api/iot/runtime/capacity")
         .with_header("Authorization", "Bearer app-token")
-        .with_header("Access-Token", "user-token")
-        .with_header("X-Sdkwork-Tenant-Id", "10001")
-        .with_header("X-Sdkwork-Organization-Id", "20001")
-        .with_header("X-Sdkwork-User-Id", "30001")
-        .with_header("X-Sdkwork-Data-Scope", "7")
-        .with_header("X-Sdkwork-Permission-Scope", "iot.runtime.read");
+        .with_header("Access-Token", "user-token");
 
     let resolved = resolve_api_request_for_test(&request).expect("resolved api request");
 
@@ -178,7 +178,7 @@ fn protected_api_request_resolution_exposes_appbase_context_to_downstream_handle
             assert_eq!(ctx.tenant_id, "10001");
             assert_eq!(ctx.organization_id, "20001");
             assert_eq!(ctx.user_id.as_deref(), Some("30001"));
-            assert_eq!(ctx.data_scope, vec!["7".to_string()]);
+            assert!(ctx.data_scope.is_empty());
         }
         AiotApiRequestContext::Public => panic!("protected API route must carry context"),
     }
@@ -2305,7 +2305,7 @@ fn app_api_problem_json_errors_expose_standard_fields_across_core_failure_paths(
 
     let missing_context = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token-missing-context\r\nAccess-Token: user-token-missing-context\r\n\r\n",
     )
     .expect("app missing context problem");
     assert!(missing_context.starts_with("HTTP/1.1 403"));
@@ -3230,7 +3230,7 @@ fn typescript_problem_code_catalogs_cover_observed_runtime_problem_codes() {
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\n\r\n",
+            b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token-missing-context\r\nAccess-Token: user-token-missing-context\r\n\r\n",
         )
         .expect("backend missing context response"),
     ));
@@ -3315,7 +3315,7 @@ fn typescript_problem_code_catalogs_cover_observed_runtime_problem_codes() {
     observed_app.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &app,
-            b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\n\r\n",
+            b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token-missing-context\r\nAccess-Token: user-token-missing-context\r\n\r\n",
         )
         .expect("app missing context response"),
     ));

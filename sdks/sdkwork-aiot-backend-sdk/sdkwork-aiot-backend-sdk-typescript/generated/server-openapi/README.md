@@ -26,12 +26,7 @@ const client = new SdkworkBackendClient({
 client.setApiKey('your-api-key');
 
 // Use the SDK
-const xSdkworkTenantId = 'X-Sdkwork-Tenant-Id';
-const xSdkworkOrganizationId = 'X-Sdkwork-Organization-Id';
-const xSdkworkUserId = 'X-Sdkwork-User-Id';
-const xSdkworkDataScope = 'X-Sdkwork-Data-Scope';
-const xSdkworkPermissionScope = 'X-Sdkwork-Permission-Scope';
-const result = await client.iot.productsList(xSdkworkTenantId, xSdkworkOrganizationId, xSdkworkUserId, xSdkworkDataScope, xSdkworkPermissionScope);
+const result = await client.iot.productsList();
 ```
 
 ## Authentication Modes (Mutually Exclusive)
@@ -83,12 +78,7 @@ const client = new SdkworkBackendClient({
 
 ```typescript
 // List AIoT products
-const xSdkworkTenantId = 'X-Sdkwork-Tenant-Id';
-const xSdkworkOrganizationId = 'X-Sdkwork-Organization-Id';
-const xSdkworkUserId = 'X-Sdkwork-User-Id';
-const xSdkworkDataScope = 'X-Sdkwork-Data-Scope';
-const xSdkworkPermissionScope = 'X-Sdkwork-Permission-Scope';
-const result = await client.iot.productsList(xSdkworkTenantId, xSdkworkOrganizationId, xSdkworkUserId, xSdkworkDataScope, xSdkworkPermissionScope);
+const result = await client.iot.productsList();
 ```
 
 ## Error Handling
@@ -97,12 +87,7 @@ const result = await client.iot.productsList(xSdkworkTenantId, xSdkworkOrganizat
 import { SdkworkBackendClient, NetworkError, TimeoutError, AuthenticationError } from '@sdkwork/aiot-backend-sdk';
 
 try {
-  const xSdkworkTenantId = 'X-Sdkwork-Tenant-Id';
-  const xSdkworkOrganizationId = 'X-Sdkwork-Organization-Id';
-  const xSdkworkUserId = 'X-Sdkwork-User-Id';
-  const xSdkworkDataScope = 'X-Sdkwork-Data-Scope';
-  const xSdkworkPermissionScope = 'X-Sdkwork-Permission-Scope';
-  const result = await client.iot.productsList(xSdkworkTenantId, xSdkworkOrganizationId, xSdkworkUserId, xSdkworkDataScope, xSdkworkPermissionScope);
+  const result = await client.iot.productsList();
 } catch (error) {
   if (error instanceof AuthenticationError) {
     console.error('Authentication failed:', error.message);

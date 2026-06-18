@@ -29,10 +29,11 @@
     "@sdkwork/sdk-common": "^1.0.2"
   },
   "scripts": {
-    "generate": "sdkwork-sdk-generate --manifest ../openapi/sdkwork-aiot-app-sdk.sdkgen.json",
+    "generate": "node ../../../scripts/strip-openapi-context-headers.mjs && sdkgen generate -i ../openapi/sdkwork-aiot-app-sdk.openapi.json -o generated/server-openapi -n sdkwork-aiot-app-sdk -t app -l typescript --package-name \"@sdkwork/aiot-app-sdk\" --api-prefix \"/app/v3/api\" --sdk-version 0.1.0",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@sdkwork/sdk-generator": "^1.0.9",
     "typescript": "^5.8.2"
   }
 }

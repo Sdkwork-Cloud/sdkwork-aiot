@@ -1,0 +1,27 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/devices/index",
+    "pages/iot/index",
+    "pages/voice/index",
+    "pages/agent/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "SDKWork AIoT",
+    "navigationBarBackgroundColor": "#0f172a",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f4f4f5"
+  },
+  "tabBar": {
+    "color": "#71717a",
+    "selectedColor": "#0891b2",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/devices/index", "text": "设备" },
+      { "pagePath": "pages/iot/index", "text": "IoT" },
+      { "pagePath": "pages/voice/index", "text": "语音" },
+      { "pagePath": "pages/agent/index", "text": "智能体" }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

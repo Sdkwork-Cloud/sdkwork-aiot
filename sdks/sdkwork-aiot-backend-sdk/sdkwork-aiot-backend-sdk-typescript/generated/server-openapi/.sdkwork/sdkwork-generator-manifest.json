@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-aiot-backend-sdk",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "language": "typescript",
     "sdkType": "backend",
     "packageName": "@sdkwork/aiot-backend-sdk"
@@ -31,7 +31,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
+      "sha256": "43b1142ae71ee0c2ea06365431a5534ad5c6ad625dc13380927d8bb1c0e91d47"
     },
     {
       "path": "LICENSE",
@@ -39,15 +39,15 @@
     },
     {
       "path": "package.json",
-      "sha256": "b28485e7c3e6a43feff50fe328c4d2e06f316bc33ee9600f249757de47e86660"
+      "sha256": "36d3b793c94d1ebb219738fd0d8567ae7558bde7854d0108208b5502cb35ca97"
     },
     {
       "path": "README.md",
-      "sha256": "901fa481def4994537e14d408365fab7b996ab9101723f6b874cfbcdf09df04a"
+      "sha256": "5eeff730f19d730749983b12bccd5f783f82f34c5af7215b7efa569104e95046"
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "6c4a6f2f6eea6ae8e03fe373cc5fb5f11cd07c1271ceae106c19941f114de517"
+      "sha256": "ed99214400df5dcadef75f9f57b3db886034562582a6a5dfb87888e027533881"
     },
     {
       "path": "src/api/base.ts",
@@ -59,7 +59,7 @@
     },
     {
       "path": "src/api/iot.ts",
-      "sha256": "e49a44e0e72637a626bd68593471580c5b2067ca6f435986000d65b7e743b764"
+      "sha256": "647d23cca38e9b6c64b37f895fa36348727ce886363af224b36562aeee2ea64b"
     },
     {
       "path": "src/api/paths.ts",
