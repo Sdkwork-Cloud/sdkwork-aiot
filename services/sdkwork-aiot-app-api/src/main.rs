@@ -1,15 +1,10 @@
-use std::net::TcpListener;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
-fn main() {
-    let running = Arc::new(AtomicBool::new(true));
-    setup_shutdown_signal_handler(Arc::clone(&running));
-
+#[tokio::main]
+async fn main() {
     let device_db_path = configured_device_db_path("SDKWORK_AIOT_APP_API_DEVICE_DB_PATH");
-    let shared_repository = std::sync::Arc::new(build_device_repository(device_db_path.as_deref()));
+    let shared_repository = Arc::new(build_device_repository(device_db_path.as_deref()));
     let credential_repository = build_credential_repository(device_db_path.as_deref());
     let catalog_repository = build_catalog_repository(device_db_path.as_deref());
     let server = Arc::new(
@@ -37,7 +32,11 @@ fn main() {
 
     let bind_addr = std::env::var("SDKWORK_AIOT_APPLICATION_APP_HTTP_BIND")
         .unwrap_or_else(|_| "127.0.0.1:18082".to_string());
-    serve(&server, &bind_addr, running);
+    let router = sdkwork_router_iot_app_api::build_wrapped_app_api_router(server).await;
+    if let Err(error) = sdkwork_router_iot_app_api::serve_app_api_router(&bind_addr, router).await {
+        eprintln!("sdkwork-aiot-app-api serve_error={error}");
+        std::process::exit(1);
+    }
 }
 
 fn build_device_repository(
@@ -46,19 +45,19 @@ fn build_device_repository(
     if let Some(path) = device_db_path {
         ensure_parent_directory_exists(path);
         println!("sdkwork-aiot-app-api device-db=sqlite file={path}");
-        return sdkwork_aiot_storage_sqlx::SqliteSqlxDeviceRepository::open(path)
-            .expect("open sqlite aiot device repository");
+    } else {
+        println!(
+            "sdkwork-aiot-app-api device-db=sqlite uri={}",
+            sdkwork_aiot_storage_sqlx::DEFAULT_SHARED_SQLITE_MEMORY_URI
+        );
     }
-
-    let shared_uri = sdkwork_aiot_storage_sqlx::DEFAULT_SHARED_SQLITE_MEMORY_URI;
-    println!("sdkwork-aiot-app-api device-db=sqlite uri={shared_uri}");
-    sdkwork_aiot_storage_sqlx::SqliteSqlxDeviceRepository::open(shared_uri)
-        .expect("open shared sqlite aiot device repository")
+    sdkwork_aiot_storage_sqlx::open_device_repository(device_db_path)
+        .expect("open sqlite aiot device repository")
 }
 
 fn build_credential_repository(
     device_db_path: Option<&str>,
-) -> std::sync::Arc<dyn sdkwork_aiot_http_api::AiotCredentialRepository> {
+) -> Arc<dyn sdkwork_aiot_http_api::AiotCredentialRepository> {
     let open_path =
         device_db_path.unwrap_or(sdkwork_aiot_storage_sqlx::DEFAULT_SHARED_SQLITE_MEMORY_URI);
     if device_db_path.is_some() {
@@ -66,7 +65,7 @@ fn build_credential_repository(
     } else {
         println!("sdkwork-aiot-app-api credential-db=sqlite uri={open_path}");
     }
-    std::sync::Arc::new(
+    Arc::new(
         sdkwork_aiot_http_api::SqliteCredentialRepositoryAdapter::open(open_path)
             .expect("open sqlite credential repository"),
     )
@@ -74,7 +73,7 @@ fn build_credential_repository(
 
 fn build_catalog_repository(
     device_db_path: Option<&str>,
-) -> std::sync::Arc<sdkwork_aiot_http_api::AiotCatalogRepositoryHandle> {
+) -> Arc<sdkwork_aiot_http_api::AiotCatalogRepositoryHandle> {
     let open_path =
         device_db_path.unwrap_or(sdkwork_aiot_storage_sqlx::DEFAULT_SHARED_SQLITE_MEMORY_URI);
     if device_db_path.is_some() {
@@ -82,7 +81,7 @@ fn build_catalog_repository(
     } else {
         println!("sdkwork-aiot-app-api catalog-db=sqlite uri={open_path}");
     }
-    std::sync::Arc::new(
+    Arc::new(
         sdkwork_aiot_http_api::AiotCatalogRepositoryHandle::open_sqlite(open_path)
             .expect("open sqlite catalog repository"),
     )
@@ -103,41 +102,4 @@ fn ensure_parent_directory_exists(path: &str) {
             std::fs::create_dir_all(parent).expect("create sqlite parent directory");
         }
     }
-}
-
-fn setup_shutdown_signal_handler(running: Arc<AtomicBool>) {
-    if let Err(error) = ctrlc::set_handler(move || {
-        running.store(false, Ordering::SeqCst);
-    }) {
-        eprintln!("sdkwork-aiot-app-api ctrlc_handler_error={error}");
-    }
-}
-
-fn serve(
-    server: &Arc<sdkwork_aiot_http_api::AiotApiServer>,
-    bind_addr: &str,
-    running: Arc<AtomicBool>,
-) {
-    let listener = TcpListener::bind(bind_addr).expect("bind app api listener");
-    println!("sdkwork-aiot-app-api listening on http://{bind_addr}");
-
-    let handler = {
-        let server = Arc::clone(server);
-        Arc::new(move |bytes: Vec<u8>| {
-            match sdkwork_aiot_http_api::handle_api_request_bytes(server.as_ref(), &bytes) {
-                Ok(response) => response,
-                Err(error) => sdkwork_aiot_http_api::format_api_error_response(&error.code),
-            }
-        })
-    };
-
-    sdkwork_aiot_transport::serve_http_concurrent(
-        listener,
-        handler,
-        sdkwork_aiot_transport::HttpServeOptions {
-            read_timeout: Some(Duration::from_secs(5)),
-            shutdown: Some(running),
-            ..sdkwork_aiot_transport::HttpServeOptions::default()
-        },
-    );
 }

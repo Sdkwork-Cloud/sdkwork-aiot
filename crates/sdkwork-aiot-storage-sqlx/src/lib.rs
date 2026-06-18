@@ -1,30 +1,40 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use rusqlite::types::Value as SqliteValue;
-use rusqlite::{params_from_iter, Connection};
-
 mod credential;
+mod database_bootstrap;
+mod device_repository_sqlite;
 mod persisted_entity;
+mod schema;
+mod sqlite_sync;
+
 pub use credential::{
     SqliteCredentialCreateCommand, SqliteCredentialRepositoryError, SqliteDeviceCredentialRecord,
     SqliteSqlxCredentialRepository,
 };
+pub use database_bootstrap::{
+    aiot_device_blocking_pool, aiot_device_pool_from_env, aiot_device_sqlite_memory_config,
+    aiot_device_sqlite_memory_pool, resolve_device_database_config,
+    AIOT_DEVICE_DATABASE_SERVICE_NAME,
+};
+pub use device_repository_sqlite::SqliteSqlxDeviceRepository;
 pub use persisted_entity::{
     SqlitePersistedEntityError, SqlitePersistedEntityRecord, SqlitePersistedEntityRepository,
 };
+use schema::ensure_device_schema;
 use sdkwork_aiot_storage::{
     table_contract, AiotCommandCreateCommand, AiotCommandRecord, AiotCommandRepository,
-    AiotCommandRepositoryError, AiotCommandResultRecord, AiotDeviceCreateCommand,
-    AiotDeviceEventCreateCommand, AiotDeviceEventRecord, AiotDeviceRecord, AiotDeviceRepository,
-    AiotDeviceRepositoryError, AiotDeviceSessionRepository, AiotDeviceTwinRepository,
-    AiotDeviceTwinRepositoryError, AiotDeviceTwinSnapshot, AiotDeviceUpdateCommand,
-    AiotEventRepository, AiotEventRepositoryError, AiotProtocolDeadLetterIntent,
-    AiotProtocolIngestUnitOfWork, AiotProtocolStorageCommand, AiotStorageAssociation,
-    AiotStorageWriteReceipt, AiotTwinPropertyUpsertCommand,
+    AiotCommandRepositoryError, AiotDeviceCreateCommand, AiotDeviceEventCreateCommand,
+    AiotDeviceEventRecord, AiotDeviceRecord, AiotDeviceRepository, AiotDeviceRepositoryError,
+    AiotDeviceSessionRepository, AiotDeviceTwinRepository, AiotDeviceTwinRepositoryError,
+    AiotDeviceTwinSnapshot, AiotDeviceUpdateCommand, AiotEventRepository, AiotEventRepositoryError,
+    AiotProtocolDeadLetterIntent, AiotProtocolIngestUnitOfWork, AiotProtocolStorageCommand,
+    AiotStorageAssociation, AiotStorageWriteReceipt, AiotTwinPropertyUpsertCommand,
 };
-use serde_json::Value as JsonValue;
+use sdkwork_database_sqlx::PoolError;
+use sqlite_sync::{execute_sql_plan, sqlite_connect_url};
+pub use sqlite_sync::{BlockingSqlitePool, StorageSqliteError};
 
 pub fn schema_version() -> &'static str {
     "0.2.0"
@@ -34,6 +44,14 @@ pub fn schema_version() -> &'static str {
 /// observe the same schema when no persistent `SDKWORK_AIOT_DEVICE_DB_PATH` is configured.
 pub const DEFAULT_SHARED_SQLITE_MEMORY_URI: &str =
     "file:sdkwork-aiot-device-db?mode=memory&cache=shared";
+
+/// Opens the canonical device repository using `sdkwork-database-config` resolution.
+pub fn open_device_repository(
+    device_db_path: Option<&str>,
+) -> Result<SqliteSqlxDeviceRepository, PoolError> {
+    let db = database_bootstrap::aiot_device_blocking_pool(device_db_path)?;
+    SqliteSqlxDeviceRepository::from_blocking_pool(db).map_err(PoolError::PoolCreation)
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SqlMigration {
@@ -576,7 +594,7 @@ fn scoped_device_key(association: &AiotStorageAssociation, device_id: &str) -> S
     )
 }
 
-fn is_valid_int64_string(value: &str) -> bool {
+pub(crate) fn is_valid_int64_string(value: &str) -> bool {
     if value.is_empty() || !value.as_bytes().iter().all(u8::is_ascii_digit) {
         return false;
     }
@@ -584,1051 +602,7 @@ fn is_valid_int64_string(value: &str) -> bool {
     value.parse::<i64>().is_ok()
 }
 
-type CommandIdempotencyCache = HashMap<(i64, i64, String), String>;
-
-#[derive(Debug, Clone)]
-pub struct SqliteSqlxDeviceRepository {
-    connection: Arc<Mutex<Connection>>,
-    planner: SqlDeviceRepositoryPlanner,
-    command_idempotency_cache: Arc<Mutex<CommandIdempotencyCache>>,
-}
-
-impl SqliteSqlxDeviceRepository {
-    pub fn new_in_memory() -> Result<Self, rusqlite::Error> {
-        let connection = Connection::open_in_memory()?;
-        ensure_device_schema(&connection)?;
-        Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
-            planner: SqlDeviceRepositoryPlanner::with_dialect(SqlDialect::Sqlite),
-            command_idempotency_cache: Arc::new(Mutex::new(HashMap::new())),
-        })
-    }
-
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, rusqlite::Error> {
-        let connection = Connection::open(path)?;
-        ensure_device_schema(&connection)?;
-        Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
-            planner: SqlDeviceRepositoryPlanner::with_dialect(SqlDialect::Sqlite),
-            command_idempotency_cache: Arc::new(Mutex::new(HashMap::new())),
-        })
-    }
-
-    fn execute_batch(&self, batch: SqlStatementBatch) -> Result<(), rusqlite::Error> {
-        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let tx = connection.transaction()?;
-        for statement in batch.statements {
-            execute_sql_statement(&tx, &statement)?;
-        }
-        tx.commit()?;
-        Ok(())
-    }
-}
-
-impl AiotDeviceRepository for SqliteSqlxDeviceRepository {
-    fn storage_ready(&self) -> bool {
-        self.connection
-            .lock()
-            .ok()
-            .and_then(|connection| connection.query_row("SELECT 1", [], |_| Ok(())).ok())
-            .is_some()
-    }
-
-    fn create_device(
-        &self,
-        command: AiotDeviceCreateCommand,
-    ) -> Result<AiotDeviceRecord, AiotDeviceRepositoryError> {
-        if !is_valid_int64_string(&command.product_id) {
-            return Err(AiotDeviceRepositoryError::InvalidProductId);
-        }
-
-        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let tx = connection
-            .transaction()
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-
-        let exists: i64 = tx
-            .query_row(
-                "SELECT COUNT(1) FROM iot_device WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3",
-                (
-                    command.association.tenant_id,
-                    command.association.organization_id,
-                    &command.device_id,
-                ),
-                |row| row.get(0),
-            )
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        if exists > 0 {
-            return Err(AiotDeviceRepositoryError::DuplicateDeviceId);
-        }
-
-        let max_id: i64 = tx
-            .query_row("SELECT COALESCE(MAX(id), 0) FROM iot_device", [], |row| {
-                row.get(0)
-            })
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        let next_id = max_id + 1;
-
-        let record = AiotDeviceRecord {
-            id: next_id.to_string(),
-            tenant_id: command.association.tenant_id,
-            organization_id: command.association.organization_id,
-            device_id: command.device_id,
-            display_name: command.display_name,
-            product_id: command.product_id,
-            client_id: command.client_id,
-            chip_family: command.chip_family,
-            status: "active".to_string(),
-            metadata_json: None,
-            last_seen_at: "2026-01-01T00:00:00Z".to_string(),
-        };
-        let batch = self
-            .planner
-            .plan_create_device(&record)
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        for statement in batch.statements {
-            execute_sql_statement(&tx, &statement)
-                .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        }
-        tx.commit()
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        Ok(record)
-    }
-
-    fn get_device(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-    ) -> Option<AiotDeviceRecord> {
-        let connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let mut statement = connection
-            .prepare(
-                "SELECT id, tenant_id, organization_id, device_id, display_name, product_id, client_id, chip_family, status, metadata, last_seen_at FROM iot_device WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 LIMIT 1",
-            )
-            .ok()?;
-        statement
-            .query_row(
-                (
-                    association.tenant_id,
-                    association.organization_id,
-                    device_id,
-                ),
-                |row| {
-                    let id: i64 = row.get(0)?;
-                    let tenant_id: i64 = row.get(1)?;
-                    let organization_id: i64 = row.get(2)?;
-                    let device_id: String = row.get(3)?;
-                    let display_name: String = row.get(4)?;
-                    let product_id: i64 = row.get(5)?;
-                    let client_id: Option<String> = row.get(6)?;
-                    let chip_family: Option<String> = row.get(7)?;
-                    let status: i64 = row.get(8)?;
-                    let metadata_json: Option<String> = row.get(9)?;
-                    let last_seen_at: Option<String> = row.get(10)?;
-                    Ok(AiotDeviceRecord {
-                        id: id.to_string(),
-                        tenant_id,
-                        organization_id,
-                        device_id,
-                        display_name,
-                        product_id: product_id.to_string(),
-                        client_id,
-                        chip_family,
-                        status: device_status_text(status),
-                        metadata_json,
-                        last_seen_at: last_seen_at
-                            .unwrap_or_else(|| "2026-01-01T00:00:00Z".to_string()),
-                    })
-                },
-            )
-            .ok()
-    }
-
-    fn list_devices(&self, association: &AiotStorageAssociation) -> Vec<AiotDeviceRecord> {
-        let connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let mut statement = match connection.prepare(
-            "SELECT id, tenant_id, organization_id, device_id, display_name, product_id, client_id, chip_family, status, metadata, last_seen_at FROM iot_device WHERE tenant_id = ?1 AND organization_id = ?2 ORDER BY id ASC",
-        ) {
-            Ok(statement) => statement,
-            Err(_) => return Vec::new(),
-        };
-        let rows = match statement.query_map(
-            (association.tenant_id, association.organization_id),
-            |row| {
-                let id: i64 = row.get(0)?;
-                let tenant_id: i64 = row.get(1)?;
-                let organization_id: i64 = row.get(2)?;
-                let device_id: String = row.get(3)?;
-                let display_name: String = row.get(4)?;
-                let product_id: i64 = row.get(5)?;
-                let client_id: Option<String> = row.get(6)?;
-                let chip_family: Option<String> = row.get(7)?;
-                let status: i64 = row.get(8)?;
-                let metadata_json: Option<String> = row.get(9)?;
-                let last_seen_at: Option<String> = row.get(10)?;
-                Ok(AiotDeviceRecord {
-                    id: id.to_string(),
-                    tenant_id,
-                    organization_id,
-                    device_id,
-                    display_name,
-                    product_id: product_id.to_string(),
-                    client_id,
-                    chip_family,
-                    status: device_status_text(status),
-                    metadata_json,
-                    last_seen_at: last_seen_at
-                        .unwrap_or_else(|| "2026-01-01T00:00:00Z".to_string()),
-                })
-            },
-        ) {
-            Ok(rows) => rows,
-            Err(_) => return Vec::new(),
-        };
-        rows.filter_map(Result::ok).collect()
-    }
-
-    fn update_device(
-        &self,
-        command: AiotDeviceUpdateCommand,
-    ) -> Result<AiotDeviceRecord, AiotDeviceRepositoryError> {
-        let Some(mut existing) = self.get_device(&command.association, &command.device_id) else {
-            return Err(AiotDeviceRepositoryError::NotFound);
-        };
-        if let Some(display_name) = command.display_name {
-            existing.display_name = display_name;
-        }
-        if let Some(status) = command.status {
-            existing.status = status;
-        }
-        if command.metadata_json.is_some() {
-            existing.metadata_json = command.metadata_json;
-        }
-        let batch = self
-            .planner
-            .plan_update_device(&existing)
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        self.execute_batch(batch)
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        Ok(existing)
-    }
-
-    fn delete_device(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-    ) -> Result<(), AiotDeviceRepositoryError> {
-        if self.get_device(association, device_id).is_none() {
-            return Err(AiotDeviceRepositoryError::NotFound);
-        }
-        let batch = self
-            .planner
-            .plan_delete_device(association, device_id)
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        self.execute_batch(batch)
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        Ok(())
-    }
-}
-
-impl AiotCommandRepository for SqliteSqlxDeviceRepository {
-    fn create_command(
-        &self,
-        command: AiotCommandCreateCommand,
-    ) -> Result<AiotCommandRecord, AiotCommandRepositoryError> {
-        if let Some(idempotency_key) = command.idempotency_key.as_deref() {
-            let cache_key = (
-                command.association.tenant_id,
-                command.association.organization_id,
-                idempotency_key.to_string(),
-            );
-            if let Some(existing_command_id) = self
-                .command_idempotency_cache
-                .lock()
-                .expect("sqlite command idempotency cache poisoned")
-                .get(&cache_key)
-                .cloned()
-            {
-                let existing = self
-                    .list_commands(&command.association, &command.device_id)?
-                    .into_iter()
-                    .find(|record| record.command_id == existing_command_id);
-                if let Some(existing) = existing {
-                    return Ok(existing);
-                }
-            }
-        }
-
-        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let tx = connection
-            .transaction()
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-
-        let next_id: i64 = tx
-            .query_row("SELECT COALESCE(MAX(id), 0) FROM iot_command", [], |row| {
-                row.get(0)
-            })
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-
-        let command_id = command
-            .command_id
-            .unwrap_or_else(|| format!("cmd-{}-{:04}", command.device_id, next_id + 1));
-
-        let duplicate_count: i64 = tx
-            .query_row(
-                "SELECT COUNT(1) FROM iot_command WHERE tenant_id = ?1 AND command_id = ?2",
-                (command.association.tenant_id, command_id.as_str()),
-                |row| row.get(0),
-            )
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-        if duplicate_count > 0 {
-            return Err(AiotCommandRepositoryError::DuplicateCommandId);
-        }
-
-        let request_media_snapshot = command.request_media_json.clone();
-        let status_code = command_status_code(&command.status);
-        let created_at = default_timestamp().to_string();
-        let trace_id = command.trace_id.clone();
-        let idempotency_key = command.idempotency_key.clone();
-        let command_id_for_cache = command_id.clone();
-
-        tx.execute(
-            "INSERT INTO iot_command (id, uuid, tenant_id, organization_id, data_scope, command_id, device_id, session_id, capability_name, command_name, request_payload, request_media_resource_id, request_object_blob_id, request_media_resource_snapshot, status, idempotency_key, timeout_at, ack_at, result_at, trace_id, created_at, updated_at, version, created_by, updated_by) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, NULL, NULL, ?18, ?19, ?20, 0, ?21, ?22)",
-            rusqlite::params![
-                next_id + 1,
-                format!("cmd-uuid-{}", next_id + 1),
-                command.association.tenant_id,
-                command.association.organization_id,
-                command.association.data_scope as i64,
-                command_id.as_str(),
-                command.device_id.as_str(),
-                command.session_id.as_deref(),
-                command.capability_name.as_str(),
-                command.command_name.as_str(),
-                command.request_payload_json.as_str(),
-                command.request_media_resource_id.as_deref(),
-                command.request_object_blob_id.as_deref(),
-                request_media_snapshot.as_deref(),
-                status_code,
-                command.idempotency_key.as_deref(),
-                command.timeout_at.as_deref(),
-                trace_id.as_deref(),
-                created_at.as_str(),
-                created_at.as_str(),
-                command.association.created_by,
-                command.association.updated_by,
-            ],
-        )
-        .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-
-        tx.commit()
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-
-        if let Some(idempotency_key) = idempotency_key {
-            self.command_idempotency_cache
-                .lock()
-                .expect("sqlite command idempotency cache poisoned")
-                .insert(
-                    (
-                        command.association.tenant_id,
-                        command.association.organization_id,
-                        idempotency_key,
-                    ),
-                    command_id_for_cache.clone(),
-                );
-        }
-
-        Ok(AiotCommandRecord {
-            id: (next_id + 1).to_string(),
-            tenant_id: command.association.tenant_id,
-            organization_id: command.association.organization_id,
-            command_id,
-            device_id: command.device_id,
-            session_id: command.session_id,
-            capability_name: command.capability_name,
-            command_name: command.command_name,
-            request_payload_json: command.request_payload_json,
-            request_media_resource_id: command.request_media_resource_id,
-            request_object_blob_id: command.request_object_blob_id,
-            request_media_json: request_media_snapshot,
-            status: command.status,
-            trace_id: command.trace_id,
-            timeout_at: command.timeout_at,
-            ack_at: None,
-            result_at: None,
-            created_at,
-            result: None,
-        })
-    }
-
-    fn list_commands(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-    ) -> Result<Vec<AiotCommandRecord>, AiotCommandRepositoryError> {
-        let connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let mut statement = connection
-            .prepare(
-                "SELECT id, command_id, device_id, session_id, capability_name, command_name, request_payload, request_media_resource_id, request_object_blob_id, request_media_resource_snapshot, status, timeout_at, ack_at, result_at, trace_id, created_at FROM iot_command WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 ORDER BY id ASC",
-            )
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-        let rows = statement
-            .query_map(
-                (
-                    association.tenant_id,
-                    association.organization_id,
-                    device_id.to_string(),
-                ),
-                |row| {
-                    let id: i64 = row.get(0)?;
-                    let command_id: String = row.get(1)?;
-                    let device_id: String = row.get(2)?;
-                    let session_id: Option<String> = row.get(3)?;
-                    let capability_name: String = row.get(4)?;
-                    let command_name: String = row.get(5)?;
-                    let request_payload_json: String = row.get(6)?;
-                    let request_media_resource_id: Option<String> = row.get(7)?;
-                    let request_object_blob_id: Option<String> = row.get(8)?;
-                    let request_media_json: Option<String> = row.get(9)?;
-                    let status_code: i64 = row.get(10)?;
-                    let timeout_at: Option<String> = row.get(11)?;
-                    let ack_at: Option<String> = row.get(12)?;
-                    let result_at: Option<String> = row.get(13)?;
-                    let trace_id: Option<String> = row.get(14)?;
-                    let created_at: Option<String> = row.get(15)?;
-                    Ok(AiotCommandRecord {
-                        id: id.to_string(),
-                        tenant_id: association.tenant_id,
-                        organization_id: association.organization_id,
-                        command_id: command_id.clone(),
-                        device_id,
-                        session_id,
-                        capability_name,
-                        command_name,
-                        request_payload_json,
-                        request_media_resource_id,
-                        request_object_blob_id,
-                        request_media_json,
-                        status: command_status_text(status_code),
-                        trace_id,
-                        timeout_at,
-                        ack_at,
-                        result_at,
-                        created_at: created_at.unwrap_or_else(|| default_timestamp().to_string()),
-                        result: None,
-                    })
-                },
-            )
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-        let mut commands = rows
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-
-        for command in &mut commands {
-            command.result = command_result_for(
-                &connection,
-                association.tenant_id,
-                association.organization_id,
-                &command.command_id,
-            )?;
-        }
-        Ok(commands)
-    }
-
-    fn cancel_command(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-        command_id: &str,
-    ) -> Result<Option<AiotCommandRecord>, AiotCommandRepositoryError> {
-        {
-            let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-            let tx = connection
-                .transaction()
-                .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-
-            let existing = tx
-                .query_row(
-                    "SELECT id, status FROM iot_command WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 AND command_id = ?4 LIMIT 1",
-                    (
-                        association.tenant_id,
-                        association.organization_id,
-                        device_id,
-                        command_id,
-                    ),
-                    |row| {
-                        let id: i64 = row.get(0)?;
-                        let status: i64 = row.get(1)?;
-                        Ok((id, status))
-                    },
-                )
-                .ok();
-
-            let Some((id, current_status_code)) = existing else {
-                return Ok(None);
-            };
-
-            if current_status_code != command_status_code("cancelled") {
-                let now = default_timestamp().to_string();
-                tx.execute(
-                    "UPDATE iot_command SET status = ?1, updated_at = ?2 WHERE id = ?3",
-                    (command_status_code("cancelled"), now.as_str(), id),
-                )
-                .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-            }
-
-            tx.commit()
-                .map_err(|_| AiotCommandRepositoryError::PersistenceFailure)?;
-        }
-
-        let command = self
-            .list_commands(association, device_id)?
-            .into_iter()
-            .find(|record| record.command_id == command_id);
-        Ok(command)
-    }
-}
-
-impl AiotDeviceSessionRepository for SqliteSqlxDeviceRepository {
-    fn disconnect_session(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-        session_id: &str,
-    ) -> Result<bool, AiotDeviceRepositoryError> {
-        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let tx = connection
-            .transaction()
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-        let now = default_timestamp().to_string();
-        let disconnected_status = 2_i64;
-
-        let existing_status = tx
-            .query_row(
-                "SELECT status FROM iot_device_session WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 AND session_id = ?4 LIMIT 1",
-                (
-                    association.tenant_id,
-                    association.organization_id,
-                    device_id,
-                    session_id,
-                ),
-                |row| row.get::<_, i64>(0),
-            )
-            .ok();
-        match existing_status {
-            Some(status) if status == disconnected_status => {
-                return Ok(false);
-            }
-            Some(_) => {
-                tx.execute(
-                    "UPDATE iot_device_session SET status = ?1, disconnected_at = ?2, updated_at = ?2 WHERE tenant_id = ?3 AND organization_id = ?4 AND device_id = ?5 AND session_id = ?6",
-                    (
-                        disconnected_status,
-                        now.as_str(),
-                        association.tenant_id,
-                        association.organization_id,
-                        device_id,
-                        session_id,
-                    ),
-                )
-                .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-            }
-            None => {
-                let next_id: i64 = tx
-                    .query_row(
-                        "SELECT COALESCE(MAX(id), 0) FROM iot_device_session",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-                let session_uuid = format!("session-{session_id}");
-                let connection_id = format!("connection-{session_id}");
-                tx.execute(
-                    "INSERT INTO iot_device_session (id, uuid, tenant_id, organization_id, data_scope, device_id, session_id, connection_id, protocol_id, adapter_id, node_id, status, connected_at, last_seen_at, disconnected_at, created_at, updated_at, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'xiaozhi.websocket', 'xiaozhi', NULL, ?9, ?10, ?10, ?10, ?10, ?10, 0)",
-                    rusqlite::params![
-                        next_id + 1,
-                        session_uuid.as_str(),
-                        association.tenant_id,
-                        association.organization_id,
-                        association.data_scope as i64,
-                        device_id,
-                        session_id,
-                        connection_id.as_str(),
-                        disconnected_status,
-                        now.as_str(),
-                    ],
-                )
-                .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-            }
-        }
-
-        tx.commit()
-            .map_err(|_| AiotDeviceRepositoryError::PersistenceFailure)?;
-
-        Ok(true)
-    }
-
-    fn is_session_disconnected(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-        session_id: &str,
-    ) -> Result<bool, AiotDeviceRepositoryError> {
-        let connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let disconnected_status = 2_i64;
-        let status = connection
-            .query_row(
-                "SELECT status FROM iot_device_session WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 AND session_id = ?4 LIMIT 1",
-                (
-                    association.tenant_id,
-                    association.organization_id,
-                    device_id,
-                    session_id,
-                ),
-                |row| row.get::<_, i64>(0),
-            )
-            .ok();
-        Ok(status == Some(disconnected_status))
-    }
-}
-
-impl AiotEventRepository for SqliteSqlxDeviceRepository {
-    fn record_event(
-        &self,
-        command: AiotDeviceEventCreateCommand,
-    ) -> Result<AiotDeviceEventRecord, AiotEventRepositoryError> {
-        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let tx = connection
-            .transaction()
-            .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-
-        let next_id: i64 = tx
-            .query_row(
-                "SELECT COALESCE(MAX(id), 0) FROM iot_device_event",
-                [],
-                |row| row.get(0),
-            )
-            .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-
-        let event_id = command
-            .event_id
-            .unwrap_or_else(|| format!("evt-{}-{:04}", command.device_id, next_id + 1));
-        let media_snapshot = command.media_json.clone();
-        let occurred_at = command.occurred_at.clone();
-        let envelope_payload = serde_json::json!({
-            "eventVersion": command.event_version,
-            "protocolId": command.protocol_id,
-            "adapterId": command.adapter_id,
-            "messageClass": command.message_class,
-            "semanticType": command.semantic_type,
-            "transport": command.transport,
-            "direction": command.direction,
-            "messageId": command.message_id,
-            "correlationId": command.correlation_id,
-            "traceId": command.trace_id,
-            "payloadHash": command.payload_hash,
-            "occurredAt": occurred_at,
-            "payload": serde_json::from_str::<JsonValue>(&command.payload_json).unwrap_or_else(|_| JsonValue::String(command.payload_json.clone()))
-        });
-        let event_payload_json = envelope_payload.to_string();
-
-        tx.execute(
-            "INSERT INTO iot_device_event (id, uuid, tenant_id, organization_id, data_scope, device_id, event_type, event_payload, media_resource_id, object_blob_id, media_resource_snapshot, status, created_at, updated_at, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?13, 0)",
-            (
-                next_id + 1,
-                event_id.as_str(),
-                command.association.tenant_id,
-                command.association.organization_id,
-                command.association.data_scope as i64,
-                command.device_id.as_str(),
-                command.event_type.as_str(),
-                event_payload_json.as_str(),
-                command.media_resource_id.as_deref(),
-                command.object_blob_id.as_deref(),
-                media_snapshot.as_deref(),
-                occurred_at.as_str(),
-                occurred_at.as_str(),
-            ),
-        )
-        .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-
-        tx.commit()
-            .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-
-        Ok(AiotDeviceEventRecord {
-            id: (next_id + 1).to_string(),
-            tenant_id: command.association.tenant_id,
-            organization_id: command.association.organization_id,
-            event_id,
-            event_type: command.event_type,
-            event_version: command.event_version,
-            device_id: command.device_id,
-            protocol_id: command.protocol_id,
-            adapter_id: command.adapter_id,
-            message_class: command.message_class,
-            semantic_type: command.semantic_type,
-            transport: command.transport,
-            direction: command.direction,
-            message_id: command.message_id,
-            correlation_id: command.correlation_id,
-            trace_id: command.trace_id,
-            payload_hash: command.payload_hash,
-            media_resource_id: command.media_resource_id,
-            object_blob_id: command.object_blob_id,
-            media_json: media_snapshot,
-            payload_json: command.payload_json,
-            occurred_at,
-        })
-    }
-
-    fn list_events(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: Option<&str>,
-    ) -> Result<Vec<AiotDeviceEventRecord>, AiotEventRepositoryError> {
-        let connection = self.connection.lock().expect("sqlite device repo poisoned");
-
-        if let Some(scoped_device_id) = device_id {
-            let mut statement = connection
-                .prepare(
-                    "SELECT id, uuid, device_id, event_type, event_payload, media_resource_id, object_blob_id, media_resource_snapshot, created_at FROM iot_device_event WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 ORDER BY id ASC",
-                )
-                .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-            let rows = statement
-                .query_map(
-                    (
-                        association.tenant_id,
-                        association.organization_id,
-                        scoped_device_id,
-                    ),
-                    |row| row_to_device_event_record(row, association),
-                )
-                .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-            rows.collect::<Result<Vec<_>, _>>()
-                .map_err(|_| AiotEventRepositoryError::PersistenceFailure)
-        } else {
-            let mut statement = connection
-                .prepare(
-                    "SELECT id, uuid, device_id, event_type, event_payload, media_resource_id, object_blob_id, media_resource_snapshot, created_at FROM iot_device_event WHERE tenant_id = ?1 AND organization_id = ?2 ORDER BY id ASC",
-                )
-                .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-            let rows = statement
-                .query_map(
-                    (association.tenant_id, association.organization_id),
-                    |row| row_to_device_event_record(row, association),
-                )
-                .map_err(|_| AiotEventRepositoryError::PersistenceFailure)?;
-            rows.collect::<Result<Vec<_>, _>>()
-                .map_err(|_| AiotEventRepositoryError::PersistenceFailure)
-        }
-    }
-}
-
-impl AiotDeviceTwinRepository for SqliteSqlxDeviceRepository {
-    fn upsert_twin_property(
-        &self,
-        command: AiotTwinPropertyUpsertCommand,
-    ) -> Result<AiotDeviceTwinSnapshot, AiotDeviceTwinRepositoryError> {
-        let mut connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let tx = connection
-            .transaction()
-            .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-
-        ensure_twin_root_row(
-            &tx,
-            &command.association,
-            &command.device_id,
-            default_timestamp(),
-        )
-        .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-
-        let existing = tx
-            .query_row(
-                "SELECT id, desired_value, desired_version, reported_value, reported_version FROM iot_device_twin_property WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 AND property_name = ?4 LIMIT 1",
-                (
-                    command.association.tenant_id,
-                    command.association.organization_id,
-                    command.device_id.as_str(),
-                    command.property_name.as_str(),
-                ),
-                |row| {
-                    let id: i64 = row.get(0)?;
-                    let desired_value: Option<String> = row.get(1)?;
-                    let desired_version: i64 = row.get(2)?;
-                    let reported_value: Option<String> = row.get(3)?;
-                    let reported_version: i64 = row.get(4)?;
-                    Ok((id, desired_value, desired_version, reported_value, reported_version))
-                },
-            )
-            .ok();
-
-        let desired_updated_at = command
-            .desired_updated_at
-            .as_deref()
-            .unwrap_or(default_timestamp());
-        let reported_updated_at = command
-            .reported_updated_at
-            .as_deref()
-            .unwrap_or(default_timestamp());
-        let updated_at = command
-            .desired_updated_at
-            .clone()
-            .or(command.reported_updated_at.clone())
-            .unwrap_or_else(|| default_timestamp().to_string());
-
-        match existing {
-            Some((
-                id,
-                existing_desired,
-                existing_desired_version,
-                existing_reported,
-                existing_reported_version,
-            )) => {
-                let desired_value = command.desired_value_json.clone().or(existing_desired);
-                let reported_value = command.reported_value_json.clone().or(existing_reported);
-                let desired_version = if command.desired_value_json.is_some() {
-                    existing_desired_version.saturating_add(1)
-                } else {
-                    existing_desired_version
-                };
-                let reported_version = if command.reported_value_json.is_some() {
-                    existing_reported_version.saturating_add(1)
-                } else {
-                    existing_reported_version
-                };
-                tx.execute(
-                    "UPDATE iot_device_twin_property SET desired_value = ?1, desired_version = ?2, desired_updated_at = ?3, reported_value = ?4, reported_version = ?5, reported_updated_at = ?6, updated_at = ?7 WHERE id = ?8",
-                    (
-                        desired_value.as_deref(),
-                        desired_version,
-                        desired_updated_at,
-                        reported_value.as_deref(),
-                        reported_version,
-                        reported_updated_at,
-                        updated_at.as_str(),
-                        id,
-                    ),
-                )
-                .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-            }
-            None => {
-                let next_property_id: i64 = tx
-                    .query_row(
-                        "SELECT COALESCE(MAX(id), 0) FROM iot_device_twin_property",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-                tx.execute(
-                    "INSERT INTO iot_device_twin_property (id, uuid, tenant_id, organization_id, data_scope, device_id, property_name, desired_value, desired_version, desired_updated_at, reported_value, reported_version, reported_updated_at, status, created_at, updated_at, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 1, ?14, ?15, 0)",
-                    rusqlite::params![
-                        next_property_id + 1,
-                        format!(
-                            "twin-prop-{}-{}",
-                            command.device_id,
-                            command.property_name
-                        ),
-                        command.association.tenant_id,
-                        command.association.organization_id,
-                        command.association.data_scope as i64,
-                        command.device_id.as_str(),
-                        command.property_name.as_str(),
-                        command.desired_value_json.as_deref(),
-                        if command.desired_value_json.is_some() { 1 } else { 0 },
-                        if command.desired_value_json.is_some() {
-                            Some(desired_updated_at)
-                        } else {
-                            None
-                        },
-                        command.reported_value_json.as_deref(),
-                        if command.reported_value_json.is_some() { 1 } else { 0 },
-                        if command.reported_value_json.is_some() {
-                            Some(reported_updated_at)
-                        } else {
-                            None
-                        },
-                        updated_at.as_str(),
-                        updated_at.as_str(),
-                    ],
-                )
-                .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-            }
-        }
-
-        recompute_twin_versions(&tx, &command.association, &command.device_id, &updated_at)
-            .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-
-        tx.commit()
-            .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-
-        drop(connection);
-        self.get_twin_snapshot(&command.association, &command.device_id)
-    }
-
-    fn get_twin_snapshot(
-        &self,
-        association: &AiotStorageAssociation,
-        device_id: &str,
-    ) -> Result<AiotDeviceTwinSnapshot, AiotDeviceTwinRepositoryError> {
-        let connection = self.connection.lock().expect("sqlite device repo poisoned");
-        let mut desired = BTreeMap::new();
-        let mut reported = BTreeMap::new();
-        let mut statement = connection
-            .prepare(
-                "SELECT property_name, desired_value, reported_value FROM iot_device_twin_property WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 ORDER BY id ASC",
-            )
-            .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-        let rows = statement
-            .query_map(
-                (
-                    association.tenant_id,
-                    association.organization_id,
-                    device_id,
-                ),
-                |row| {
-                    let property_name: String = row.get(0)?;
-                    let desired_value: Option<String> = row.get(1)?;
-                    let reported_value: Option<String> = row.get(2)?;
-                    Ok((property_name, desired_value, reported_value))
-                },
-            )
-            .map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-        for row in rows {
-            let (property_name, desired_value, reported_value) =
-                row.map_err(|_| AiotDeviceTwinRepositoryError::PersistenceFailure)?;
-            if let Some(desired_value) = desired_value {
-                desired.insert(property_name.clone(), desired_value);
-            }
-            if let Some(reported_value) = reported_value {
-                reported.insert(property_name, reported_value);
-            }
-        }
-
-        let twin_state = connection
-            .query_row(
-                "SELECT desired_version, reported_version, updated_at FROM iot_device_twin WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3 LIMIT 1",
-                (association.tenant_id, association.organization_id, device_id),
-                |row| {
-                    let desired_version: i64 = row.get(0)?;
-                    let reported_version: i64 = row.get(1)?;
-                    let updated_at: Option<String> = row.get(2)?;
-                    Ok((desired_version, reported_version, updated_at))
-                },
-            )
-            .ok();
-
-        let (desired_version, reported_version, updated_at) =
-            twin_state.unwrap_or((0, 0, Some(default_timestamp().to_string())));
-
-        Ok(AiotDeviceTwinSnapshot {
-            tenant_id: association.tenant_id,
-            organization_id: association.organization_id,
-            device_id: device_id.to_string(),
-            desired,
-            reported,
-            desired_version,
-            reported_version,
-            updated_at: updated_at.unwrap_or_else(|| default_timestamp().to_string()),
-        })
-    }
-}
-
-fn ensure_device_schema(connection: &Connection) -> Result<(), rusqlite::Error> {
-    connection.execute_batch(
-        "CREATE TABLE IF NOT EXISTS iot_schema_version (
-            version TEXT NOT NULL PRIMARY KEY,
-            name TEXT NOT NULL,
-            schema_version TEXT NOT NULL,
-            applied_at TEXT NOT NULL
-        )",
-    )?;
-
-    let mut applied_versions = load_applied_schema_versions(connection)?;
-    bootstrap_legacy_schema_version(connection, &mut applied_versions)?;
-
-    for migration in migration_catalog() {
-        if applied_versions.contains(migration.version) {
-            continue;
-        }
-        connection.execute_batch(migration.sql)?;
-        record_applied_schema_version(connection, &migration)?;
-        applied_versions.insert(migration.version.to_string());
-    }
-
-    Ok(())
-}
-
-fn load_applied_schema_versions(
-    connection: &Connection,
-) -> Result<BTreeSet<String>, rusqlite::Error> {
-    let mut statement =
-        connection.prepare("SELECT version FROM iot_schema_version ORDER BY version ASC")?;
-    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
-    rows.collect()
-}
-
-fn bootstrap_legacy_schema_version(
-    connection: &Connection,
-    applied_versions: &mut BTreeSet<String>,
-) -> Result<(), rusqlite::Error> {
-    if !applied_versions.is_empty() {
-        return Ok(());
-    }
-
-    let legacy_device_table: i64 = connection.query_row(
-        "SELECT COUNT(1) FROM sqlite_master WHERE type = 'table' AND name = 'iot_device'",
-        [],
-        |row| row.get(0),
-    )?;
-    if legacy_device_table == 0 {
-        return Ok(());
-    }
-
-    let Some(migration) = migration_catalog().into_iter().next() else {
-        return Ok(());
-    };
-    record_applied_schema_version(connection, &migration)?;
-    applied_versions.insert(migration.version.to_string());
-    Ok(())
-}
-
-fn record_applied_schema_version(
-    connection: &Connection,
-    migration: &SqlMigration,
-) -> Result<(), rusqlite::Error> {
-    connection.execute(
-        "INSERT OR IGNORE INTO iot_schema_version (version, name, schema_version, applied_at) VALUES (?1, ?2, ?3, ?4)",
-        (
-            migration.version,
-            migration.name,
-            migration.schema_version,
-            default_timestamp(),
-        ),
-    )?;
-    Ok(())
-}
-
-fn execute_sql_statement(
-    tx: &rusqlite::Transaction<'_>,
-    statement: &SqlStatementPlan,
-) -> Result<usize, rusqlite::Error> {
-    let values = statement
-        .binds
-        .iter()
-        .map(sql_bind_value_to_sqlite_value)
-        .collect::<Vec<_>>();
-    tx.execute(&statement.sql, params_from_iter(values.iter()))
-}
-
-fn sql_bind_value_to_sqlite_value(value: &SqlBindValue) -> SqliteValue {
-    match value {
-        SqlBindValue::Text(value) => SqliteValue::Text(value.clone()),
-        SqlBindValue::Int64(value) => SqliteValue::Integer(*value),
-        SqlBindValue::Null => SqliteValue::Null,
-    }
-}
-
-fn device_status_text(status: i64) -> String {
+pub(crate) fn device_status_text(status: i64) -> String {
     match status {
         0 => "inactive".to_string(),
         1 => "active".to_string(),
@@ -1638,7 +612,7 @@ fn device_status_text(status: i64) -> String {
     }
 }
 
-fn command_status_code(status: &str) -> i64 {
+pub(crate) fn command_status_code(status: &str) -> i64 {
     match status {
         "accepted" => 1,
         "dispatched" => 2,
@@ -1651,7 +625,7 @@ fn command_status_code(status: &str) -> i64 {
     }
 }
 
-fn command_status_text(status: i64) -> String {
+pub(crate) fn command_status_text(status: i64) -> String {
     match status {
         1 => "accepted".to_string(),
         2 => "dispatched".to_string(),
@@ -1664,7 +638,7 @@ fn command_status_text(status: i64) -> String {
     }
 }
 
-fn default_timestamp() -> &'static str {
+pub(crate) fn default_timestamp() -> &'static str {
     "2026-06-01T00:00:00Z"
 }
 
@@ -1700,210 +674,6 @@ fn empty_twin_snapshot(
         reported_version: 0,
         updated_at: default_timestamp().to_string(),
     }
-}
-
-fn command_result_for(
-    connection: &Connection,
-    tenant_id: i64,
-    organization_id: i64,
-    command_id: &str,
-) -> Result<Option<AiotCommandResultRecord>, AiotCommandRepositoryError> {
-    connection
-        .query_row(
-            "SELECT result_code, result_payload, result_media_resource_id, result_object_blob_id, result_media_resource_snapshot, updated_at FROM iot_command_result WHERE tenant_id = ?1 AND organization_id = ?2 AND command_id = ?3 ORDER BY id DESC LIMIT 1",
-            (tenant_id, organization_id, command_id),
-            |row| {
-                let result_code: Option<String> = row.get(0)?;
-                let result_payload_json: Option<String> = row.get(1)?;
-                let result_media_resource_id: Option<String> = row.get(2)?;
-                let result_object_blob_id: Option<String> = row.get(3)?;
-                let result_media_json: Option<String> = row.get(4)?;
-                let occurred_at: Option<String> = row.get(5)?;
-                Ok(AiotCommandResultRecord {
-                    result_code,
-                    result_payload_json,
-                    result_media_resource_id,
-                    result_object_blob_id,
-                    result_media_json,
-                    occurred_at,
-                })
-            },
-        )
-        .map(Some)
-        .or_else(|error| {
-            if matches!(error, rusqlite::Error::QueryReturnedNoRows) {
-                Ok(None)
-            } else {
-                Err(AiotCommandRepositoryError::PersistenceFailure)
-            }
-        })
-}
-
-fn row_to_device_event_record(
-    row: &rusqlite::Row<'_>,
-    association: &AiotStorageAssociation,
-) -> rusqlite::Result<AiotDeviceEventRecord> {
-    let id: i64 = row.get(0)?;
-    let event_id: String = row.get(1)?;
-    let device_id: String = row.get(2)?;
-    let event_type: String = row.get(3)?;
-    let event_payload_json: String = row.get(4)?;
-    let media_resource_id: Option<String> = row.get(5)?;
-    let object_blob_id: Option<String> = row.get(6)?;
-    let media_json: Option<String> = row.get(7)?;
-    let created_at: Option<String> = row.get(8)?;
-    let parsed_payload = serde_json::from_str::<JsonValue>(&event_payload_json).ok();
-
-    let envelope = parsed_payload.as_ref().and_then(JsonValue::as_object);
-    let payload_json = envelope
-        .and_then(|payload| payload.get("payload"))
-        .map(JsonValue::to_string)
-        .unwrap_or(event_payload_json);
-
-    let event_version = envelope
-        .and_then(|payload| payload.get("eventVersion"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("1")
-        .to_string();
-    let protocol_id = envelope
-        .and_then(|payload| payload.get("protocolId"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("xiaozhi.websocket")
-        .to_string();
-    let adapter_id = envelope
-        .and_then(|payload| payload.get("adapterId"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("xiaozhi")
-        .to_string();
-    let message_class = envelope
-        .and_then(|payload| payload.get("messageClass"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("mediaFrame")
-        .to_string();
-    let semantic_type = envelope
-        .and_then(|payload| payload.get("semanticType"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("audio")
-        .to_string();
-    let transport = envelope
-        .and_then(|payload| payload.get("transport"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("websocket")
-        .to_string();
-    let direction = envelope
-        .and_then(|payload| payload.get("direction"))
-        .and_then(JsonValue::as_str)
-        .unwrap_or("device_to_cloud")
-        .to_string();
-    let message_id = envelope
-        .and_then(|payload| payload.get("messageId"))
-        .and_then(JsonValue::as_str)
-        .map(str::to_string);
-    let correlation_id = envelope
-        .and_then(|payload| payload.get("correlationId"))
-        .and_then(JsonValue::as_str)
-        .map(str::to_string);
-    let trace_id = envelope
-        .and_then(|payload| payload.get("traceId"))
-        .and_then(JsonValue::as_str)
-        .map(str::to_string);
-    let payload_hash = envelope
-        .and_then(|payload| payload.get("payloadHash"))
-        .and_then(JsonValue::as_str)
-        .map(str::to_string);
-    let occurred_at = envelope
-        .and_then(|payload| payload.get("occurredAt"))
-        .and_then(JsonValue::as_str)
-        .map(str::to_string)
-        .or(created_at)
-        .unwrap_or_else(|| default_timestamp().to_string());
-
-    Ok(AiotDeviceEventRecord {
-        id: id.to_string(),
-        tenant_id: association.tenant_id,
-        organization_id: association.organization_id,
-        event_id,
-        event_type,
-        event_version,
-        device_id,
-        protocol_id,
-        adapter_id,
-        message_class,
-        semantic_type,
-        transport,
-        direction,
-        message_id,
-        correlation_id,
-        trace_id,
-        payload_hash,
-        media_resource_id,
-        object_blob_id,
-        media_json,
-        payload_json,
-        occurred_at,
-    })
-}
-
-fn ensure_twin_root_row(
-    tx: &rusqlite::Transaction<'_>,
-    association: &AiotStorageAssociation,
-    device_id: &str,
-    updated_at: &str,
-) -> Result<(), rusqlite::Error> {
-    let existing: i64 = tx.query_row(
-        "SELECT COUNT(1) FROM iot_device_twin WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3",
-        (association.tenant_id, association.organization_id, device_id),
-        |row| row.get(0),
-    )?;
-    if existing > 0 {
-        return Ok(());
-    }
-
-    let next_twin_id: i64 = tx.query_row(
-        "SELECT COALESCE(MAX(id), 0) FROM iot_device_twin",
-        [],
-        |row| row.get(0),
-    )?;
-    tx.execute(
-        "INSERT INTO iot_device_twin (id, uuid, tenant_id, organization_id, data_scope, device_id, desired_version, reported_version, status, created_at, updated_at, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, 0, 1, ?7, ?8, 0)",
-        (
-            next_twin_id + 1,
-            format!("twin-{}", device_id),
-            association.tenant_id,
-            association.organization_id,
-            association.data_scope as i64,
-            device_id,
-            updated_at,
-            updated_at,
-        ),
-    )?;
-    Ok(())
-}
-
-fn recompute_twin_versions(
-    tx: &rusqlite::Transaction<'_>,
-    association: &AiotStorageAssociation,
-    device_id: &str,
-    updated_at: &str,
-) -> Result<(), rusqlite::Error> {
-    let (desired_version, reported_version): (i64, i64) = tx.query_row(
-        "SELECT COALESCE(MAX(desired_version), 0), COALESCE(MAX(reported_version), 0) FROM iot_device_twin_property WHERE tenant_id = ?1 AND organization_id = ?2 AND device_id = ?3",
-        (association.tenant_id, association.organization_id, device_id),
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
-
-    tx.execute(
-        "UPDATE iot_device_twin SET desired_version = ?1, reported_version = ?2, updated_at = ?3 WHERE tenant_id = ?4 AND organization_id = ?5 AND device_id = ?6",
-        (
-            desired_version,
-            reported_version,
-            updated_at,
-            association.tenant_id,
-            association.organization_id,
-            device_id,
-        ),
-    )?;
-    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2364,106 +1134,80 @@ impl SqlStatementExecutor for InMemorySqlStatementExecutor {
 }
 
 #[derive(Debug, Clone)]
-pub struct RusqliteSqlStatementExecutor {
-    connection: Arc<Mutex<Connection>>,
+pub struct SqlxPoolSqlStatementExecutor {
+    db: BlockingSqlitePool,
 }
 
-impl RusqliteSqlStatementExecutor {
-    pub fn new(connection: Arc<Mutex<Connection>>) -> Self {
-        Self { connection }
+impl SqlxPoolSqlStatementExecutor {
+    pub fn new(db: BlockingSqlitePool) -> Self {
+        Self { db }
     }
 
-    pub fn new_in_memory() -> Result<Self, rusqlite::Error> {
-        let connection = Connection::open_in_memory()?;
-        ensure_device_schema(&connection)?;
-        Ok(Self::new(Arc::new(Mutex::new(connection))))
+    pub fn new_in_memory() -> Result<Self, sqlx::Error> {
+        let url = sqlite_connect_url("file:sdkwork-aiot-sql-executor?mode=memory&cache=shared");
+        let db = BlockingSqlitePool::connect(&url)?;
+        ensure_device_schema(&db)?;
+        Ok(Self::new(db))
     }
 
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, rusqlite::Error> {
-        let connection = Connection::open(path)?;
-        ensure_device_schema(&connection)?;
-        Ok(Self::new(Arc::new(Mutex::new(connection))))
-    }
-
-    fn execute_batch_in_connection(
-        connection: &mut Connection,
-        batch: SqlStatementBatch,
-    ) -> Result<(), rusqlite::Error> {
-        let tx = connection.transaction()?;
-        for statement in batch.statements {
-            execute_sql_statement(&tx, &statement)?;
-        }
-        tx.commit()?;
-        Ok(())
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, sqlx::Error> {
+        let url = sqlite_connect_url(path.as_ref().to_string_lossy().as_ref());
+        let db = BlockingSqlitePool::connect(&url)?;
+        ensure_device_schema(&db)?;
+        Ok(Self::new(db))
     }
 }
 
-impl SqlStatementExecutor for RusqliteSqlStatementExecutor {
+enum SqlExecutorTransactionError {
+    Duplicate,
+    Sql(StorageSqliteError),
+}
+
+impl From<StorageSqliteError> for SqlExecutorTransactionError {
+    fn from(error: StorageSqliteError) -> Self {
+        Self::Sql(error)
+    }
+}
+
+impl SqlStatementExecutor for SqlxPoolSqlStatementExecutor {
     fn execute_idempotency_guard(&self, _key: &str, statement: SqlStatementPlan) -> bool {
-        let mut connection = self
-            .connection
-            .lock()
-            .expect("rusqlite sql statement executor poisoned");
-        let tx = match connection.transaction() {
-            Ok(tx) => tx,
-            Err(_) => return false,
-        };
-        let changed = match execute_sql_statement(&tx, &statement) {
-            Ok(changed) => changed,
-            Err(_) => {
-                let _ = tx.rollback();
-                return false;
-            }
-        };
-        if changed == 0 {
-            let _ = tx.rollback();
-            return false;
-        }
-        tx.commit().is_ok()
+        self.db
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let changed = execute_sql_plan(&mut **tx, &statement).await?;
+                    if changed == 0 {
+                        return Err(SqlExecutorTransactionError::Duplicate);
+                    }
+                    Ok(())
+                })
+            })
+            .is_ok()
     }
 
     fn execute_batch(&self, batch: SqlStatementBatch) {
-        let mut connection = self
-            .connection
-            .lock()
-            .expect("rusqlite sql statement executor poisoned");
-        let _ = Self::execute_batch_in_connection(&mut connection, batch);
+        let _ = self.db.execute_statement_batch(batch);
     }
 
     fn execute_transaction(&self, transaction: SqlTransactionPlan) -> SqlTransactionOutcome {
-        let mut connection = self
-            .connection
-            .lock()
-            .expect("rusqlite sql statement executor poisoned");
-        let tx = match connection.transaction() {
-            Ok(tx) => tx,
-            Err(_) => {
-                return SqlTransactionOutcome::rolled_back("storage.sql.transaction_begin_failed");
-            }
-        };
-
-        let guard_changed = match execute_sql_statement(&tx, &transaction.guard) {
-            Ok(changed) => changed,
-            Err(_) => {
-                let _ = tx.rollback();
-                return SqlTransactionOutcome::rolled_back("storage.sql.idempotency_guard_failed");
-            }
-        };
-        if guard_changed == 0 {
-            let _ = tx.rollback();
-            return SqlTransactionOutcome::Duplicate;
-        }
-
-        for statement in transaction.write_batch.statements {
-            if execute_sql_statement(&tx, &statement).is_err() {
-                let _ = tx.rollback();
-                return SqlTransactionOutcome::rolled_back("storage.sql.write_batch_failed");
-            }
-        }
-
-        match tx.commit() {
+        match self.db.with_transaction(|tx| {
+            let guard = transaction.guard.clone();
+            let write_batch = transaction.write_batch.clone();
+            Box::pin(async move {
+                let guard_changed = execute_sql_plan(&mut **tx, &guard).await?;
+                if guard_changed == 0 {
+                    return Err(SqlExecutorTransactionError::Duplicate);
+                }
+                for statement in write_batch.statements {
+                    execute_sql_plan(&mut **tx, &statement).await?;
+                }
+                Ok(())
+            })
+        }) {
             Ok(()) => SqlTransactionOutcome::Committed,
-            Err(_) => SqlTransactionOutcome::rolled_back("storage.sql.transaction_commit_failed"),
+            Err(SqlExecutorTransactionError::Duplicate) => SqlTransactionOutcome::Duplicate,
+            Err(SqlExecutorTransactionError::Sql(_)) => {
+                SqlTransactionOutcome::rolled_back("storage.sql.write_batch_failed")
+            }
         }
     }
 }

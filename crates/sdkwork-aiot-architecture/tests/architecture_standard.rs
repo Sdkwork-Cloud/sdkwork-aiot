@@ -56,6 +56,200 @@ fn openapi_permission_for_operation(document: &str, operation_id: &str) -> Optio
 }
 
 #[test]
+fn github_packaging_workflow_is_declared() {
+    let root = workspace_root();
+    let workflow = root.join("sdkwork.workflow.json");
+    let package_workflow = root.join(".github/workflows/package.yml");
+
+    assert!(workflow.exists(), "sdkwork.workflow.json is required");
+    let workflow_text = fs::read_to_string(&workflow).expect("sdkwork.workflow.json");
+    assert!(workflow_text.contains(r#""id": "sdkwork-aiot""#));
+    assert!(workflow_text.contains("sdkwork-web-framework"));
+    assert!(workflow_text.contains("sdkwork-database"));
+
+    assert!(
+        package_workflow.exists(),
+        ".github/workflows/package.yml is required"
+    );
+    let package_text = fs::read_to_string(&package_workflow).expect("package workflow");
+    assert!(package_text.contains("sdkwork.workflow.json"));
+    assert!(package_text.contains("sdkwork-github-workflow"));
+}
+
+#[test]
+fn route_manifests_declare_web_request_context_metadata() {
+    let root = workspace_root();
+    let cases = [
+        (
+            "sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json",
+            "app-api",
+        ),
+        (
+            "sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json",
+            "backend-api",
+        ),
+    ];
+
+    for (relative_path, expected_surface) in cases {
+        let manifest = fs::read_to_string(root.join(relative_path)).expect(relative_path);
+        assert!(
+            manifest.contains(r#""requestContext": "WebRequestContext""#),
+            "{relative_path} must declare requestContext"
+        );
+        assert!(
+            manifest.contains(&format!(r#""apiSurface": "{expected_surface}""#)),
+            "{relative_path} must declare apiSurface={expected_surface}"
+        );
+    }
+}
+
+#[test]
+fn openapi_authorities_declare_web_request_context_extensions() {
+    let root = workspace_root();
+    let cases = [
+        (
+            "sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json",
+            "app-api",
+        ),
+        (
+            "sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json",
+            "backend-api",
+        ),
+    ];
+
+    for (relative_path, expected_surface) in cases {
+        let openapi = fs::read_to_string(root.join(relative_path)).expect(relative_path);
+        assert!(
+            openapi.contains(r#""x-sdkwork-request-context": "WebRequestContext""#),
+            "{relative_path} must declare x-sdkwork-request-context"
+        );
+        assert!(
+            openapi.contains(&format!(r#""x-sdkwork-api-surface": "{expected_surface}""#)),
+            "{relative_path} must declare x-sdkwork-api-surface"
+        );
+    }
+}
+
+#[test]
+fn standards_alignment_roadmap_is_documented() {
+    let root = workspace_root();
+    let adr = root.join("docs/adr/004-standards-alignment-roadmap.md");
+    assert!(adr.exists(), "standards alignment ADR is required");
+    let adr_text = fs::read_to_string(&adr).expect("standards alignment ADR");
+    assert!(adr_text.contains("sdkwork-web-framework"));
+    assert!(adr_text.contains("sdkwork-database"));
+    assert!(adr_text.contains("sdkwork-discovery"));
+}
+
+#[test]
+fn service_shells_mount_sdkwork_web_framework_routers() {
+    let root = workspace_root();
+
+    for (service, router_crate) in [
+        (
+            "services/sdkwork-aiot-app-api/src/main.rs",
+            "sdkwork_router_iot_app_api",
+        ),
+        (
+            "services/sdkwork-aiot-admin-api/src/main.rs",
+            "sdkwork_router_iot_backend_api",
+        ),
+    ] {
+        let source = fs::read_to_string(root.join(service)).expect(service);
+        assert!(
+            source.contains(router_crate),
+            "{service} must mount HTTP APIs through {router_crate}"
+        );
+        assert!(
+            source.contains("tokio::main") || source.contains("#[tokio::main]"),
+            "{service} must use async Tokio runtime for sdkwork-web-framework"
+        );
+        assert!(
+            !source.contains("sdkwork_aiot_transport::serve_http_concurrent"),
+            "{service} must not use legacy transport server"
+        );
+    }
+}
+
+#[test]
+fn workspace_declares_sdkwork_web_framework_dependencies() {
+    let root = workspace_root();
+    let cargo = fs::read_to_string(root.join("Cargo.toml")).expect("workspace Cargo.toml");
+
+    for dependency in [
+        "sdkwork-web-axum",
+        "sdkwork-web-core",
+        "sdkwork-iam-web-adapter",
+        "sdkwork-database-config",
+        "sdkwork-database-sqlx",
+    ] {
+        assert!(
+            cargo.contains(dependency),
+            "workspace Cargo.toml must declare {dependency}"
+        );
+    }
+
+    for crate_dir in [
+        "crates/sdkwork-router-iot-app-api",
+        "crates/sdkwork-router-iot-backend-api",
+        "crates/sdkwork-aiot-app-context",
+    ] {
+        assert!(
+            root.join(crate_dir).join("Cargo.toml").exists(),
+            "{crate_dir} is required for WEB_FRAMEWORK_SPEC alignment"
+        );
+    }
+}
+
+#[test]
+fn device_storage_uses_sdkwork_database_bootstrap() {
+    let root = workspace_root();
+    let storage = fs::read_to_string(root.join("crates/sdkwork-aiot-storage-sqlx/src/lib.rs"))
+        .expect("storage sqlx source");
+    let bootstrap =
+        fs::read_to_string(root.join("crates/sdkwork-aiot-storage-sqlx/src/database_bootstrap.rs"))
+            .expect("database bootstrap source");
+
+    assert!(storage.contains("mod database_bootstrap"));
+    assert!(storage.contains("open_device_repository"));
+    assert!(bootstrap.contains("DatabaseConfig"));
+    assert!(bootstrap.contains("sdkwork_database_sqlx"));
+    assert!(bootstrap.contains("create_pool_from_config"));
+    assert!(bootstrap.contains("aiot_device_blocking_pool"));
+    assert!(bootstrap.contains(r#"table_prefix: "iot_""#));
+}
+
+#[test]
+fn workspace_does_not_depend_on_rusqlite() {
+    let root = workspace_root();
+    let mut cargo_files = vec![root.join("Cargo.toml")];
+    for entry in fs::read_dir(root.join("crates")).expect("crates directory") {
+        let entry = entry.expect("crate entry");
+        if entry.path().is_dir() {
+            cargo_files.push(entry.path().join("Cargo.toml"));
+        }
+    }
+    for entry in fs::read_dir(root.join("services")).expect("services directory") {
+        let entry = entry.expect("service entry");
+        if entry.path().is_dir() {
+            cargo_files.push(entry.path().join("Cargo.toml"));
+        }
+    }
+
+    for cargo_path in cargo_files {
+        if !cargo_path.exists() {
+            continue;
+        }
+        let cargo = fs::read_to_string(&cargo_path).expect("Cargo.toml");
+        assert!(
+            !cargo.contains("rusqlite"),
+            "{} must not depend on direct rusqlite; use sdkwork-database-sqlx",
+            cargo_path.display()
+        );
+    }
+}
+
+#[test]
 fn workspace_does_not_create_parallel_aiot_iam_component() {
     let root = workspace_root();
     let cargo = fs::read_to_string(root.join("Cargo.toml")).expect("workspace Cargo.toml");
@@ -96,6 +290,10 @@ fn service_shells_reuse_runtime_builder_instead_of_owning_domain_logic() {
             assert!(
                 source.contains("sdkwork_aiot_http_api"),
                 "{service} must route through the shared HTTP API component"
+            );
+            assert!(
+                source.contains("sdkwork_router_iot"),
+                "{service} must mount sdkwork-web-framework routers"
             );
             assert!(
                 !source.contains("/backend/v3/api/iot/protocol_adapters")

@@ -5,9 +5,8 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-sdkwork-aiot-http-api = { path = "../../crates/sdkwork-aiot-http-api" }
-sdkwork-aiot-runtime = { path = "../../crates/sdkwork-aiot-runtime" }
-sdkwork-aiot-storage = { path = "../../crates/sdkwork-aiot-storage" }
-sdkwork-aiot-storage-sqlx = { path = "../../crates/sdkwork-aiot-storage-sqlx" }
-sdkwork-aiot-transport = { path = "../../crates/sdkwork-aiot-transport" }
-ctrlc = "=3.4.5"
+sdkwork-aiot-http-api.workspace = true
+sdkwork-aiot-runtime.workspace = true
+sdkwork-aiot-storage-sqlx.workspace = true
+sdkwork-router-iot-app-api.workspace = true
+tokio.workspace = true

@@ -8,6 +8,7 @@
   "prefix": "/app/v3/api",
   "routes": [
     {
+      "apiSurface": "app-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -26,6 +27,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/app/v3/api/iot/devices",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -39,6 +41,7 @@
       ]
     },
     {
+      "apiSurface": "app-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -57,6 +60,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/app/v3/api/iot/devices/{deviceId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -70,6 +74,7 @@
       ]
     },
     {
+      "apiSurface": "app-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -88,6 +93,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/app/v3/api/iot/devices/{deviceId}/commands",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -101,6 +107,7 @@
       ]
     },
     {
+      "apiSurface": "app-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -119,6 +126,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/app/v3/api/iot/devices/{deviceId}/twin",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -132,6 +140,7 @@
       ]
     },
     {
+      "apiSurface": "app-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -150,6 +159,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/app/v3/api/iot/devices/{deviceId}/events",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,

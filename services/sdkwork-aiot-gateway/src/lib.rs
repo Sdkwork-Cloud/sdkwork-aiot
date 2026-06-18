@@ -20,8 +20,8 @@ use sdkwork_aiot_protocol::{MessageClass, MessageCodec, ProtocolEnvelope};
 use sdkwork_aiot_runtime::{AiotRuntime, AiotRuntimePressure, BackpressureAction};
 use sdkwork_aiot_storage::{AiotProtocolIngestUnitOfWork, InMemoryProtocolIngestUnitOfWork};
 use sdkwork_aiot_storage_sqlx::{
-    RusqliteSqlStatementExecutor, SqlDialect, SqlProtocolIngestPlanner,
-    SqliteSqlxCredentialRepository, SqlxProtocolIngestUnitOfWork,
+    BlockingSqlitePool, SqlDialect, SqlProtocolIngestPlanner, SqliteSqlxCredentialRepository,
+    SqlxPoolSqlStatementExecutor, SqlxProtocolIngestUnitOfWork, StorageSqliteError,
 };
 use sdkwork_aiot_transport::{
     websocket_frame_to_inbound_frame, HttpRequest, HttpResponse, HttpStatus, TransportError,
@@ -29,7 +29,7 @@ use sdkwork_aiot_transport::{
 };
 
 thread_local! {
-    static SQLITE_CONNECTION_REGISTRY: RefCell<HashMap<PathBuf, Arc<Mutex<rusqlite::Connection>>>> =
+    static SQLITE_POOL_REGISTRY: RefCell<HashMap<PathBuf, BlockingSqlitePool>> =
         RefCell::new(HashMap::new());
 }
 
@@ -255,7 +255,7 @@ pub struct FileBackedXiaozhiActivationChallengeRegistry {
 #[derive(Debug, Clone)]
 pub struct SqliteXiaozhiActivationChallengeRegistry {
     path: PathBuf,
-    connection: Arc<Mutex<rusqlite::Connection>>,
+    db: BlockingSqlitePool,
 }
 
 #[derive(Debug, Clone)]
@@ -328,8 +328,8 @@ impl FileBackedXiaozhiActivationChallengeRegistry {
 
 impl SqliteXiaozhiActivationChallengeRegistry {
     pub fn new(path: PathBuf) -> Self {
-        let connection = sqlite_connection_for_path(&path);
-        let registry = Self { path, connection };
+        let db = blocking_sqlite_pool_for_path(&path);
+        let registry = Self { path, db };
         if let Err(error) = registry.ensure_schema() {
             eprintln!(
                 "sdkwork-aiot-gateway activation_registry_sqlite_schema_error path={} error={error}",
@@ -339,12 +339,8 @@ impl SqliteXiaozhiActivationChallengeRegistry {
         registry
     }
 
-    fn ensure_schema(&self) -> rusqlite::Result<()> {
-        let conn = self
-            .connection
-            .lock()
-            .expect("xiaozhi sqlite activation challenge registry lock");
-        conn.execute_batch(
+    fn ensure_schema(&self) -> Result<(), sqlx::Error> {
+        self.db.execute_batch_sql(
             "PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
 PRAGMA busy_timeout=3000;
@@ -451,65 +447,42 @@ impl XiaozhiActivationChallengeRegistry for SqliteXiaozhiActivationChallengeRegi
         let now = self.current_millis();
         let expires_at_millis = now.saturating_add(i64::from(timeout_ms));
 
-        let mut conn = self
-            .connection
-            .lock()
-            .expect("xiaozhi sqlite activation challenge registry lock");
+        let result: Result<u64, StorageSqliteError> = self.db.with_transaction(|tx| {
+            Box::pin(async move {
+                let pruned = sqlx::query(
+                    "DELETE FROM xiaozhi_activation_challenge_registry WHERE expires_at_millis <= ?1",
+                )
+                .bind(now)
+                .execute(&mut **tx)
+                .await?
+                .rows_affected();
 
-        let tx = match conn.transaction() {
-            Ok(tx) => tx,
-            Err(error) => {
-                eprintln!(
-                    "sdkwork-aiot-gateway activation_registry_sqlite_register_tx_error path={} error={error}",
-                    self.path.display()
-                );
-                return;
-            }
-        };
-
-        let pruned = match tx.execute(
-            "DELETE FROM xiaozhi_activation_challenge_registry WHERE expires_at_millis <= ?1",
-            [now],
-        ) {
-            Ok(count) => count as u64,
-            Err(error) => {
-                eprintln!(
-                    "sdkwork-aiot-gateway activation_registry_sqlite_prune_error path={} error={error}",
-                    self.path.display()
-                );
-                let _ = tx.rollback();
-                return;
-            }
-        };
-
-        if let Err(error) = tx.execute(
-            "INSERT INTO xiaozhi_activation_challenge_registry(device_id, client_id, challenge, expires_at_millis)
+                sqlx::query(
+                    "INSERT INTO xiaozhi_activation_challenge_registry(device_id, client_id, challenge, expires_at_millis)
 VALUES(?1, ?2, ?3, ?4)
 ON CONFLICT(device_id, client_id, challenge)
 DO UPDATE SET expires_at_millis=excluded.expires_at_millis",
-            rusqlite::params![
-                key.device_id,
-                key.client_id,
-                key.challenge,
-                expires_at_millis
-            ],
-        ) {
-            eprintln!(
-                "sdkwork-aiot-gateway activation_registry_sqlite_register_error path={} error={error}",
-                self.path.display()
-            );
-            let _ = tx.rollback();
-            return;
-        }
+                )
+                .bind(&key.device_id)
+                .bind(&key.client_id)
+                .bind(&key.challenge)
+                .bind(expires_at_millis)
+                .execute(&mut **tx)
+                .await?;
 
-        if let Err(error) = tx.commit() {
-            eprintln!(
-                "sdkwork-aiot-gateway activation_registry_sqlite_register_commit_error path={} error={error}",
-                self.path.display()
-            );
-            return;
+                Ok(pruned)
+            })
+        });
+
+        match result {
+            Ok(pruned) => activation_registry_add_pruned(pruned),
+            Err(error) => {
+                eprintln!(
+                    "sdkwork-aiot-gateway activation_registry_sqlite_register_error path={} error={error}",
+                    self.path.display()
+                );
+            }
         }
-        activation_registry_add_pruned(pruned);
     }
 
     fn consume_challenge(&self, request: &HttpRequest, challenge: &str) -> bool {
@@ -520,68 +493,48 @@ DO UPDATE SET expires_at_millis=excluded.expires_at_millis",
         let key = self.key_for_request(request, challenge);
         let now = self.current_millis();
 
-        let mut conn = self
-            .connection
-            .lock()
-            .expect("xiaozhi sqlite activation challenge registry lock");
+        let result: Result<(u64, bool), StorageSqliteError> = self.db.with_transaction(|tx| {
+            Box::pin(async move {
+                let pruned = sqlx::query(
+                    "DELETE FROM xiaozhi_activation_challenge_registry WHERE expires_at_millis <= ?1",
+                )
+                .bind(now)
+                .execute(&mut **tx)
+                .await?
+                .rows_affected();
 
-        let tx = match conn.transaction() {
-            Ok(tx) => tx,
-            Err(error) => {
-                eprintln!(
-                    "sdkwork-aiot-gateway activation_registry_sqlite_consume_tx_error path={} error={error}",
-                    self.path.display()
-                );
-                activation_registry_record_consume_outcome(false);
-                return false;
-            }
-        };
-
-        let pruned = match tx.execute(
-            "DELETE FROM xiaozhi_activation_challenge_registry WHERE expires_at_millis <= ?1",
-            [now],
-        ) {
-            Ok(count) => count as u64,
-            Err(error) => {
-                eprintln!(
-                    "sdkwork-aiot-gateway activation_registry_sqlite_prune_error path={} error={error}",
-                    self.path.display()
-                );
-                let _ = tx.rollback();
-                activation_registry_record_consume_outcome(false);
-                return false;
-            }
-        };
-
-        let deleted = match tx.execute(
-            "DELETE FROM xiaozhi_activation_challenge_registry
+                let deleted = sqlx::query(
+                    "DELETE FROM xiaozhi_activation_challenge_registry
 WHERE device_id=?1 AND client_id=?2 AND challenge=?3 AND expires_at_millis > ?4",
-            rusqlite::params![key.device_id, key.client_id, key.challenge, now],
-        ) {
-            Ok(count) => count > 0,
+                )
+                .bind(&key.device_id)
+                .bind(&key.client_id)
+                .bind(&key.challenge)
+                .bind(now)
+                .execute(&mut **tx)
+                .await?
+                .rows_affected()
+                    > 0;
+
+                Ok((pruned, deleted))
+            })
+        });
+
+        match result {
+            Ok((pruned, deleted)) => {
+                activation_registry_add_pruned(pruned);
+                activation_registry_record_consume_outcome(deleted);
+                deleted
+            }
             Err(error) => {
                 eprintln!(
                     "sdkwork-aiot-gateway activation_registry_sqlite_consume_error path={} error={error}",
                     self.path.display()
                 );
-                let _ = tx.rollback();
                 activation_registry_record_consume_outcome(false);
-                return false;
+                false
             }
-        };
-
-        if let Err(error) = tx.commit() {
-            eprintln!(
-                "sdkwork-aiot-gateway activation_registry_sqlite_consume_commit_error path={} error={error}",
-                self.path.display()
-            );
-            activation_registry_record_consume_outcome(false);
-            return false;
         }
-
-        activation_registry_add_pruned(pruned);
-        activation_registry_record_consume_outcome(deleted);
-        deleted
     }
 }
 
@@ -1302,7 +1255,7 @@ fn protocol_ingest_from_env() -> Arc<dyn AiotProtocolIngestUnitOfWork> {
         return Arc::new(InMemoryProtocolIngestUnitOfWork::new());
     };
 
-    match RusqliteSqlStatementExecutor::open(path) {
+    match SqlxPoolSqlStatementExecutor::open(path) {
         Ok(executor) => Arc::new(SqlxProtocolIngestUnitOfWork::with_planner(
             executor,
             SqlProtocolIngestPlanner::for_dialect(SqlDialect::Sqlite),
@@ -3721,21 +3674,24 @@ fn activation_registry_record_consume_outcome(consumed: bool) {
     }
 }
 
-fn sqlite_connection_for_path(path: &Path) -> Arc<Mutex<rusqlite::Connection>> {
-    SQLITE_CONNECTION_REGISTRY.with(|registry| {
+fn blocking_sqlite_pool_for_path(path: &Path) -> BlockingSqlitePool {
+    SQLITE_POOL_REGISTRY.with(|registry| {
         let mut registry = registry.borrow_mut();
         if let Some(existing) = registry.get(path) {
-            return Arc::clone(existing);
+            return existing.clone();
         }
-        let connection = rusqlite::Connection::open(path).unwrap_or_else(|error| {
+        let url = format!(
+            "sqlite:{}?mode=rwc",
+            path.display().to_string().replace('\\', "/")
+        );
+        let pool = BlockingSqlitePool::connect(&url).unwrap_or_else(|error| {
             panic!(
                 "failed to open sqlite activation registry at {}: {error}",
                 path.display()
             )
         });
-        let connection = Arc::new(Mutex::new(connection));
-        registry.insert(path.to_path_buf(), Arc::clone(&connection));
-        connection
+        registry.insert(path.to_path_buf(), pool.clone());
+        pool
     })
 }
 

@@ -8,6 +8,7 @@
   "prefix": "/backend/v3/api",
   "routes": [
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -26,6 +27,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/products",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -39,6 +41,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -57,6 +60,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/products",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -70,6 +74,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -88,6 +93,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/products/{productId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -101,6 +107,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -119,6 +126,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/products/{productId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -132,6 +140,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -150,6 +159,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/products/{productId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -163,6 +173,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -181,6 +192,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/hardware_profiles",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -194,6 +206,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -212,6 +225,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/hardware_profiles",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -225,6 +239,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -243,6 +258,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -256,6 +272,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -274,6 +291,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -287,6 +305,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -305,6 +324,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -318,6 +338,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -336,6 +357,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/protocol_profiles",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -349,6 +371,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -367,6 +390,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/protocol_profiles",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -380,6 +404,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -398,6 +423,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -411,6 +437,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -429,6 +456,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -442,6 +470,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -460,6 +489,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -473,6 +503,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -491,6 +522,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/capability_models",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -504,6 +536,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -522,6 +555,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/capability_models",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -535,6 +569,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -553,6 +588,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/capability_models/{capabilityModelId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -566,6 +602,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -584,6 +621,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/capability_models/{capabilityModelId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -597,6 +635,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -615,6 +654,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/capability_models/{capabilityModelId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -628,6 +668,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -646,6 +687,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -659,6 +701,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -677,6 +720,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -690,6 +734,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -708,6 +753,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -721,6 +767,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -739,6 +786,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -752,6 +800,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -770,6 +819,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -783,6 +833,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -801,6 +852,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/credentials",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -814,6 +866,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -832,6 +885,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/credentials/{credentialId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -845,6 +899,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -863,6 +918,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/credentials",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -876,6 +932,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -894,6 +951,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/credentials/{credentialId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -907,6 +965,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -925,6 +984,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/sessions",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -938,6 +998,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -956,6 +1017,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/sessions/{sessionId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -969,6 +1031,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -987,6 +1050,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/capabilities",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1000,6 +1064,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1018,6 +1083,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/commands",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1031,6 +1097,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1049,6 +1116,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/commands/{commandId}/cancel",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1062,6 +1130,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1080,6 +1149,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/twin",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1093,6 +1163,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1111,6 +1182,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/devices/{deviceId}/twin",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1124,6 +1196,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1142,6 +1215,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_artifacts",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1155,6 +1229,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1173,6 +1248,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_artifacts",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1186,6 +1262,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1204,6 +1281,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_artifacts/{artifactId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1217,6 +1295,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1235,6 +1314,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_artifacts/{artifactId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1248,6 +1328,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1266,6 +1347,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_artifacts/{artifactId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1279,6 +1361,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1297,6 +1380,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_rollouts",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1310,6 +1394,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1328,6 +1413,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_rollouts",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1341,6 +1427,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1359,6 +1446,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_rollouts/{rolloutId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1372,6 +1460,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1390,6 +1479,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_rollouts/{rolloutId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1403,6 +1493,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1421,6 +1512,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/firmware_rollouts/{rolloutId}",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1434,6 +1526,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1452,6 +1545,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/events",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1465,6 +1559,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1483,6 +1578,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/protocol_adapters",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,
@@ -1496,6 +1592,7 @@
       ]
     },
     {
+      "apiSurface": "backend-api",
       "auth": {
         "dataScope": "organization",
         "mode": "dual-token",
@@ -1514,6 +1611,7 @@
         "owner": "sdkwork-aiot"
       },
       "path": "/backend/v3/api/iot/runtime/capacity",
+      "requestContext": "WebRequestContext",
       "schemas": {
         "problem": "ProblemDetail",
         "request": null,

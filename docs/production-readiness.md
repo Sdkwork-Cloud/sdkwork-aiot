@@ -32,7 +32,7 @@ These items are closed for this repository scope with explicit architecture reco
 | Area | Resolution | Reference |
 | --- | --- | --- |
 | `sdkwork-appbase` IAM | Proxy-terminated auth; no local IAM tables | `docs/adr/001-iam-via-appbase-proxy.md`, `docs/deployment/iam-integration.md` |
-| Axum/Tokio HTTP stack | Retain tested minimal transport until funded migration | `docs/adr/002-http-transport-evolution.md` |
+| Axum/Tokio HTTP stack | Retain tested minimal transport for gateway/device ingress; app/backend APIs migrate per ADR 004 | `docs/adr/002-http-transport-evolution.md`, `docs/adr/004-standards-alignment-roadmap.md` |
 | Horizontal clustering | Sticky sessions + `SDKWORK_AIOT_GATEWAY_NODE_ID` | `docs/adr/003-gateway-horizontal-scaling.md` |
 
 ## Production Environment Checklist

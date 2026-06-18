@@ -12,7 +12,8 @@ use sdkwork_aiot_storage_sqlx::{
     InMemorySqlxDeviceRepository, SqlBindValue, SqlDeviceWriteOperation, SqlDialect,
     SqlProtocolIngestPlanner, SqlStatementBatch, SqlStatementExecutor, SqlStatementPlan,
     SqlTransactionFailurePolicy, SqlTransactionOutcome, SqlTransactionPlan,
-    SqliteSqlxDeviceRepository, SqlxProtocolIngestUnitOfWork,
+    SqliteSqlxCredentialRepository, SqliteSqlxDeviceRepository, SqlxPoolSqlStatementExecutor,
+    SqlxProtocolIngestUnitOfWork,
 };
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
@@ -1543,26 +1544,26 @@ fn sqlx_protocol_uow_executes_protocol_ingest_as_explicit_transaction_plan() {
 }
 
 #[test]
-fn rusqlite_sql_statement_executor_persists_device_create_batch() {
+fn sqlx_pool_sql_statement_executor_persists_device_create_batch() {
     use sdkwork_aiot_storage::AiotDeviceRecord;
-    use sdkwork_aiot_storage_sqlx::{RusqliteSqlStatementExecutor, SqlDeviceRepositoryPlanner};
+    use sdkwork_aiot_storage_sqlx::{SqlDeviceRepositoryPlanner, SqlxPoolSqlStatementExecutor};
 
     let unique_suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system clock")
         .as_nanos();
-    let path = std::env::temp_dir().join(format!("aiot-rusqlite-executor-{unique_suffix}.db"));
+    let path = std::env::temp_dir().join(format!("aiot-sqlx-executor-{unique_suffix}.db"));
     let _ = std::fs::remove_file(&path);
 
-    let executor = RusqliteSqlStatementExecutor::open(&path).expect("open rusqlite executor");
+    let executor = SqlxPoolSqlStatementExecutor::open(&path).expect("open sqlx executor");
     let record = AiotDeviceRecord {
         id: "1".to_string(),
         tenant_id: 10001,
         organization_id: 20001,
-        device_id: "rusqlite-device-001".to_string(),
-        display_name: "Rusqlite Device".to_string(),
+        device_id: "sqlx-device-001".to_string(),
+        display_name: "Sqlx Device".to_string(),
         product_id: "1008".to_string(),
-        client_id: Some("rusqlite-client".to_string()),
+        client_id: Some("sqlx-client".to_string()),
         chip_family: Some("esp32_s3".to_string()),
         status: "active".to_string(),
         metadata_json: None,
@@ -1576,10 +1577,10 @@ fn rusqlite_sql_statement_executor_persists_device_create_batch() {
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("reopen sqlite repo");
     let association = AiotStorageAssociation::tenant_org(10001, 20001);
     let loaded = repo
-        .get_device(&association, "rusqlite-device-001")
+        .get_device(&association, "sqlx-device-001")
         .expect("device persisted");
-    assert_eq!(loaded.display_name, "Rusqlite Device");
-    assert_eq!(loaded.client_id.as_deref(), Some("rusqlite-client"));
+    assert_eq!(loaded.display_name, "Sqlx Device");
+    assert_eq!(loaded.client_id.as_deref(), Some("sqlx-client"));
 
     let _ = std::fs::remove_file(&path);
 }
@@ -1658,4 +1659,22 @@ fn shared_sqlite_memory_uri_uses_one_schema_for_device_and_credential_repositori
     let issued_secret = created.issued_secret.expect("issued secret");
 
     assert!(credential_repo.verify_bearer_token("shared-db-device", &issued_secret));
+}
+
+#[test]
+fn device_repository_open_uses_sdkwork_database_config() {
+    let config = sdkwork_aiot_storage_sqlx::aiot_device_sqlite_memory_config();
+    assert_eq!(config.table_prefix, "iot_");
+    assert_eq!(
+        config.url,
+        sdkwork_aiot_storage_sqlx::DEFAULT_SHARED_SQLITE_MEMORY_URI
+    );
+}
+
+#[tokio::test]
+async fn device_database_memory_pool_uses_sdkwork_database_sqlx() {
+    let pool = sdkwork_aiot_storage_sqlx::aiot_device_sqlite_memory_pool()
+        .await
+        .expect("memory pool");
+    assert!(pool.as_sqlite().is_some());
 }

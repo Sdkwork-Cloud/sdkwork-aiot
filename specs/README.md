@@ -57,3 +57,10 @@ This component narrows the root SDKWork standards:
 - `SECURITY_SPEC.md`
 - `OBSERVABILITY_SPEC.md`
 - `TEST_SPEC.md`
+- `WEB_FRAMEWORK_SPEC.md`
+- `WEB_BACKEND_SPEC.md`
+- `DEPLOYMENT_SPEC.md`
+- `GITHUB_WORKFLOW_SPEC.md`
+- `APP_RUNTIME_TOPOLOGY_SPEC.md`
+
+Standards alignment phases: `../docs/adr/004-standards-alignment-roadmap.md`

@@ -1317,6 +1317,8 @@ pub fn standard_route_manifest_document(surface: AiotApiSurface) -> serde_json::
                 "method": route.method,
                 "path": route.path,
                 "operationId": route.operation_id,
+                "requestContext": "WebRequestContext",
+                "apiSurface": api_surface,
                 "tags": [format!("iot.{primary_tag}")],
                 "auth": {
                     "mode": "dual-token",
@@ -2315,6 +2317,28 @@ pub fn resolve_api_request(
     if is_protected_iot_api_path(&request.path) {
         return resolve_protected_request_context(request)
             .map(|ctx| AiotResolvedApiRequest::protected(request, ctx));
+    }
+
+    Ok(AiotResolvedApiRequest::public(request))
+}
+
+/// Resolves API request context from an SDKWork web-framework [`WebRequestContext`].
+///
+/// Used by Axum routers wrapped with `sdkwork-web-framework`; legacy byte transport keeps
+/// [`resolve_api_request`] and [`DefaultSdkworkIamContextResolver`].
+pub fn resolve_api_request_from_web_context<'a>(
+    request: &'a HttpRequest,
+    web_context: &sdkwork_web_core::WebRequestContext,
+) -> Result<AiotResolvedApiRequest<'a>, HttpResponse> {
+    if is_protected_iot_api_path(&request.path) {
+        return match sdkwork_aiot_app_context::aiot_context_from_web_request(web_context) {
+            Some(context) => Ok(AiotResolvedApiRequest::protected(request, context)),
+            None => Err(problem_response(
+                HttpStatus::Forbidden,
+                "api.context.missing",
+                "Resolved SDKWork request context is required",
+            )),
+        };
     }
 
     Ok(AiotResolvedApiRequest::public(request))

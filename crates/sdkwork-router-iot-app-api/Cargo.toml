@@ -1,0 +1,30 @@
+[package]
+name = "sdkwork-router-iot-app-api"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "SDKWork AIoT app-api Axum router with sdkwork-web-framework integration."
+build = "build.rs"
+
+[dependencies]
+axum.workspace = true
+http-body-util.workspace = true
+sdkwork-aiot-app-context.workspace = true
+sdkwork-aiot-http-api.workspace = true
+sdkwork-aiot-transport.workspace = true
+sdkwork-iam-web-adapter.workspace = true
+sdkwork-web-axum.workspace = true
+sdkwork-web-contract.workspace = true
+sdkwork-web-core.workspace = true
+tokio.workspace = true
+tower.workspace = true
+
+[build-dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+http-body-util.workspace = true
+sdkwork-web-core.workspace = true
+tokio.workspace = true
+tower.workspace = true

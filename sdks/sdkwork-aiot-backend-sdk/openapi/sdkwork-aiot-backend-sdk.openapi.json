@@ -45,7 +45,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -84,7 +86,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/products/{productId}": {
@@ -120,7 +124,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -164,7 +170,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -191,7 +199,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/hardware_profiles": {
@@ -222,7 +232,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -261,7 +273,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}": {
@@ -297,7 +311,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -341,7 +357,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -368,7 +386,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/protocol_profiles": {
@@ -399,7 +419,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -438,7 +460,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}": {
@@ -474,7 +498,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -518,7 +544,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -545,7 +573,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/capability_models": {
@@ -576,7 +606,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -615,7 +647,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/capability_models/{capabilityModelId}": {
@@ -654,7 +688,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -698,7 +734,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -725,7 +763,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices": {
@@ -756,7 +796,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -800,7 +842,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}": {
@@ -836,7 +880,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -883,7 +929,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -910,7 +958,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/credentials": {
@@ -946,7 +996,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -993,7 +1045,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/credentials/{credentialId}": {
@@ -1032,7 +1086,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -1062,7 +1118,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/sessions": {
@@ -1098,7 +1156,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/sessions/{sessionId}": {
@@ -1130,7 +1190,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/capabilities": {
@@ -1166,7 +1228,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/commands": {
@@ -1202,7 +1266,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/commands/{commandId}/cancel": {
@@ -1241,7 +1307,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/twin": {
@@ -1287,7 +1355,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "get": {
         "tags": [
@@ -1321,7 +1391,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_artifacts": {
@@ -1352,7 +1424,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -1396,7 +1470,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_artifacts/{artifactId}": {
@@ -1432,7 +1508,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -1476,7 +1554,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -1503,7 +1583,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_rollouts": {
@@ -1534,7 +1616,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "post": {
         "tags": [
@@ -1578,7 +1662,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_rollouts/{rolloutId}": {
@@ -1614,7 +1700,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "put": {
         "tags": [
@@ -1658,7 +1746,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       },
       "delete": {
         "tags": [
@@ -1685,7 +1775,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/events": {
@@ -1716,7 +1808,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/protocol_adapters": {
@@ -1747,7 +1841,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     },
     "/backend/v3/api/iot/runtime/capacity": {
@@ -1778,7 +1874,9 @@
           "default": {
             "$ref": "#/components/responses/Problem"
           }
-        }
+        },
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api"
       }
     }
   },

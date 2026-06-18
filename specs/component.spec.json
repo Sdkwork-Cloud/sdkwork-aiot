@@ -77,6 +77,31 @@
       "file": "RUST_CODE_SPEC.md",
       "path": "../sdkwork-specs/RUST_CODE_SPEC.md",
       "purpose": "Rust crate and module rules."
+    },
+    {
+      "file": "WEB_FRAMEWORK_SPEC.md",
+      "path": "../sdkwork-specs/WEB_FRAMEWORK_SPEC.md",
+      "purpose": "Mandatory sdkwork-web-framework integration for HTTP *-api surfaces."
+    },
+    {
+      "file": "WEB_BACKEND_SPEC.md",
+      "path": "../sdkwork-specs/WEB_BACKEND_SPEC.md",
+      "purpose": "Handler, service, repository, and request-context layering for HTTP backends."
+    },
+    {
+      "file": "DEPLOYMENT_SPEC.md",
+      "path": "../sdkwork-specs/DEPLOYMENT_SPEC.md",
+      "purpose": "Standalone/cloud deployment profile parity and runtime target coverage."
+    },
+    {
+      "file": "GITHUB_WORKFLOW_SPEC.md",
+      "path": "../sdkwork-specs/GITHUB_WORKFLOW_SPEC.md",
+      "purpose": "sdkwork.workflow.json and reusable GitHub packaging workflow integration."
+    },
+    {
+      "file": "APP_RUNTIME_TOPOLOGY_SPEC.md",
+      "path": "../sdkwork-specs/APP_RUNTIME_TOPOLOGY_SPEC.md",
+      "purpose": "Application runtime connectivity topology and dev orchestration profiles."
     }
   ],
   "contracts": {
@@ -86,10 +111,13 @@
       "crates/sdkwork-aiot-protocol",
       "crates/sdkwork-aiot-runtime",
       "crates/sdkwork-aiot-storage",
+      "crates/sdkwork-aiot-app-context",
       "crates/sdkwork-aiot-security",
       "crates/sdkwork-aiot-observability",
       "crates/sdkwork-aiot-adapter-xiaozhi",
-      "crates/sdkwork-aiot-http-api"
+      "crates/sdkwork-aiot-http-api",
+      "crates/sdkwork-router-iot-app-api",
+      "crates/sdkwork-router-iot-backend-api"
     ],
     "runtimeEntrypoints": [
       "sdkwork_aiot_runtime::AiotRuntime::builder",

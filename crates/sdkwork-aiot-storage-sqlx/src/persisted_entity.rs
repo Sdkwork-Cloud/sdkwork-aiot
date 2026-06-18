@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use rusqlite::{params, Connection};
 use sdkwork_aiot_storage::AiotStorageAssociation;
+use sqlx::Row;
 
-use crate::ensure_device_schema;
+use crate::schema::ensure_device_schema;
+use crate::sqlite_sync::{sqlite_connect_url, BlockingSqlitePool};
 
 const ENTITY_STATUS_ACTIVE: i32 = 1;
 
@@ -22,25 +22,26 @@ pub enum SqlitePersistedEntityError {
     Duplicate,
 }
 
+impl From<sqlx::Error> for SqlitePersistedEntityError {
+    fn from(_: sqlx::Error) -> Self {
+        Self::PersistenceFailure
+    }
+}
+
 pub struct SqlitePersistedEntityRepository {
-    connection: Arc<Mutex<Connection>>,
+    db: BlockingSqlitePool,
 }
 
 impl SqlitePersistedEntityRepository {
-    pub fn new_in_memory() -> Result<Self, rusqlite::Error> {
-        let connection = Connection::open_in_memory()?;
-        ensure_device_schema(&connection)?;
-        Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
-        })
+    pub fn new_in_memory() -> Result<Self, sqlx::Error> {
+        Self::open("file:sdkwork-aiot-admin-entity?mode=memory&cache=shared")
     }
 
-    pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self, rusqlite::Error> {
-        let connection = Connection::open(path)?;
-        ensure_device_schema(&connection)?;
-        Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
-        })
+    pub fn open(path_or_uri: impl AsRef<std::path::Path>) -> Result<Self, sqlx::Error> {
+        let url = sqlite_connect_url(path_or_uri.as_ref().to_string_lossy().as_ref());
+        let db = BlockingSqlitePool::connect(&url)?;
+        ensure_device_schema(&db)?;
+        Ok(Self { db })
     }
 
     pub fn upsert_entity(
@@ -50,61 +51,64 @@ impl SqlitePersistedEntityRepository {
         entity_key: &str,
         payload_json: &str,
     ) -> Result<(), SqlitePersistedEntityError> {
-        let connection = self
-            .connection
-            .lock()
-            .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
         let now = current_timestamp();
-        let updated = connection
-            .execute(
-                "UPDATE iot_admin_entity
-                 SET payload_json = ?1, updated_at = ?2, status = ?3
-                 WHERE tenant_id = ?4 AND organization_id = ?5 AND entity_kind = ?6 AND entity_key = ?7",
-                params![
-                    payload_json,
-                    now,
-                    ENTITY_STATUS_ACTIVE,
-                    association.tenant_id,
-                    association.organization_id,
-                    entity_kind,
-                    entity_key,
-                ],
-            )
-            .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
-        if updated > 0 {
-            return Ok(());
-        }
+        let association = association.clone();
+        let entity_kind = entity_kind.to_string();
+        let entity_key = entity_key.to_string();
+        let payload_json = payload_json.to_string();
+        self.db
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let updated = sqlx::query(
+                        "UPDATE iot_admin_entity
+                         SET payload_json = ?1, updated_at = ?2, status = ?3
+                         WHERE tenant_id = ?4 AND organization_id = ?5 AND entity_kind = ?6 AND entity_key = ?7",
+                    )
+                    .bind(&payload_json)
+                    .bind(&now)
+                    .bind(ENTITY_STATUS_ACTIVE)
+                    .bind(association.tenant_id)
+                    .bind(association.organization_id)
+                    .bind(&entity_kind)
+                    .bind(&entity_key)
+                    .execute(&mut **tx)
+                    .await
+                    .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?
+                    .rows_affected();
+                    if updated > 0 {
+                        return Ok(());
+                    }
 
-        let next_id: i64 = connection
-            .query_row(
-                "SELECT COALESCE(MAX(id), 0) + 1 FROM iot_admin_entity",
-                [],
-                |row| row.get(0),
-            )
-            .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
-        let uuid = format!("admin-entity-{next_id:08}");
-        connection
-            .execute(
-                "INSERT INTO iot_admin_entity (
-                    id, uuid, tenant_id, organization_id, data_scope, entity_kind, entity_key,
-                    payload_json, status, created_at, updated_at, version
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0)",
-                params![
-                    next_id,
-                    uuid,
-                    association.tenant_id,
-                    association.organization_id,
-                    association.data_scope,
-                    entity_kind,
-                    entity_key,
-                    payload_json,
-                    ENTITY_STATUS_ACTIVE,
-                    now,
-                    now,
-                ],
-            )
-            .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
-        Ok(())
+                    let next_id: i64 = sqlx::query_scalar(
+                        "SELECT COALESCE(MAX(id), 0) + 1 FROM iot_admin_entity",
+                    )
+                    .fetch_one(&mut **tx)
+                    .await
+                    .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
+                    let uuid = format!("admin-entity-{next_id:08}");
+                    sqlx::query(
+                        "INSERT INTO iot_admin_entity (
+                            id, uuid, tenant_id, organization_id, data_scope, entity_kind, entity_key,
+                            payload_json, status, created_at, updated_at, version
+                        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0)",
+                    )
+                    .bind(next_id)
+                    .bind(&uuid)
+                    .bind(association.tenant_id)
+                    .bind(association.organization_id)
+                    .bind(association.data_scope)
+                    .bind(&entity_kind)
+                    .bind(&entity_key)
+                    .bind(&payload_json)
+                    .bind(ENTITY_STATUS_ACTIVE)
+                    .bind(&now)
+                    .bind(&now)
+                    .execute(&mut **tx)
+                    .await
+                    .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
+                    Ok(())
+                })
+            })
     }
 
     pub fn get_entity(
@@ -113,28 +117,26 @@ impl SqlitePersistedEntityRepository {
         entity_kind: &str,
         entity_key: &str,
     ) -> Option<SqlitePersistedEntityRecord> {
-        let connection = self.connection.lock().ok()?;
-        connection
-            .query_row(
-                "SELECT entity_kind, entity_key, payload_json
-                 FROM iot_admin_entity
-                 WHERE tenant_id = ?1 AND organization_id = ?2 AND entity_kind = ?3 AND entity_key = ?4 AND status = ?5",
-                params![
-                    association.tenant_id,
-                    association.organization_id,
-                    entity_kind,
-                    entity_key,
-                    ENTITY_STATUS_ACTIVE
-                ],
-                |row| {
-                    Ok(SqlitePersistedEntityRecord {
-                        entity_kind: row.get(0)?,
-                        entity_key: row.get(1)?,
-                        payload_json: row.get(2)?,
-                    })
-                },
-            )
+        self.db
+            .run(async {
+                let row = sqlx::query(
+                    "SELECT entity_kind, entity_key, payload_json
+                     FROM iot_admin_entity
+                     WHERE tenant_id = ?1 AND organization_id = ?2 AND entity_kind = ?3 AND entity_key = ?4 AND status = ?5",
+                )
+                .bind(association.tenant_id)
+                .bind(association.organization_id)
+                .bind(entity_kind)
+                .bind(entity_key)
+                .bind(ENTITY_STATUS_ACTIVE)
+                .fetch_optional(self.db.pool())
+                .await?;
+                row.as_ref()
+                    .map(|row| row_to_entity_record(row))
+                    .transpose()
+            })
             .ok()
+            .flatten()
     }
 
     pub fn list_entities(
@@ -142,38 +144,26 @@ impl SqlitePersistedEntityRepository {
         association: &AiotStorageAssociation,
         entity_kind: &str,
     ) -> Vec<SqlitePersistedEntityRecord> {
-        let connection = match self.connection.lock() {
-            Ok(connection) => connection,
-            Err(_) => return Vec::new(),
-        };
-        let mut stmt = match connection.prepare(
-            "SELECT entity_kind, entity_key, payload_json
-             FROM iot_admin_entity
-             WHERE tenant_id = ?1 AND organization_id = ?2 AND entity_kind = ?3 AND status = ?4
-             ORDER BY id ASC",
-        ) {
-            Ok(stmt) => stmt,
-            Err(_) => return Vec::new(),
-        };
-        let rows = stmt.query_map(
-            params![
-                association.tenant_id,
-                association.organization_id,
-                entity_kind,
-                ENTITY_STATUS_ACTIVE
-            ],
-            |row| {
-                Ok(SqlitePersistedEntityRecord {
-                    entity_kind: row.get(0)?,
-                    entity_key: row.get(1)?,
-                    payload_json: row.get(2)?,
-                })
-            },
-        );
-        match rows {
-            Ok(rows) => rows.filter_map(Result::ok).collect(),
-            Err(_) => Vec::new(),
-        }
+        self.db
+            .run::<_, Vec<SqlitePersistedEntityRecord>, sqlx::Error>(async {
+                let rows = sqlx::query(
+                    "SELECT entity_kind, entity_key, payload_json
+                     FROM iot_admin_entity
+                     WHERE tenant_id = ?1 AND organization_id = ?2 AND entity_kind = ?3 AND status = ?4
+                     ORDER BY id ASC",
+                )
+                .bind(association.tenant_id)
+                .bind(association.organization_id)
+                .bind(entity_kind)
+                .bind(ENTITY_STATUS_ACTIVE)
+                .fetch_all(self.db.pool())
+                .await?;
+                Ok(rows
+                    .into_iter()
+                    .filter_map(|row| row_to_entity_record(&row).ok())
+                    .collect::<Vec<_>>())
+            })
+            .unwrap_or_default()
     }
 
     pub fn delete_entity(
@@ -182,31 +172,41 @@ impl SqlitePersistedEntityRepository {
         entity_kind: &str,
         entity_key: &str,
     ) -> Result<(), SqlitePersistedEntityError> {
-        let connection = self
-            .connection
-            .lock()
-            .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
         let now = current_timestamp();
-        let updated = connection
-            .execute(
-                "UPDATE iot_admin_entity
-                 SET status = 0, updated_at = ?1
-                 WHERE tenant_id = ?2 AND organization_id = ?3 AND entity_kind = ?4 AND entity_key = ?5 AND status = ?6",
-                params![
-                    now,
-                    association.tenant_id,
-                    association.organization_id,
-                    entity_kind,
-                    entity_key,
-                    ENTITY_STATUS_ACTIVE
-                ],
-            )
+        let updated = self
+            .db
+            .run(async {
+                sqlx::query(
+                    "UPDATE iot_admin_entity
+                     SET status = 0, updated_at = ?1
+                     WHERE tenant_id = ?2 AND organization_id = ?3 AND entity_kind = ?4 AND entity_key = ?5 AND status = ?6",
+                )
+                .bind(&now)
+                .bind(association.tenant_id)
+                .bind(association.organization_id)
+                .bind(entity_kind)
+                .bind(entity_key)
+                .bind(ENTITY_STATUS_ACTIVE)
+                .execute(self.db.pool())
+                .await
+                .map(|result| result.rows_affected())
+            })
             .map_err(|_| SqlitePersistedEntityError::PersistenceFailure)?;
         if updated == 0 {
             return Err(SqlitePersistedEntityError::NotFound);
         }
         Ok(())
     }
+}
+
+fn row_to_entity_record(
+    row: &sqlx::sqlite::SqliteRow,
+) -> Result<SqlitePersistedEntityRecord, sqlx::Error> {
+    Ok(SqlitePersistedEntityRecord {
+        entity_kind: row.try_get("entity_kind")?,
+        entity_key: row.try_get("entity_key")?,
+        payload_json: row.try_get("payload_json")?,
+    })
 }
 
 fn current_timestamp() -> String {

@@ -1,5 +1,34 @@
 # sdkwork-aiot-server
 
+## SDKWork Standards Alignment
+
+Standards alignment status and migration phases are tracked in `docs/adr/004-standards-alignment-roadmap.md`.
+
+Quick verification:
+
+```bash
+pnpm verify
+```
+
+Root directory dictionary (active capabilities):
+
+| Directory | Purpose |
+| --- | --- |
+| `apis/` | HTTP API contract index and regeneration notes |
+| `apps/` | PC, H5, mini program, and shared client surfaces |
+| `crates/` | Rust libraries and HTTP API component |
+| `services/` | Runnable gateway and app/backend API binaries |
+| `sdks/` | OpenAPI authorities, route manifests, generated SDK families |
+| `configs/` | Topology profile env templates |
+| `deployments/` | Deployment/release handoff placeholder |
+| `scripts/` | Dev orchestration and contract tests |
+| `docs/` | ADRs, topology, production readiness |
+| `specs/` | Component and topology contracts |
+| `tests/` | Cross-package test index |
+| `jobs/`, `tools/`, `examples/` | Reserved capability placeholders |
+
+Inactive standard directories are documented rather than omitted without explanation.
+
 ## Development (topology v2)
 
 Default profile: `self-hosted.split-services.development` (`specs/topology.spec.json`).

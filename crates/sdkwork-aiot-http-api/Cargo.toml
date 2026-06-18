@@ -6,7 +6,9 @@ license.workspace = true
 
 [dependencies]
 serde_json = "1"
+sdkwork-aiot-app-context.workspace = true
 sdkwork-aiot-contract.workspace = true
+sdkwork-web-core.workspace = true
 sdkwork-aiot-core.workspace = true
 sdkwork-aiot-observability.workspace = true
 sdkwork-aiot-protocol.workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "sdkwork-aiot-app-context"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Maps SDKWork WebRequestContext into AIoT domain request context."
+
+[dependencies]
+sdkwork-aiot-contract.workspace = true
+sdkwork-web-core.workspace = true

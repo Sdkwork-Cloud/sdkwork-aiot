@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "2026-06-06.sdkwork.workflow.v1",
+  "app": {
+    "id": "sdkwork-aiot",
+    "name": "SDKWork AIoT",
+    "repository": "Sdkwork-Cloud/sdkwork-aiot",
+    "sourcePath": "."
+  },
+  "release": {
+    "artifactPrefix": "sdkwork-aiot",
+    "defaultVersion": "0.1.0",
+    "changelog": {
+      "source": "auto",
+      "maxCommitSubjects": 50
+    }
+  },
+  "dependencies": [
+    {
+      "id": "sdkwork-appbase",
+      "repository": "Sdkwork-Cloud/sdkwork-appbase",
+      "ref": "main",
+      "refInput": "SDKWORK_APPBASE_REF",
+      "tokenSecret": "SDKWORK_RELEASE_TOKEN"
+    },
+    {
+      "id": "sdkwork-web-framework",
+      "repository": "Sdkwork-Cloud/sdkwork-web-framework",
+      "ref": "main",
+      "refInput": "SDKWORK_WEB_FRAMEWORK_REF",
+      "tokenSecret": "SDKWORK_RELEASE_TOKEN"
+    },
+    {
+      "id": "sdkwork-database",
+      "repository": "Sdkwork-Cloud/sdkwork-database",
+      "ref": "main",
+      "refInput": "SDKWORK_DATABASE_REF",
+      "tokenSecret": "SDKWORK_RELEASE_TOKEN"
+    },
+    {
+      "id": "sdkwork-sdk-generator",
+      "repository": "Sdkwork-Cloud/sdkwork-sdk-generator",
+      "ref": "main",
+      "refInput": "SDKWORK_SDK_GENERATOR_REF",
+      "tokenSecret": "SDKWORK_RELEASE_TOKEN"
+    },
+    {
+      "id": "sdkwork-app-topology",
+      "repository": "Sdkwork-Cloud/sdkwork-app-topology",
+      "ref": "main",
+      "refInput": "SDKWORK_APP_TOPOLOGY_REF",
+      "tokenSecret": "SDKWORK_RELEASE_TOKEN"
+    }
+  ],
+  "toolchains": {
+    "node": "22",
+    "pnpm": "10.33.0",
+    "rust": "stable"
+  },
+  "lifecycle": {
+    "install": [
+      {
+        "name": "Install workspace dependencies",
+        "shell": "pwsh",
+        "run": "pnpm install --no-frozen-lockfile"
+      }
+    ],
+    "build": [
+      {
+        "name": "Verify Rust workspace",
+        "shell": "pwsh",
+        "run": "cargo fmt --all -- --check; cargo clippy --workspace --tests -- -D warnings; cargo test --workspace"
+      }
+    ],
+    "package": [
+      {
+        "name": "Package AIoT server binaries",
+        "shell": "pwsh",
+        "run": "$ErrorActionPreference = \"Stop\"\nswitch ($env:SDKWORK_PACKAGE_PROFILE) {\n  'server' {\n    New-Item -ItemType Directory -Force -Path artifacts/release | Out-Null\n    cargo build --release -p sdkwork-aiot-gateway -p sdkwork-aiot-app-api -p sdkwork-aiot-admin-api\n    Copy-Item target/release/sdkwork-aiot-gateway.exe artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-app-api.exe artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-admin-api.exe artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-gateway artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-app-api artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-admin-api artifacts/release/ -ErrorAction SilentlyContinue\n  }\n  default { Write-Host \"Skipping AIoT package archive for profile $($env:SDKWORK_PACKAGE_PROFILE)\" }\n}"
+      }
+    ],
+    "validate": [
+      {
+        "name": "Validate topology and OpenAPI contracts",
+        "shell": "pwsh",
+        "run": "pnpm test:topology-validate; pnpm test:topology-baggage; pnpm test:app-openapi-context; pnpm test:openapi-web-context"
+      }
+    ]
+  },
+  "targets": [
+    {
+      "id": "linux-x64-server-tar-gz",
+      "profile": "server",
+      "platform": "linux",
+      "architecture": "x64",
+      "formats": ["tar.gz"],
+      "runner": "ubuntu-24.04",
+      "outputGlobs": ["artifacts/release/**/*"]
+    },
+    {
+      "id": "windows-x64-server-zip",
+      "profile": "server",
+      "platform": "windows",
+      "architecture": "x64",
+      "formats": ["zip"],
+      "runner": "windows-latest",
+      "outputGlobs": ["artifacts/release/**/*"]
+    }
+  ],
+  "security": {
+    "artifactAttestations": true,
+    "sbomRequired": true,
+    "signingRequired": false
+  },
+  "publish": {
+    "workflowArtifact": true,
+    "githubRelease": false,
+    "retentionDays": 30
+  }
+}
