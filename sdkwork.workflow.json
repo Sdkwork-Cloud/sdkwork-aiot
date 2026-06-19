@@ -78,6 +78,13 @@
         "run": "$ErrorActionPreference = \"Stop\"\nswitch ($env:SDKWORK_PACKAGE_PROFILE) {\n  'server' {\n    New-Item -ItemType Directory -Force -Path artifacts/release | Out-Null\n    cargo build --release -p sdkwork-aiot-gateway -p sdkwork-aiot-app-api -p sdkwork-aiot-admin-api\n    Copy-Item target/release/sdkwork-aiot-gateway.exe artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-app-api.exe artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-admin-api.exe artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-gateway artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-app-api artifacts/release/ -ErrorAction SilentlyContinue\n    Copy-Item target/release/sdkwork-aiot-admin-api artifacts/release/ -ErrorAction SilentlyContinue\n  }\n  default { Write-Host \"Skipping AIoT package archive for profile $($env:SDKWORK_PACKAGE_PROFILE)\" }\n}"
       }
     ],
+    "sbom": [
+      {
+        "name": "Write AIoT package SBOM evidence",
+        "shell": "node",
+        "run": "import { mkdirSync, writeFileSync } from 'node:fs';\nimport path from 'node:path';\nconst env = process.env;\nconst packageId = env.SDKWORK_PACKAGE_ID || env.SDKWORK_PACKAGE_TARGET_ID || 'sdkwork-aiot';\nconst output = path.posix.join('artifacts/release/sbom', `${packageId}.sbom.json`);\nmkdirSync(path.dirname(output), { recursive: true });\nwriteFileSync(output, `${JSON.stringify({ bomFormat: 'CycloneDX', specVersion: '1.6', version: 1, metadata: { timestamp: new Date().toISOString(), tools: [{ vendor: 'SDKWork', name: 'sdkwork-aiot-workflow-sbom', version: '1.0.0' }], component: { type: 'application', name: env.SDKWORK_APP_ID || 'sdkwork-aiot', version: env.SDKWORK_PACKAGE_VERSION || env.SDKWORK_RELEASE_TAG || '0.1.0', 'bom-ref': packageId }, properties: [{ name: 'sdkwork:packageId', value: packageId }, { name: 'sdkwork:targetId', value: env.SDKWORK_PACKAGE_TARGET_ID || packageId }, { name: 'sdkwork:runtimeTarget', value: env.SDKWORK_RUNTIME_TARGET || 'server' }, { name: 'sdkwork:deploymentProfile', value: env.SDKWORK_DEPLOYMENT_PROFILE || 'standalone' }] }, components: [] }, null, 2)}\\n`);"
+      }
+    ],
     "validate": [
       {
         "name": "Validate topology and OpenAPI contracts",
@@ -88,22 +95,34 @@
   },
   "targets": [
     {
-      "id": "linux-x64-server-tar-gz",
+      "id": "linux-x64-standalone-server-tar-gz",
       "profile": "server",
       "platform": "linux",
       "architecture": "x64",
-      "formats": ["tar.gz"],
+      "formats": [
+        "tar.gz"
+      ],
       "runner": "ubuntu-24.04",
-      "outputGlobs": ["artifacts/release/**/*"]
+      "outputGlobs": [
+        "artifacts/release/**/*"
+      ],
+      "deploymentProfile": "standalone",
+      "runtimeTarget": "server"
     },
     {
-      "id": "windows-x64-server-zip",
+      "id": "windows-x64-standalone-server-zip",
       "profile": "server",
       "platform": "windows",
       "architecture": "x64",
-      "formats": ["zip"],
+      "formats": [
+        "zip"
+      ],
       "runner": "windows-latest",
-      "outputGlobs": ["artifacts/release/**/*"]
+      "outputGlobs": [
+        "artifacts/release/**/*"
+      ],
+      "deploymentProfile": "standalone",
+      "runtimeTarget": "server"
     }
   ],
   "security": {

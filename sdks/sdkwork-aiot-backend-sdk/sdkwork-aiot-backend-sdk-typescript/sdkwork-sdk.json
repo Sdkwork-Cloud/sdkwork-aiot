@@ -2,7 +2,7 @@
   "name": "@sdkwork/aiot-backend-sdk",
   "version": "0.1.0",
   "generated": true,
-  "source": "../openapi/sdkwork-aiot-backend-sdk.openapi.json",
+  "source": "../../../../apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
   "standardProfile": "sdkwork-v3",
   "apiPrefix": "/backend/v3/api/iot",
   "primaryClient": "SdkworkAiotBackendClient",

@@ -17,7 +17,7 @@ use sdkwork_aiot_adapter_xiaozhi::{
     XIAOZHI_WS_PATH,
 };
 use sdkwork_aiot_protocol::{MessageClass, MessageCodec, ProtocolEnvelope};
-use sdkwork_aiot_runtime::{AiotRuntime, AiotRuntimePressure, BackpressureAction};
+use sdkwork_aiot_service_host::{AiotRuntime, AiotRuntimePressure, BackpressureAction};
 use sdkwork_aiot_storage::{AiotProtocolIngestUnitOfWork, InMemoryProtocolIngestUnitOfWork};
 use sdkwork_aiot_storage_sqlx::{
     BlockingSqlitePool, SqlDialect, SqlProtocolIngestPlanner, SqliteSqlxCredentialRepository,
@@ -1238,11 +1238,17 @@ impl XiaozhiSessionOptions {
 
 fn device_credential_repository_from_env() -> Option<Arc<SqliteSqlxCredentialRepository>> {
     let path = env_string(ENV_DEVICE_DB_PATH)?;
-    match SqliteSqlxCredentialRepository::open(path) {
-        Ok(repository) => {
-            println!("sdkwork-aiot-gateway device_credential_repository=sqlite");
-            Some(Arc::new(repository))
-        }
+    match sdkwork_aiot_storage_sqlx::open_aiot_device_database(Some(&path)) {
+        Ok(database) => match database.credential_repository() {
+            Ok(repository) => {
+                println!("sdkwork-aiot-gateway device_credential_repository=sqlite");
+                Some(Arc::new(repository))
+            }
+            Err(error) => {
+                eprintln!("sdkwork-aiot-gateway device_credential_repository_open_error={error}");
+                None
+            }
+        },
         Err(error) => {
             eprintln!("sdkwork-aiot-gateway device_credential_repository_open_error={error}");
             None

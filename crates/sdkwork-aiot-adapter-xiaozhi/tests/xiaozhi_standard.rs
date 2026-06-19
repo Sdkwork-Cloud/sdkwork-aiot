@@ -10,8 +10,8 @@ use sdkwork_aiot_protocol::{
     CodecKind, InboundFrame, MessageClass, MessageCodec, ProtocolEnvelope, ProtocolPluginScope,
     SessionPolicy, TransportBinding,
 };
-use sdkwork_aiot_runtime::{standard_aiot_runtime, AiotProtocolMessageAction, RuntimeMode};
 use sdkwork_aiot_security::DeviceAuthMode;
+use sdkwork_aiot_service_host::{standard_aiot_runtime, AiotProtocolMessageAction, RuntimeMode};
 
 #[test]
 fn xiaozhi_manifest_declares_plugin_not_core_protocol() {

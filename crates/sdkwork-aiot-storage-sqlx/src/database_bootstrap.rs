@@ -67,6 +67,7 @@ pub fn aiot_device_blocking_pool(
     device_db_path: Option<&str>,
 ) -> Result<BlockingSqlitePool, PoolError> {
     let config = resolve_device_database_config(device_db_path);
+    debug_assert!(!sqlite_url_from_config(&config).is_empty());
     let runtime = tokio::runtime::Runtime::new()
         .map_err(|error| PoolError::DatabaseConfig(format!("tokio runtime: {error}")))?;
     let database_pool = runtime.block_on(create_pool_from_config(config))?;

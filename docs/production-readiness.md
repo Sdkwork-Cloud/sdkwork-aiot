@@ -13,8 +13,9 @@ This document tracks production readiness for the SDKWork AIoT server after the 
 | Structured trace logging | Done | `SDKWORK_AIOT_STRUCTURED_TRACE=1`, `sdkwork-aiot-observability`, gateway + HTTP API hooks |
 | OTLP HTTP trace export | Done | `SDKWORK_AIOT_OTLP_ENDPOINT`, OTLP/HTTP JSON in `sdkwork-aiot-observability` |
 | Protocol ingest persistence | Done | Gateway `protocol_ingest_from_env()` + `SqlxProtocolIngestUnitOfWork` |
-| HTTP concurrency + full request read | Done | `serve_http_concurrent`, `read_full_http_request` |
-| CORS + security headers + rate limiting | Done | `sdkwork-aiot-http-api` |
+| App/backend HTTP (Axum + web framework) | Done | `sdkwork-router-iot-app-api`, `sdkwork-router-iot-backend-api`, `resolve_api_request_from_web_context` |
+| Gateway device ingress HTTP | Done | `sdkwork-aiot-transport` minimal stack per ADR 002 |
+| CORS + security headers + rate limiting | Done | `sdkwork-iot-platform-service` |
 | Production device auth fail-closed | Done | Gateway dev/prod token rules |
 | Internal route token auth | Done | `internal_route_authorized` |
 | MQTT/UDP multi-session bridge | Done | Per-device session map in gateway |
@@ -32,7 +33,7 @@ These items are closed for this repository scope with explicit architecture reco
 | Area | Resolution | Reference |
 | --- | --- | --- |
 | `sdkwork-appbase` IAM | Proxy-terminated auth; no local IAM tables | `docs/adr/001-iam-via-appbase-proxy.md`, `docs/deployment/iam-integration.md` |
-| Axum/Tokio HTTP stack | Retain tested minimal transport for gateway/device ingress; app/backend APIs migrate per ADR 004 | `docs/adr/002-http-transport-evolution.md`, `docs/adr/004-standards-alignment-roadmap.md` |
+| Axum/Tokio HTTP stack | Gateway retains minimal transport; app/backend APIs use `sdkwork-web-framework` per ADR 004 | `docs/adr/002-http-transport-evolution.md`, `docs/adr/004-standards-alignment-roadmap.md` |
 | Horizontal clustering | Sticky sessions + `SDKWORK_AIOT_GATEWAY_NODE_ID` | `docs/adr/003-gateway-horizontal-scaling.md` |
 
 ## Production Environment Checklist

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use sdkwork_aiot_http_api::{standard_api_route_contracts, AiotApiSurface};
+use sdkwork_iot_platform_service::{standard_api_route_contracts, AiotApiSurface};
 
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -108,11 +108,11 @@ fn openapi_authorities_declare_web_request_context_extensions() {
     let root = workspace_root();
     let cases = [
         (
-            "sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json",
+            "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
             "app-api",
         ),
         (
-            "sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json",
+            "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
             "backend-api",
         ),
     ];
@@ -126,6 +126,65 @@ fn openapi_authorities_declare_web_request_context_extensions() {
         assert!(
             openapi.contains(&format!(r#""x-sdkwork-api-surface": "{expected_surface}""#)),
             "{relative_path} must declare x-sdkwork-api-surface"
+        );
+    }
+}
+
+#[test]
+fn apis_authority_inputs_exist_and_sdk_assemblies_reference_them() {
+    let root = workspace_root();
+    let authorities = [
+        "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+        "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
+    ];
+
+    for relative_path in authorities {
+        assert!(
+            root.join(relative_path).exists(),
+            "{relative_path} is required authored API authority input"
+        );
+    }
+
+    for (assembly_path, authority_path) in [
+        (
+            "sdks/sdkwork-aiot-app-sdk/.sdkwork-assembly.json",
+            "../../apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+        ),
+        (
+            "sdks/sdkwork-aiot-backend-sdk/.sdkwork-assembly.json",
+            "../../apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
+        ),
+    ] {
+        let assembly = fs::read_to_string(root.join(assembly_path)).expect(assembly_path);
+        assert!(
+            assembly.contains(authority_path),
+            "{assembly_path} must reference {authority_path}"
+        );
+    }
+}
+
+#[test]
+fn service_shells_bootstrap_shared_device_database() {
+    let root = workspace_root();
+
+    for (service, bootstrap_fn) in [
+        (
+            "services/sdkwork-aiot-app-api/src/main.rs",
+            "open_app_service_stores",
+        ),
+        (
+            "services/sdkwork-aiot-admin-api/src/main.rs",
+            "open_admin_service_stores",
+        ),
+    ] {
+        let source = fs::read_to_string(root.join(service)).expect(service);
+        assert!(
+            source.contains(bootstrap_fn),
+            "{service} must bootstrap persistence through {bootstrap_fn}"
+        );
+        assert!(
+            !source.contains("open_device_repository("),
+            "{service} must not open separate device repository pools"
         );
     }
 }
@@ -250,6 +309,56 @@ fn workspace_does_not_depend_on_rusqlite() {
 }
 
 #[test]
+fn workspace_does_not_use_forbidden_crate_names() {
+    let root = workspace_root();
+    let forbidden = [
+        "sdkwork-aiot-core",
+        "sdkwork-aiot-runtime",
+        "sdkwork-aiot-backend",
+        "sdkwork-aiot-common",
+        "sdkwork-aiot-manager",
+        "sdkwork-aiot-product",
+        "sdkwork-aiot-server-runtime",
+    ];
+
+    for entry in fs::read_dir(root.join("crates")).expect("crates directory") {
+        let entry = entry.expect("crate entry");
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let crate_name = entry.file_name().to_string_lossy().into_owned();
+        assert!(
+            !forbidden.contains(&crate_name.as_str()),
+            "forbidden crate directory {crate_name}; use responsibility-specific names per NAMING_SPEC.md"
+        );
+    }
+
+    let workspace_cargo =
+        fs::read_to_string(root.join("Cargo.toml")).expect("workspace Cargo.toml");
+    for name in forbidden {
+        assert!(
+            !workspace_cargo.contains(name),
+            "workspace Cargo.toml must not reference forbidden crate {name}"
+        );
+    }
+}
+
+#[test]
+fn app_manifest_declares_server_rust_workspace() {
+    let manifest =
+        fs::read_to_string(workspace_root().join("sdkwork.app.config.json")).expect("app manifest");
+
+    assert!(manifest.contains(r#""appType": "APP_SERVICE""#));
+    assert!(manifest.contains(r#""family": "server""#));
+    assert!(manifest.contains(r#""framework": "rust-axum""#));
+    assert!(manifest.contains(r#""workspaceRoot": ".""#));
+    assert!(
+        !manifest.contains("apps/sdkwork-aiot-pc"),
+        "server workspace manifest must not point at a React PC client root"
+    );
+}
+
+#[test]
 fn workspace_does_not_create_parallel_aiot_iam_component() {
     let root = workspace_root();
     let cargo = fs::read_to_string(root.join("Cargo.toml")).expect("workspace Cargo.toml");
@@ -288,7 +397,7 @@ fn service_shells_reuse_runtime_builder_instead_of_owning_domain_logic() {
 
         if service.contains("admin-api") || service.contains("app-api") {
             assert!(
-                source.contains("sdkwork_aiot_http_api"),
+                source.contains("sdkwork_iot_platform_service"),
                 "{service} must route through the shared HTTP API component"
             );
             assert!(
@@ -500,32 +609,31 @@ fn pc_client_declares_topology_surface_env_keys() {
 fn sdk_families_have_openapi_sources_and_generation_manifests() {
     let root = workspace_root();
 
-    for (family, openapi_prefix, sdkgen_prefix, package_name) in [
+    for (family, authority_openapi, openapi_prefix, sdkgen_prefix, package_name) in [
         (
             "sdks/sdkwork-aiot-app-sdk",
+            "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
             "/app/v3/api/iot",
             "/app/v3/api",
             "@sdkwork/aiot-app-sdk",
         ),
         (
             "sdks/sdkwork-aiot-backend-sdk",
+            "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
             "/backend/v3/api/iot",
             "/backend/v3/api/iot",
             "@sdkwork/aiot-backend-sdk",
         ),
     ] {
         let family_root = root.join(family);
-        let openapi = family_root.join("openapi").join(format!(
-            "{}.openapi.json",
-            family_root.file_name().unwrap().to_string_lossy()
-        ));
+        let openapi = root.join(authority_openapi);
         let sdkgen = family_root.join("openapi").join(format!(
             "{}.sdkgen.json",
             family_root.file_name().unwrap().to_string_lossy()
         ));
         let assembly = family_root.join(".sdkwork-assembly.json");
 
-        let openapi_text = fs::read_to_string(&openapi).expect("openapi source");
+        let openapi_text = fs::read_to_string(&openapi).expect("openapi authority");
         let sdkgen_text = fs::read_to_string(&sdkgen).expect("sdkgen manifest");
         let assembly_text = fs::read_to_string(&assembly).expect("sdk assembly");
 
@@ -570,8 +678,10 @@ fn sdk_families_have_openapi_sources_and_generation_manifests() {
         assert!(sdkgen_text.contains(r#""standardProfile": "sdkwork-v3""#));
         assert!(sdkgen_text.contains(package_name));
         assert!(sdkgen_text.contains(sdkgen_prefix));
+        assert!(sdkgen_text.contains("../../apis/"));
         assert!(assembly_text.contains(package_name));
         assert!(assembly_text.contains(r#""generatedProtocols": ["http"]"#));
+        assert!(assembly_text.contains("../../apis/"));
     }
 }
 
@@ -625,12 +735,8 @@ fn http_api_route_contracts_are_reflected_in_openapi_sources() {
 
     for route in standard_api_route_contracts() {
         let openapi_path = match route.surface {
-            AiotApiSurface::App => {
-                "sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json"
-            }
-            AiotApiSurface::Admin => {
-                "sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json"
-            }
+            AiotApiSurface::App => "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+            AiotApiSurface::Admin => "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
         };
         let openapi = fs::read_to_string(root.join(openapi_path)).expect(openapi_path);
 
@@ -664,11 +770,11 @@ fn openapi_operations_are_reflected_in_http_api_route_contracts() {
     for (surface, openapi_path) in [
         (
             AiotApiSurface::App,
-            "sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json",
+            "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
         ),
         (
             AiotApiSurface::Admin,
-            "sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json",
+            "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
         ),
     ] {
         let openapi = fs::read_to_string(root.join(openapi_path)).expect(openapi_path);
@@ -691,12 +797,8 @@ fn openapi_operation_permissions_match_http_api_route_contracts() {
 
     for route in contracts {
         let openapi_path = match route.surface {
-            AiotApiSurface::App => {
-                "sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json"
-            }
-            AiotApiSurface::Admin => {
-                "sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json"
-            }
+            AiotApiSurface::App => "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+            AiotApiSurface::Admin => "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
         };
         let openapi = fs::read_to_string(root.join(openapi_path)).expect(openapi_path);
         let permission = openapi_permission_for_operation(&openapi, route.operation_id)
@@ -718,10 +820,9 @@ fn openapi_operation_permissions_match_http_api_route_contracts() {
 #[test]
 fn backend_openapi_uses_media_resource_contract_for_firmware_artifact_io() {
     let root = workspace_root();
-    let backend_openapi = fs::read_to_string(
-        root.join("sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json"),
-    )
-    .expect("backend openapi");
+    let backend_openapi =
+        fs::read_to_string(root.join("apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json"))
+            .expect("backend openapi");
 
     assert!(backend_openapi.contains(r#""AiotFirmwareArtifactCreateRequest""#));
     assert!(backend_openapi.contains(r#""resource": {"#));
@@ -739,14 +840,12 @@ fn backend_openapi_uses_media_resource_contract_for_firmware_artifact_io() {
 #[test]
 fn event_openapi_contracts_use_typed_event_payload_and_media_resource_fields() {
     let root = workspace_root();
-    let app_openapi = fs::read_to_string(
-        root.join("sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json"),
-    )
-    .expect("app openapi");
-    let backend_openapi = fs::read_to_string(
-        root.join("sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json"),
-    )
-    .expect("backend openapi");
+    let app_openapi =
+        fs::read_to_string(root.join("apis/app-api/iot/sdkwork-aiot-app-api.openapi.json"))
+            .expect("app openapi");
+    let backend_openapi =
+        fs::read_to_string(root.join("apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json"))
+            .expect("backend openapi");
 
     assert!(app_openapi.contains(r#""AiotEventListResponse""#));
     assert!(app_openapi.contains(r#""AiotEvent""#));
@@ -766,14 +865,12 @@ fn event_openapi_contracts_use_typed_event_payload_and_media_resource_fields() {
 #[test]
 fn command_openapi_contracts_use_media_resource_for_request_and_result_payloads() {
     let root = workspace_root();
-    let app_openapi = fs::read_to_string(
-        root.join("sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json"),
-    )
-    .expect("app openapi");
-    let backend_openapi = fs::read_to_string(
-        root.join("sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json"),
-    )
-    .expect("backend openapi");
+    let app_openapi =
+        fs::read_to_string(root.join("apis/app-api/iot/sdkwork-aiot-app-api.openapi.json"))
+            .expect("app openapi");
+    let backend_openapi =
+        fs::read_to_string(root.join("apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json"))
+            .expect("backend openapi");
 
     assert!(app_openapi.contains(r#""AiotCommandCreateRequest""#));
     assert!(app_openapi.contains(r#""AiotCommandResponse""#));
@@ -797,7 +894,7 @@ fn command_openapi_contracts_use_media_resource_for_request_and_result_payloads(
 #[test]
 fn declared_http_collection_routes_are_mounted_by_shared_api_component() {
     let http_api =
-        fs::read_to_string(workspace_root().join("crates/sdkwork-aiot-http-api/src/lib.rs"))
+        fs::read_to_string(workspace_root().join("crates/sdkwork-iot-platform-service/src/lib.rs"))
             .expect("http api source");
 
     for route in standard_api_route_contracts() {
@@ -820,16 +917,16 @@ fn crate_dependency_boundaries_do_not_invert_architecture() {
 
     for crate_manifest in [
         "crates/sdkwork-aiot-contract/Cargo.toml",
-        "crates/sdkwork-aiot-core/Cargo.toml",
+        "crates/sdkwork-iot-device-service/Cargo.toml",
         "crates/sdkwork-aiot-protocol/Cargo.toml",
-        "crates/sdkwork-aiot-runtime/Cargo.toml",
+        "crates/sdkwork-aiot-service-host/Cargo.toml",
         "crates/sdkwork-aiot-storage/Cargo.toml",
         "crates/sdkwork-aiot-storage-sqlx/Cargo.toml",
         "crates/sdkwork-aiot-security/Cargo.toml",
         "crates/sdkwork-aiot-observability/Cargo.toml",
         "crates/sdkwork-aiot-adapter-xiaozhi/Cargo.toml",
         "crates/sdkwork-aiot-transport/Cargo.toml",
-        "crates/sdkwork-aiot-http-api/Cargo.toml",
+        "crates/sdkwork-iot-platform-service/Cargo.toml",
     ] {
         let manifest = fs::read_to_string(root.join(crate_manifest)).expect(crate_manifest);
 
@@ -926,11 +1023,11 @@ fn committed_route_manifests_match_http_api_contracts() {
         let committed = fs::read_to_string(&path).unwrap_or_else(|error| {
             panic!("missing route manifest {relative_path}: {error}");
         });
-        let expected = sdkwork_aiot_http_api::standard_route_manifest_json(surface);
+        let expected = sdkwork_iot_platform_service::standard_route_manifest_json(surface);
         assert_eq!(
             committed.trim(),
             expected.trim(),
-            "route manifest drift detected for {relative_path}; run SDKWORK_EXPORT_ROUTE_MANIFESTS=1 cargo test -p sdkwork-aiot-http-api export_route_manifest_artifacts_when_requested -- --exact"
+            "route manifest drift detected for {relative_path}; run SDKWORK_EXPORT_ROUTE_MANIFESTS=1 cargo test -p sdkwork-iot-platform-service export_route_manifest_artifacts_when_requested -- --exact"
         );
     }
 

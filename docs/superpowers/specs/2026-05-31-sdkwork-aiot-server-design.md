@@ -103,9 +103,9 @@ Target workspace:
 
 ```text
 crates/sdkwork-aiot-contract
-crates/sdkwork-aiot-core
+crates/sdkwork-iot-device-service
 crates/sdkwork-aiot-protocol
-crates/sdkwork-aiot-runtime
+crates/sdkwork-aiot-service-host
 crates/sdkwork-aiot-storage
 crates/sdkwork-aiot-storage-sqlx
 crates/sdkwork-aiot-security
@@ -126,9 +126,9 @@ Responsibilities:
 | Crate or service | Responsibility |
 | --- | --- |
 | `sdkwork-aiot-contract` | Public DTOs, OpenAPI-aligned schemas, event contracts, shared enums. |
-| `sdkwork-aiot-core` | DDD aggregates, domain services, use case ports, invariants. |
+| `sdkwork-iot-device-service` | DDD aggregates, domain services, use case ports, invariants. |
 | `sdkwork-aiot-protocol` | Transport-neutral protocol envelope, adapter traits, codecs, capability mapping. |
-| `sdkwork-aiot-runtime` | Embeddable runtime: plugin registry, session manager, command router, event dispatcher. |
+| `sdkwork-aiot-service-host` | Embeddable runtime: plugin registry, session manager, command router, event dispatcher. |
 | `sdkwork-aiot-storage` | Repository and unit-of-work traits. |
 | `sdkwork-aiot-storage-sqlx` | SQLx implementation for Postgres and development SQLite. |
 | `sdkwork-aiot-security` | Device auth, credential validation, HMAC, mTLS/X.509 hooks. |
@@ -233,9 +233,9 @@ The implementation must keep boundaries testable. A component that crosses its b
 | Component | May depend on | Must not depend on |
 | --- | --- | --- |
 | `sdkwork-aiot-contract` | `serde`, schema helpers, stable value types | Axum, SQLx, Redis, protocol adapters, service binaries |
-| `sdkwork-aiot-core` | contracts, repository traits, domain policies | Axum, SQLx concrete pools, Redis clients, WebSocket sockets, xiaozhi |
+| `sdkwork-iot-device-service` | contracts, repository traits, domain policies | Axum, SQLx concrete pools, Redis clients, WebSocket sockets, xiaozhi |
 | `sdkwork-aiot-protocol` | contracts, bytes/codec abstractions | SQL tables, repositories, app/backend API handlers |
-| `sdkwork-aiot-runtime` | core ports, protocol adapters, storage/cache/event bus traits | concrete application bootstraps, hardcoded listeners, appbase internals |
+| `sdkwork-aiot-service-host` | core ports, protocol adapters, storage/cache/event bus traits | concrete application bootstraps, hardcoded listeners, appbase internals |
 | `sdkwork-aiot-storage` | contracts, repository traits | protocol sockets, Axum handlers, xiaozhi messages |
 | `sdkwork-aiot-storage-sqlx` | storage traits, SQLx, migrations | WebSocket/MQTT listeners, command transport encoding |
 | `sdkwork-aiot-security` | device credential contracts, crypto helpers | appbase IAM table ownership, app/backend route registration |

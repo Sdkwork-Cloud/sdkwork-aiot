@@ -3,9 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const families = [
-  'sdkwork-aiot-app-sdk',
-  'sdkwork-aiot-backend-sdk',
+const authorities = [
+  'apis/app-api/iot/sdkwork-aiot-app-api.openapi.json',
+  'apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json',
 ];
 
 const removeRefs = new Set([
@@ -16,15 +16,8 @@ const removeRefs = new Set([
   '#/components/parameters/SdkworkPermissionScope',
 ]);
 
-for (const family of families) {
-  const openapiPath = path.resolve(
-    __dirname,
-    '..',
-    'sdks',
-    family,
-    'openapi',
-    `${family}.openapi.json`,
-  );
+for (const relativePath of authorities) {
+  const openapiPath = path.resolve(__dirname, '..', relativePath);
 
   const doc = JSON.parse(fs.readFileSync(openapiPath, 'utf8'));
 

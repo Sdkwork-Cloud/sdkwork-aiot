@@ -8,11 +8,11 @@ use std::time::Duration;
 
 use sdkwork_aiot_contract::AiotRequestContext;
 use sdkwork_aiot_protocol::{InboundFrame, MessageCodec};
-use sdkwork_aiot_runtime::{
+use sdkwork_aiot_service_host::{
     standard_aiot_runtime, AiotGatewayListenerBundle, AiotHealthCheck, AiotProtocolRoute,
     AiotRuntime, RuntimeMode,
 };
-use sdkwork_aiot_runtime::{AiotGatewayPipelineResult, RuntimeProtocolError};
+use sdkwork_aiot_service_host::{AiotGatewayPipelineResult, RuntimeProtocolError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HttpStatus {

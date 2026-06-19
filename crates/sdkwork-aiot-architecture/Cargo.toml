@@ -9,8 +9,8 @@ license.workspace = true
 [dev-dependencies]
 sdkwork-aiot-adapter-xiaozhi.workspace = true
 sdkwork-aiot-contract.workspace = true
-sdkwork-aiot-http-api.workspace = true
+sdkwork-iot-platform-service.workspace = true
 sdkwork-aiot-protocol.workspace = true
-sdkwork-aiot-runtime.workspace = true
+sdkwork-aiot-service-host.workspace = true
 sdkwork-aiot-storage.workspace = true
 sdkwork-aiot-transport.workspace = true

@@ -17,7 +17,7 @@
         "tenantScope": "tenant"
       },
       "handler": {
-        "module": "sdkwork_aiot_http_api",
+        "module": "sdkwork_iot_platform_service",
         "name": "devices.list"
       },
       "method": "GET",
@@ -34,7 +34,7 @@
         "response": null
       },
       "source": {
-        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+        "file": "crates/sdkwork-iot-platform-service/src/lib.rs"
       },
       "tags": [
         "iot.devices"
@@ -50,7 +50,7 @@
         "tenantScope": "tenant"
       },
       "handler": {
-        "module": "sdkwork_aiot_http_api",
+        "module": "sdkwork_iot_platform_service",
         "name": "devices.retrieve"
       },
       "method": "GET",
@@ -67,7 +67,7 @@
         "response": null
       },
       "source": {
-        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+        "file": "crates/sdkwork-iot-platform-service/src/lib.rs"
       },
       "tags": [
         "iot.devices"
@@ -83,7 +83,7 @@
         "tenantScope": "tenant"
       },
       "handler": {
-        "module": "sdkwork_aiot_http_api",
+        "module": "sdkwork_iot_platform_service",
         "name": "devices.commands.create"
       },
       "method": "POST",
@@ -100,7 +100,7 @@
         "response": null
       },
       "source": {
-        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+        "file": "crates/sdkwork-iot-platform-service/src/lib.rs"
       },
       "tags": [
         "iot.devices"
@@ -116,7 +116,7 @@
         "tenantScope": "tenant"
       },
       "handler": {
-        "module": "sdkwork_aiot_http_api",
+        "module": "sdkwork_iot_platform_service",
         "name": "devices.twin.retrieve"
       },
       "method": "GET",
@@ -133,7 +133,7 @@
         "response": null
       },
       "source": {
-        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+        "file": "crates/sdkwork-iot-platform-service/src/lib.rs"
       },
       "tags": [
         "iot.devices"
@@ -149,7 +149,7 @@
         "tenantScope": "tenant"
       },
       "handler": {
-        "module": "sdkwork_aiot_http_api",
+        "module": "sdkwork_iot_platform_service",
         "name": "devices.events.list"
       },
       "method": "GET",
@@ -166,7 +166,7 @@
         "response": null
       },
       "source": {
-        "file": "crates/sdkwork-aiot-http-api/src/lib.rs"
+        "file": "crates/sdkwork-iot-platform-service/src/lib.rs"
       },
       "tags": [
         "iot.devices"

@@ -40,7 +40,7 @@ impl AiotTableContract {
             group,
             profile,
             system_of_record: true,
-            write_owner: "sdkwork-aiot-core",
+            write_owner: "sdkwork-iot-device-service",
             required_columns: vec![
                 "id",
                 "uuid",
@@ -1964,7 +1964,7 @@ pub fn table_contract(name: &str) -> Option<AiotTableContract> {
                 TableProfile::Projection,
             )
             .read_model()
-            .with_write_owner("sdkwork-aiot-runtime")
+            .with_write_owner("sdkwork-aiot-service-host")
             .with_column("device_id")
             .with_column("session_id")
             .with_column("node_id")
@@ -2241,7 +2241,7 @@ pub fn table_contract(name: &str) -> Option<AiotTableContract> {
                 "protocol_runtime",
                 TableProfile::EventLog,
             )
-            .with_write_owner("sdkwork-aiot-runtime")
+            .with_write_owner("sdkwork-aiot-service-host")
             .with_column("protocol_id")
             .with_column("adapter_id")
             .with_column("reason_code")

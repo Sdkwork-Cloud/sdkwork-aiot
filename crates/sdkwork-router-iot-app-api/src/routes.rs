@@ -8,7 +8,7 @@ use axum::{
     routing::any,
     Router,
 };
-use sdkwork_aiot_http_api::AiotApiServer;
+use sdkwork_iot_platform_service::AiotApiServer;
 use sdkwork_web_core::WebRequestContext;
 
 use crate::http_adapter::dispatch_with_web_context;

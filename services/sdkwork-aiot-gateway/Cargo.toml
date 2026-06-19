@@ -5,7 +5,7 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-sdkwork-aiot-runtime = { path = "../../crates/sdkwork-aiot-runtime" }
+sdkwork-aiot-service-host = { path = "../../crates/sdkwork-aiot-service-host" }
 sdkwork-aiot-observability = { path = "../../crates/sdkwork-aiot-observability" }
 sdkwork-aiot-adapter-xiaozhi = { path = "../../crates/sdkwork-aiot-adapter-xiaozhi" }
 sdkwork-aiot-protocol = { path = "../../crates/sdkwork-aiot-protocol" }

@@ -2,7 +2,7 @@ use sdkwork_aiot_contract::AiotRequestContext;
 use sdkwork_aiot_protocol::{
     InboundFrame, MessageClass, MessageCodec, OutboundFrame, ProtocolEnvelope, ProtocolError,
 };
-use sdkwork_aiot_runtime::AiotProtocolMessageAction;
+use sdkwork_aiot_service_host::AiotProtocolMessageAction;
 use sdkwork_aiot_storage::AiotStorageWriteKind;
 use sdkwork_aiot_transport::{
     build_health_response, build_websocket_handshake_response, decode_websocket_frame,

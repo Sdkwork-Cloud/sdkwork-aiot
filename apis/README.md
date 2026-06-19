@@ -1,15 +1,32 @@
 # SDKWork AIoT API Contracts
 
-This directory documents where the HTTP API authorities live for the SDKWork AIoT server.
+## Purpose
 
-Runtime route contracts are declared in `crates/sdkwork-aiot-http-api` via `standard_api_route_contracts()` and materialized route manifests under `sdks/_route-manifests/`.
+`apis/` stores SDKWork AIoT authored API contract sources and materialization inputs.
+
+## Owner
+
+sdkwork-aiot.
+
+## Allowed Content
+
+- `app-api/iot/` App API OpenAPI authority inputs.
+- `backend-api/iot/` Backend API OpenAPI authority inputs.
+- API examples, changelogs, fixtures, and contract validation inputs.
+
+## Forbidden Content
+
+- Generated SDK transport output.
+- SDK family workspaces.
+- Rust route, handler, service, or repository implementation code.
+- Runtime state, credentials, or local override files.
 
 ## OpenAPI Authorities
 
 | Surface | Authority | OpenAPI source |
 | --- | --- | --- |
-| App API | `sdkwork-aiot-app-api` | `sdks/sdkwork-aiot-app-sdk/openapi/sdkwork-aiot-app-sdk.openapi.json` |
-| Backend API | `sdkwork-aiot-backend-api` | `sdks/sdkwork-aiot-backend-sdk/openapi/sdkwork-aiot-backend-sdk.openapi.json` |
+| App API | `sdkwork-aiot-app-api` | `apis/app-api/iot/sdkwork-aiot-app-api.openapi.json` |
+| Backend API | `sdkwork-aiot-backend-api` | `apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json` |
 
 ## Route Manifests
 
@@ -18,19 +35,12 @@ Runtime route contracts are declared in `crates/sdkwork-aiot-http-api` via `stan
 | App API | `sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json` |
 | Backend API | `sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json` |
 
-## Device Protocol Paths
+## Related Specs
 
-Device-facing Xiaozhi compatibility routes are owned by `services/sdkwork-aiot-gateway` and are not part of the app/backend OpenAPI authorities:
+- `../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md`
+- `../sdkwork-specs/API_SPEC.md`
+- `../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md`
 
-- `/iot/xiaozhi/ws`
-- `/iot/xiaozhi/ota`
-- `/iot/xiaozhi/activate`
+## Verification
 
-## Regenerating Route Manifests
-
-When HTTP route contracts change, refresh the committed manifests:
-
-```powershell
-$env:SDKWORK_EXPORT_ROUTE_MANIFESTS='1'
-cargo test -p sdkwork-aiot-http-api export_route_manifest_artifacts_when_requested -- --exact
-```
+Run `pnpm test:openapi-web-context`, `pnpm test:app-openapi-context`, and `cargo test -p sdkwork-aiot-architecture`.

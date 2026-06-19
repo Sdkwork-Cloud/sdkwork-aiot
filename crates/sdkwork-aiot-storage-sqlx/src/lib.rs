@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 mod credential;
 mod database_bootstrap;
+mod device_database;
 mod device_repository_sqlite;
 mod persisted_entity;
 mod schema;
@@ -18,6 +19,7 @@ pub use database_bootstrap::{
     aiot_device_sqlite_memory_pool, resolve_device_database_config,
     AIOT_DEVICE_DATABASE_SERVICE_NAME,
 };
+pub use device_database::{open_aiot_device_database, AiotDeviceDatabase};
 pub use device_repository_sqlite::SqliteSqlxDeviceRepository;
 pub use persisted_entity::{
     SqlitePersistedEntityError, SqlitePersistedEntityRecord, SqlitePersistedEntityRepository,
@@ -49,8 +51,9 @@ pub const DEFAULT_SHARED_SQLITE_MEMORY_URI: &str =
 pub fn open_device_repository(
     device_db_path: Option<&str>,
 ) -> Result<SqliteSqlxDeviceRepository, PoolError> {
-    let db = database_bootstrap::aiot_device_blocking_pool(device_db_path)?;
-    SqliteSqlxDeviceRepository::from_blocking_pool(db).map_err(PoolError::PoolCreation)
+    open_aiot_device_database(device_db_path)?
+        .device_repository()
+        .map_err(PoolError::PoolCreation)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1160,12 +1163,21 @@ impl SqlxPoolSqlStatementExecutor {
 
 enum SqlExecutorTransactionError {
     Duplicate,
-    Sql(StorageSqliteError),
+    Sql,
+}
+
+impl SqlExecutorTransactionError {
+    fn into_outcome(self) -> SqlTransactionOutcome {
+        match self {
+            Self::Duplicate => SqlTransactionOutcome::Duplicate,
+            Self::Sql => SqlTransactionOutcome::rolled_back("storage.sql.write_batch_failed"),
+        }
+    }
 }
 
 impl From<StorageSqliteError> for SqlExecutorTransactionError {
-    fn from(error: StorageSqliteError) -> Self {
-        Self::Sql(error)
+    fn from(_error: StorageSqliteError) -> Self {
+        Self::Sql
     }
 }
 
@@ -1204,10 +1216,7 @@ impl SqlStatementExecutor for SqlxPoolSqlStatementExecutor {
             })
         }) {
             Ok(()) => SqlTransactionOutcome::Committed,
-            Err(SqlExecutorTransactionError::Duplicate) => SqlTransactionOutcome::Duplicate,
-            Err(SqlExecutorTransactionError::Sql(_)) => {
-                SqlTransactionOutcome::rolled_back("storage.sql.write_batch_failed")
-            }
+            Err(error) => error.into_outcome(),
         }
     }
 }

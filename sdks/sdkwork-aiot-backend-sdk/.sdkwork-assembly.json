@@ -2,8 +2,8 @@
   "workspace": "sdkwork-aiot-backend-sdk",
   "title": "SDKWork AIoT Backend API SDK",
   "apiVersion": "0.1.0",
-  "authoritySpec": "openapi/sdkwork-aiot-backend-sdk.openapi.json",
-  "generationInputSpec": "openapi/sdkwork-aiot-backend-sdk.openapi.json",
+  "authoritySpec": "../../apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
+  "generationInputSpec": "../../apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json",
   "discoverySurface": {
     "sdkTarget": "backend",
     "apiPrefix": "/backend/v3/api/iot",

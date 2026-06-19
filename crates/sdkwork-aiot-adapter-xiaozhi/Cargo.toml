@@ -11,4 +11,4 @@ aes = "0.8"
 ctr = "0.9"
 
 [dev-dependencies]
-sdkwork-aiot-runtime.workspace = true
+sdkwork-aiot-service-host.workspace = true

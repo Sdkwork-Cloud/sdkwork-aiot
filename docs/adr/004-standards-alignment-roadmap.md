@@ -13,12 +13,9 @@ Accepted — supersedes the HTTP-stack deferral scope in ADR 002 for app/backend
 - `GITHUB_WORKFLOW_SPEC.md` for packaging and release workflows
 - Route manifest and OpenAPI metadata for `WebRequestContext` and `apiSurface`
 
-The AIoT server already aligns on API contracts, SDK workspaces, topology, security posture, and architecture tests, but still uses:
+The AIoT server already aligns on API contracts, SDK workspaces, topology, security posture, and architecture tests. Remaining intentional exceptions:
 
 - a custom minimal HTTP stack in `sdkwork-aiot-transport` for gateway/device ingress (ADR 002)
-- legacy crate names such as `sdkwork-aiot-http-api` instead of `sdkwork-router-iot-*`
-
-ADR 002 intentionally deferred Axum migration for gateway/device workloads. That deferral remains valid for device ingress, but app/backend HTTP APIs must converge on `sdkwork-web-framework`.
 
 ## Decision
 
@@ -41,7 +38,8 @@ ADR 002 intentionally deferred Axum migration for gateway/device workloads. That
 | B | Web framework core adoption | `sdkwork-web-framework` workspace deps; custom transport uses framework context + interceptor semantics | Done |
 | C | Route crate split + Axom servers | `sdkwork-router-iot-app-api`, `sdkwork-router-iot-backend-api`, Tokio/Axum service shells | Done |
 | D | Database framework adoption | `sdkwork-database-config` bootstrap + `sdkwork-database-sqlx` pool helpers; repository SQL via sqlx pools | Done |
-| E | Crate rename cleanup | Remove generic `core/runtime/http-api` names per `NAMING_SPEC.md` | Pending |
+| E | Crate rename cleanup | `sdkwork-iot-device-service`, `sdkwork-aiot-service-host`, `sdkwork-iot-platform-service`; no forbidden `core/runtime` crate names | Done |
+| F | Shared persistence + `apis/` authority layout | Single `AiotDeviceDatabase` pool for device/credential/admin entities; authored OpenAPI under `apis/` | Done |
 
 ## Consequences
 

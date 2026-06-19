@@ -28,9 +28,7 @@ impl BlockingSqlitePool {
         let runtime = Arc::new(Runtime::new().map_err(|error| {
             StorageSqliteError::Configuration(format!("tokio runtime: {error}").into())
         })?);
-        let pool = runtime
-            .block_on(SqlitePool::connect(url))
-            .map_err(StorageSqliteError::from)?;
+        let pool = runtime.block_on(SqlitePool::connect(url))?;
         Ok(Self { pool, runtime })
     }
 

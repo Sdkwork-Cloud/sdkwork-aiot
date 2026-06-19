@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 sdkwork-aiot-contract.workspace = true
 sdkwork-aiot-protocol.workspace = true
-sdkwork-aiot-runtime.workspace = true
+sdkwork-aiot-service-host.workspace = true
 
 [dev-dependencies]
 sdkwork-aiot-storage.workspace = true

@@ -3,8 +3,10 @@ use axum::{
     http::{Request, Response, StatusCode},
 };
 use http_body_util::BodyExt;
-use sdkwork_aiot_http_api::{handle_resolved_api_request, resolve_api_request_from_web_context};
 use sdkwork_aiot_transport::{HttpRequest, HttpResponse, HttpStatus};
+use sdkwork_iot_platform_service::{
+    handle_resolved_api_request, resolve_api_request_from_web_context,
+};
 use sdkwork_web_core::WebRequestContext;
 
 pub async fn axum_to_http_request(request: Request<Body>) -> Result<HttpRequest, HttpResponse> {
@@ -78,7 +80,7 @@ pub fn http_to_axum_response(response: HttpResponse) -> Response<Body> {
 }
 
 pub async fn dispatch_with_web_context(
-    server: &sdkwork_aiot_http_api::AiotApiServer,
+    server: &sdkwork_iot_platform_service::AiotApiServer,
     web_context: WebRequestContext,
     request: Request<Body>,
 ) -> Response<Body> {

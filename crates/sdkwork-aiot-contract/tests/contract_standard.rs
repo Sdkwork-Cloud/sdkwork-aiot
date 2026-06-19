@@ -34,11 +34,11 @@ fn ownership_ref_models_iam_and_device_owners_without_foreign_tables() {
 
 #[test]
 fn component_manifest_declares_composable_building_block_contract() {
-    let manifest = AiotComponentManifest::new("sdkwork-aiot-runtime", "runtime")
+    let manifest = AiotComponentManifest::new("sdkwork-aiot-service-host", "runtime")
         .with_capability("embedded_runtime")
         .with_capability("standalone_server");
 
-    assert_eq!(manifest.name, "sdkwork-aiot-runtime");
+    assert_eq!(manifest.name, "sdkwork-aiot-service-host");
     assert_eq!(manifest.domain, "runtime");
     assert!(manifest
         .capabilities

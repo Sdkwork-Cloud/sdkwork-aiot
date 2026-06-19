@@ -1,0 +1,9 @@
+[package]
+name = "sdkwork-iot-device-service"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-contract.workspace = true
+

@@ -4,7 +4,7 @@ use sdkwork_aiot_adapter_xiaozhi::{
 };
 use sdkwork_aiot_contract::AiotRequestContext;
 use sdkwork_aiot_protocol::MessageClass;
-use sdkwork_aiot_runtime::AiotProtocolMessageAction;
+use sdkwork_aiot_service_host::AiotProtocolMessageAction;
 use sdkwork_aiot_storage::{
     AiotProtocolDeadLetterIntent, AiotProtocolIngestUnitOfWork, AiotStorageWriteKind,
     InMemoryProtocolIngestUnitOfWork,

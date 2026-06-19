@@ -5,8 +5,7 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-sdkwork-aiot-http-api.workspace = true
-sdkwork-aiot-runtime.workspace = true
-sdkwork-aiot-storage-sqlx.workspace = true
+sdkwork-iot-platform-service.workspace = true
+sdkwork-aiot-service-host.workspace = true
 sdkwork-router-iot-app-api.workspace = true
 tokio.workspace = true

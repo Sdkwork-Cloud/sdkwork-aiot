@@ -31,7 +31,7 @@ fn table_contract_declares_sdkwork_database_boundary_rules() {
 
     let device = table_contract("iot_device").expect("iot_device contract");
     assert_eq!(device.profile, TableProfile::TenantOwnerEntity);
-    assert_eq!(device.write_owner, "sdkwork-aiot-core");
+    assert_eq!(device.write_owner, "sdkwork-iot-device-service");
     assert!(device.system_of_record);
     assert!(device.required_columns.contains(&"tenant_id"));
     assert!(device.required_columns.contains(&"organization_id"));
@@ -409,7 +409,7 @@ fn protocol_runtime_tables_have_payload_and_retry_indexes() {
     let dead_letter =
         table_contract("iot_protocol_message_dead_letter").expect("dead letter contract");
     assert_eq!(dead_letter.profile, TableProfile::EventLog);
-    assert_eq!(dead_letter.write_owner, "sdkwork-aiot-runtime");
+    assert_eq!(dead_letter.write_owner, "sdkwork-aiot-service-host");
     assert!(dead_letter.required_columns.contains(&"protocol_id"));
     assert!(dead_letter.required_columns.contains(&"adapter_id"));
     assert!(dead_letter.required_columns.contains(&"payload_ref"));
@@ -419,7 +419,7 @@ fn protocol_runtime_tables_have_payload_and_retry_indexes() {
         .contains(&"idx_iot_protocol_dead_letter_tenant_created"));
 
     let outbox = table_contract("iot_outbox_event").expect("outbox contract");
-    assert_eq!(outbox.write_owner, "sdkwork-aiot-core");
+    assert_eq!(outbox.write_owner, "sdkwork-iot-device-service");
     assert!(outbox.required_columns.contains(&"next_attempt_at"));
     assert!(outbox.required_columns.contains(&"attempt_count"));
     assert!(outbox.required_columns.contains(&"event_version"));

@@ -12,8 +12,7 @@ use sdkwork_aiot_storage_sqlx::{
     InMemorySqlxDeviceRepository, SqlBindValue, SqlDeviceWriteOperation, SqlDialect,
     SqlProtocolIngestPlanner, SqlStatementBatch, SqlStatementExecutor, SqlStatementPlan,
     SqlTransactionFailurePolicy, SqlTransactionOutcome, SqlTransactionPlan,
-    SqliteSqlxCredentialRepository, SqliteSqlxDeviceRepository, SqlxPoolSqlStatementExecutor,
-    SqlxProtocolIngestUnitOfWork,
+    SqliteSqlxDeviceRepository, SqlxProtocolIngestUnitOfWork,
 };
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};

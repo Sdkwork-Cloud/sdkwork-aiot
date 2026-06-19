@@ -55,11 +55,15 @@ impl SqliteSqlxCredentialRepository {
         Self::open("file:sdkwork-aiot-credential?mode=memory&cache=shared")
     }
 
+    pub fn from_blocking_pool(db: BlockingSqlitePool) -> Result<Self, sqlx::Error> {
+        ensure_device_schema(&db)?;
+        Ok(Self { db })
+    }
+
     pub fn open(path_or_uri: impl AsRef<Path>) -> Result<Self, sqlx::Error> {
         let url = sqlite_connect_url(path_or_uri.as_ref().to_string_lossy().as_ref());
         let db = BlockingSqlitePool::connect(&url)?;
-        ensure_device_schema(&db)?;
-        Ok(Self { db })
+        Self::from_blocking_pool(db)
     }
 
     pub fn verify_bearer_token(&self, device_id: &str, token: &str) -> bool {
@@ -192,9 +196,7 @@ impl SqliteSqlxCredentialRepository {
                 .bind(credential_id)
                 .fetch_optional(self.db.pool())
                 .await?;
-                row.as_ref()
-                    .map(|row| row_to_credential_record(row))
-                    .transpose()
+                row.as_ref().map(row_to_credential_record).transpose()
             })
             .ok()
             .flatten()

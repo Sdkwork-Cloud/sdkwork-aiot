@@ -10,16 +10,21 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
 
-const families = [
-  { id: 'sdkwork-aiot-app-sdk', apiSurface: 'app-api' },
-  { id: 'sdkwork-aiot-backend-sdk', apiSurface: 'backend-api' },
+const authorities = [
+  {
+    relativePath: 'apis/app-api/iot/sdkwork-aiot-app-api.openapi.json',
+    apiSurface: 'app-api',
+  },
+  {
+    relativePath: 'apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json',
+    apiSurface: 'backend-api',
+  },
 ];
 
 let changed = 0;
 
-for (const family of families) {
-  const relativePath = `sdks/${family.id}/openapi/${family.id}.openapi.json`;
-  const absolutePath = path.join(repoRoot, relativePath);
+for (const authority of authorities) {
+  const absolutePath = path.join(repoRoot, authority.relativePath);
   const openapi = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
 
   for (const pathItem of Object.values(openapi.paths ?? {})) {
@@ -32,8 +37,8 @@ for (const family of families) {
         operation['x-sdkwork-request-context'] = 'WebRequestContext';
         changed += 1;
       }
-      if (operation['x-sdkwork-api-surface'] !== family.apiSurface) {
-        operation['x-sdkwork-api-surface'] = family.apiSurface;
+      if (operation['x-sdkwork-api-surface'] !== authority.apiSurface) {
+        operation['x-sdkwork-api-surface'] = authority.apiSurface;
         changed += 1;
       }
     }

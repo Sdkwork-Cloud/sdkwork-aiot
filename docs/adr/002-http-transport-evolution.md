@@ -12,7 +12,7 @@ Services use `sdkwork-aiot-transport` with thread-per-connection HTTP serving, f
 
 1. Keep the current transport stack as the **supported production path** for AIoT services.
 2. Do not introduce Axum/Tokio as a hard dependency until an explicit cross-service migration milestone is funded.
-3. New HTTP behavior must extend `sdkwork-aiot-transport` and shared `sdkwork-aiot-http-api` handlers first.
+3. New HTTP behavior must extend `sdkwork-aiot-transport` and shared `sdkwork-iot-platform-service` handlers first.
 
 ## Consequences
 

@@ -1680,17 +1680,16 @@ dependencies = [
  "aes",
  "ctr",
  "sdkwork-aiot-protocol",
- "sdkwork-aiot-runtime",
  "sdkwork-aiot-security",
+ "sdkwork-aiot-service-host",
 ]
 
 [[package]]
 name = "sdkwork-aiot-admin-api"
 version = "0.1.0"
 dependencies = [
- "sdkwork-aiot-http-api",
- "sdkwork-aiot-runtime",
- "sdkwork-aiot-storage-sqlx",
+ "sdkwork-aiot-service-host",
+ "sdkwork-iot-platform-service",
  "sdkwork-router-iot-backend-api",
  "tokio",
 ]
@@ -1699,9 +1698,8 @@ dependencies = [
 name = "sdkwork-aiot-app-api"
 version = "0.1.0"
 dependencies = [
- "sdkwork-aiot-http-api",
- "sdkwork-aiot-runtime",
- "sdkwork-aiot-storage-sqlx",
+ "sdkwork-aiot-service-host",
+ "sdkwork-iot-platform-service",
  "sdkwork-router-iot-app-api",
  "tokio",
 ]
@@ -1720,23 +1718,16 @@ version = "0.1.0"
 dependencies = [
  "sdkwork-aiot-adapter-xiaozhi",
  "sdkwork-aiot-contract",
- "sdkwork-aiot-http-api",
  "sdkwork-aiot-protocol",
- "sdkwork-aiot-runtime",
+ "sdkwork-aiot-service-host",
  "sdkwork-aiot-storage",
  "sdkwork-aiot-transport",
+ "sdkwork-iot-platform-service",
 ]
 
 [[package]]
 name = "sdkwork-aiot-contract"
 version = "0.1.0"
-
-[[package]]
-name = "sdkwork-aiot-core"
-version = "0.1.0"
-dependencies = [
- "sdkwork-aiot-contract",
-]
 
 [[package]]
 name = "sdkwork-aiot-gateway"
@@ -1748,28 +1739,11 @@ dependencies = [
  "sdkwork-aiot-adapter-xiaozhi",
  "sdkwork-aiot-observability",
  "sdkwork-aiot-protocol",
- "sdkwork-aiot-runtime",
+ "sdkwork-aiot-service-host",
  "sdkwork-aiot-storage",
  "sdkwork-aiot-storage-sqlx",
  "sdkwork-aiot-transport",
  "sqlx",
-]
-
-[[package]]
-name = "sdkwork-aiot-http-api"
-version = "0.1.0"
-dependencies = [
- "sdkwork-aiot-app-context",
- "sdkwork-aiot-contract",
- "sdkwork-aiot-core",
- "sdkwork-aiot-observability",
- "sdkwork-aiot-protocol",
- "sdkwork-aiot-runtime",
- "sdkwork-aiot-storage",
- "sdkwork-aiot-storage-sqlx",
- "sdkwork-aiot-transport",
- "sdkwork-web-core",
- "serde_json",
 ]
 
 [[package]]
@@ -1784,22 +1758,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-aiot-runtime"
-version = "0.1.0"
-dependencies = [
- "sdkwork-aiot-contract",
- "sdkwork-aiot-core",
- "sdkwork-aiot-protocol",
- "sdkwork-aiot-security",
- "sdkwork-aiot-storage",
- "sha2",
-]
-
-[[package]]
 name = "sdkwork-aiot-security"
 version = "0.1.0"
 dependencies = [
  "sdkwork-aiot-contract",
+]
+
+[[package]]
+name = "sdkwork-aiot-service-host"
+version = "0.1.0"
+dependencies = [
+ "sdkwork-aiot-contract",
+ "sdkwork-aiot-protocol",
+ "sdkwork-aiot-security",
+ "sdkwork-aiot-storage",
+ "sdkwork-iot-device-service",
+ "sha2",
 ]
 
 [[package]]
@@ -1824,7 +1798,7 @@ version = "0.1.0"
 dependencies = [
  "sdkwork-aiot-contract",
  "sdkwork-aiot-protocol",
- "sdkwork-aiot-runtime",
+ "sdkwork-aiot-service-host",
  "sdkwork-aiot-storage",
 ]
 
@@ -1887,15 +1861,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdkwork-iot-device-service"
+version = "0.1.0"
+dependencies = [
+ "sdkwork-aiot-contract",
+]
+
+[[package]]
+name = "sdkwork-iot-platform-service"
+version = "0.1.0"
+dependencies = [
+ "sdkwork-aiot-app-context",
+ "sdkwork-aiot-contract",
+ "sdkwork-aiot-observability",
+ "sdkwork-aiot-protocol",
+ "sdkwork-aiot-service-host",
+ "sdkwork-aiot-storage",
+ "sdkwork-aiot-storage-sqlx",
+ "sdkwork-aiot-transport",
+ "sdkwork-iot-device-service",
+ "sdkwork-web-core",
+ "serde_json",
+]
+
+[[package]]
 name = "sdkwork-router-iot-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
  "http-body-util",
  "sdkwork-aiot-app-context",
- "sdkwork-aiot-http-api",
  "sdkwork-aiot-transport",
  "sdkwork-iam-web-adapter",
+ "sdkwork-iot-platform-service",
  "sdkwork-web-axum",
  "sdkwork-web-contract",
  "sdkwork-web-core",
@@ -1912,9 +1910,9 @@ dependencies = [
  "axum",
  "http-body-util",
  "sdkwork-aiot-app-context",
- "sdkwork-aiot-http-api",
  "sdkwork-aiot-transport",
  "sdkwork-iam-web-adapter",
+ "sdkwork-iot-platform-service",
  "sdkwork-web-axum",
  "sdkwork-web-contract",
  "sdkwork-web-core",

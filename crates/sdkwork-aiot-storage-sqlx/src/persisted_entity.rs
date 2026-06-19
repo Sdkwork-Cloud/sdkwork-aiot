@@ -37,11 +37,15 @@ impl SqlitePersistedEntityRepository {
         Self::open("file:sdkwork-aiot-admin-entity?mode=memory&cache=shared")
     }
 
+    pub fn from_blocking_pool(db: BlockingSqlitePool) -> Result<Self, sqlx::Error> {
+        ensure_device_schema(&db)?;
+        Ok(Self { db })
+    }
+
     pub fn open(path_or_uri: impl AsRef<std::path::Path>) -> Result<Self, sqlx::Error> {
         let url = sqlite_connect_url(path_or_uri.as_ref().to_string_lossy().as_ref());
         let db = BlockingSqlitePool::connect(&url)?;
-        ensure_device_schema(&db)?;
-        Ok(Self { db })
+        Self::from_blocking_pool(db)
     }
 
     pub fn upsert_entity(
@@ -132,7 +136,7 @@ impl SqlitePersistedEntityRepository {
                 .fetch_optional(self.db.pool())
                 .await?;
                 row.as_ref()
-                    .map(|row| row_to_entity_record(row))
+                    .map(row_to_entity_record)
                     .transpose()
             })
             .ok()

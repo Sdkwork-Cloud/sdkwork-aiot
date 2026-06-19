@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "crates/sdkwork-aiot-contract",
-    "crates/sdkwork-aiot-core",
+    "crates/sdkwork-iot-device-service",
     "crates/sdkwork-aiot-protocol",
-    "crates/sdkwork-aiot-runtime",
+    "crates/sdkwork-aiot-service-host",
     "crates/sdkwork-aiot-storage",
     "crates/sdkwork-aiot-storage-sqlx",
     "crates/sdkwork-aiot-security",
@@ -11,7 +11,7 @@ members = [
     "crates/sdkwork-aiot-adapter-xiaozhi",
     "crates/sdkwork-aiot-transport",
     "crates/sdkwork-aiot-app-context",
-    "crates/sdkwork-aiot-http-api",
+    "crates/sdkwork-iot-platform-service",
     "crates/sdkwork-router-iot-app-api",
     "crates/sdkwork-router-iot-backend-api",
     "crates/sdkwork-aiot-architecture",
@@ -38,9 +38,9 @@ sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio
 
 # SDKWork workspace members - declared once at workspace root
 sdkwork-aiot-contract = { path = "crates/sdkwork-aiot-contract" }
-sdkwork-aiot-core = { path = "crates/sdkwork-aiot-core" }
+sdkwork-iot-device-service = { path = "crates/sdkwork-iot-device-service" }
 sdkwork-aiot-protocol = { path = "crates/sdkwork-aiot-protocol" }
-sdkwork-aiot-runtime = { path = "crates/sdkwork-aiot-runtime" }
+sdkwork-aiot-service-host = { path = "crates/sdkwork-aiot-service-host" }
 sdkwork-aiot-storage = { path = "crates/sdkwork-aiot-storage" }
 sdkwork-aiot-storage-sqlx = { path = "crates/sdkwork-aiot-storage-sqlx" }
 sdkwork-aiot-security = { path = "crates/sdkwork-aiot-security" }
@@ -48,7 +48,7 @@ sdkwork-aiot-observability = { path = "crates/sdkwork-aiot-observability" }
 sdkwork-aiot-adapter-xiaozhi = { path = "crates/sdkwork-aiot-adapter-xiaozhi" }
 sdkwork-aiot-transport = { path = "crates/sdkwork-aiot-transport" }
 sdkwork-aiot-app-context = { path = "crates/sdkwork-aiot-app-context" }
-sdkwork-aiot-http-api = { path = "crates/sdkwork-aiot-http-api" }
+sdkwork-iot-platform-service = { path = "crates/sdkwork-iot-platform-service" }
 sdkwork-router-iot-app-api = { path = "crates/sdkwork-router-iot-app-api" }
 sdkwork-router-iot-backend-api = { path = "crates/sdkwork-router-iot-backend-api" }
 sdkwork-aiot-architecture = { path = "crates/sdkwork-aiot-architecture" }

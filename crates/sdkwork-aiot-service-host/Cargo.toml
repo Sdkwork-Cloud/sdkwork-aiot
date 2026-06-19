@@ -1,0 +1,13 @@
+[package]
+name = "sdkwork-aiot-service-host"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sdkwork-aiot-contract.workspace = true
+sdkwork-iot-device-service.workspace = true
+sdkwork-aiot-protocol.workspace = true
+sdkwork-aiot-security.workspace = true
+sdkwork-aiot-storage.workspace = true
+sha2 = "0.10"

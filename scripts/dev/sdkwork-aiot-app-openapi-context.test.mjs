@@ -14,8 +14,13 @@ function readText(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
-for (const family of ['sdkwork-aiot-app-sdk', 'sdkwork-aiot-backend-sdk']) {
-  const openapi = readJson(`sdks/${family}/openapi/${family}.openapi.json`);
+const authorities = [
+  'apis/app-api/iot/sdkwork-aiot-app-api.openapi.json',
+  'apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json',
+];
+
+for (const relativePath of authorities) {
+  const openapi = readJson(relativePath);
   const parameters = openapi.components?.parameters ?? {};
   for (const forbidden of [
     'SdkworkTenantId',
@@ -27,7 +32,7 @@ for (const family of ['sdkwork-aiot-app-sdk', 'sdkwork-aiot-backend-sdk']) {
     assert.equal(
       parameters[forbidden],
       undefined,
-      `${family} OpenAPI must not expose client-writable ${forbidden} request context parameters`,
+      `${relativePath} must not expose client-writable ${forbidden} request context parameters`,
     );
   }
 
@@ -40,7 +45,7 @@ for (const family of ['sdkwork-aiot-app-sdk', 'sdkwork-aiot-backend-sdk']) {
       assert.doesNotMatch(
         ref,
         /Sdkwork(?:Tenant|Organization|User|DataScope|PermissionScope)Id/u,
-        `${family} path ${route} must not reference client context header parameters`,
+        `${relativePath} path ${route} must not reference client context header parameters`,
       );
     }
   }

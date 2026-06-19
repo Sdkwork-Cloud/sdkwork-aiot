@@ -14,9 +14,9 @@
 
 - Create `Cargo.toml`: workspace, dependency versions, crate members.
 - Create `crates/sdkwork-aiot-contract`: common contracts, IDs, request context, component manifest, permission/path/event constants.
-- Create `crates/sdkwork-aiot-core`: DDD entities and command lifecycle.
+- Create `crates/sdkwork-iot-device-service`: DDD entities and command lifecycle.
 - Create `crates/sdkwork-aiot-protocol`: protocol envelope, adapter traits, handshake, codec frame types.
-- Create `crates/sdkwork-aiot-runtime`: componentized runtime builder, embedded/standalone assembly surface.
+- Create `crates/sdkwork-aiot-service-host`: componentized runtime builder, embedded/standalone assembly surface.
 - Create `crates/sdkwork-aiot-storage`: storage traits and table catalog contract.
 - Create `crates/sdkwork-aiot-storage-sqlx`: migration catalog text and SQL table constants.
 - Create `crates/sdkwork-aiot-security`: device principal and auth-level model.
@@ -58,8 +58,8 @@
 ## Task 4: Runtime Crate
 
 **Files:**
-- Modify: `crates/sdkwork-aiot-runtime/src/lib.rs`
-- Test: `crates/sdkwork-aiot-runtime/tests/runtime_standard.rs`
+- Modify: `crates/sdkwork-aiot-service-host/src/lib.rs`
+- Test: `crates/sdkwork-aiot-service-host/tests/runtime_standard.rs`
 
 - [x] **Step 1: Implement `AiotRuntimeBuilder`, `AiotRuntime`, component registry, embedded bundle, standalone bundle, health status, and configuration checks.**
 - [x] **Step 2: Run runtime crate tests and verify they pass.**
@@ -67,7 +67,7 @@
 ## Task 5: Domain, Storage, Security, Observability
 
 **Files:**
-- Modify: `crates/sdkwork-aiot-core/src/lib.rs`
+- Modify: `crates/sdkwork-iot-device-service/src/lib.rs`
 - Modify: `crates/sdkwork-aiot-storage/src/lib.rs`
 - Modify: `crates/sdkwork-aiot-storage-sqlx/src/lib.rs`
 - Modify: `crates/sdkwork-aiot-security/src/lib.rs`

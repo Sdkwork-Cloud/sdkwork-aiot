@@ -8,7 +8,7 @@
     "type": "rust-crate",
     "root": "sdkwork-aiot-server",
     "domain": "iot",
-    "capability": "aiot-runtime",
+    "capability": "device-platform",
     "languages": [
       "rust"
     ],
@@ -107,21 +107,21 @@
   "contracts": {
     "publicExports": [
       "crates/sdkwork-aiot-contract",
-      "crates/sdkwork-aiot-core",
+      "crates/sdkwork-iot-device-service",
       "crates/sdkwork-aiot-protocol",
-      "crates/sdkwork-aiot-runtime",
+      "crates/sdkwork-aiot-service-host",
       "crates/sdkwork-aiot-storage",
       "crates/sdkwork-aiot-app-context",
       "crates/sdkwork-aiot-security",
       "crates/sdkwork-aiot-observability",
       "crates/sdkwork-aiot-adapter-xiaozhi",
-      "crates/sdkwork-aiot-http-api",
+      "crates/sdkwork-iot-platform-service",
       "crates/sdkwork-router-iot-app-api",
       "crates/sdkwork-router-iot-backend-api"
     ],
     "runtimeEntrypoints": [
-      "sdkwork_aiot_runtime::AiotRuntime::builder",
-      "sdkwork_aiot_runtime::standard_aiot_runtime",
+      "sdkwork_aiot_service_host::AiotRuntime::builder",
+      "sdkwork_aiot_service_host::standard_aiot_runtime",
       "services/sdkwork-aiot-gateway",
       "services/sdkwork-aiot-admin-api",
       "services/sdkwork-aiot-app-api"
@@ -162,9 +162,9 @@
       "runtime_profiles",
       "firmware_profiles"
     ],
-    "routeContract": "sdkwork_aiot_runtime::AiotProtocolRoute",
+    "routeContract": "sdkwork_aiot_service_host::AiotProtocolRoute",
     "envelopeContract": "sdkwork_aiot_protocol::ProtocolEnvelope",
-    "ingestContract": "sdkwork_aiot_core::ProtocolIngestRecord",
+    "ingestContract": "sdkwork_iot_device_service::ProtocolIngestRecord",
     "firstPlugin": "xiaozhi"
   },
   "boundaries": {

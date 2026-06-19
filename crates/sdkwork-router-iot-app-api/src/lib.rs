@@ -52,7 +52,7 @@ pub async fn wrap_router_with_web_framework_from_env(router: Router) -> Router {
 }
 
 pub async fn build_wrapped_app_api_router(
-    server: Arc<sdkwork_aiot_http_api::AiotApiServer>,
+    server: Arc<sdkwork_iot_platform_service::AiotApiServer>,
 ) -> Router {
     let router = routes::build_sdkwork_iot_app_api_router(server);
     wrap_router_with_web_framework_from_env(router).await

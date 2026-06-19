@@ -6,8 +6,8 @@
   "sdkDependencies": [],
   "title": "SDKWork AIoT App API SDK",
   "apiVersion": "0.1.0",
-  "authoritySpec": "openapi/sdkwork-aiot-app-sdk.openapi.json",
-  "generationInputSpec": "openapi/sdkwork-aiot-app-sdk.openapi.json",
+  "authoritySpec": "../../apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+  "generationInputSpec": "../../apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
   "discoverySurface": {
     "sdkTarget": "app",
     "apiPrefix": "/app/v3/api",

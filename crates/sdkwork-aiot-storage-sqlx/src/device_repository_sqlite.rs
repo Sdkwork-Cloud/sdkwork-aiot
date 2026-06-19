@@ -28,12 +28,12 @@ enum SqliteRepoTxError {
     Command(AiotCommandRepositoryError),
     Event(AiotEventRepositoryError),
     Twin(AiotDeviceTwinRepositoryError),
-    Sql(sqlx::Error),
+    Storage,
 }
 
-impl From<sqlx::Error> for SqliteRepoTxError {
-    fn from(error: sqlx::Error) -> Self {
-        Self::Sql(error)
+impl From<crate::sqlite_sync::StorageSqliteError> for SqliteRepoTxError {
+    fn from(_error: crate::sqlite_sync::StorageSqliteError) -> Self {
+        Self::Storage
     }
 }
 
@@ -41,28 +41,36 @@ impl SqliteRepoTxError {
     fn into_device(self) -> AiotDeviceRepositoryError {
         match self {
             Self::Device(error) => error,
-            _ => AiotDeviceRepositoryError::PersistenceFailure,
+            Self::Command(_) | Self::Event(_) | Self::Twin(_) | Self::Storage => {
+                AiotDeviceRepositoryError::PersistenceFailure
+            }
         }
     }
 
     fn into_command(self) -> AiotCommandRepositoryError {
         match self {
             Self::Command(error) => error,
-            _ => AiotCommandRepositoryError::PersistenceFailure,
+            Self::Device(_) | Self::Event(_) | Self::Twin(_) | Self::Storage => {
+                AiotCommandRepositoryError::PersistenceFailure
+            }
         }
     }
 
     fn into_event(self) -> AiotEventRepositoryError {
         match self {
             Self::Event(error) => error,
-            _ => AiotEventRepositoryError::PersistenceFailure,
+            Self::Device(_) | Self::Command(_) | Self::Twin(_) | Self::Storage => {
+                AiotEventRepositoryError::PersistenceFailure
+            }
         }
     }
 
     fn into_twin(self) -> AiotDeviceTwinRepositoryError {
         match self {
             Self::Twin(error) => error,
-            _ => AiotDeviceTwinRepositoryError::PersistenceFailure,
+            Self::Device(_) | Self::Command(_) | Self::Event(_) | Self::Storage => {
+                AiotDeviceTwinRepositoryError::PersistenceFailure
+            }
         }
     }
 }
@@ -186,7 +194,7 @@ impl AiotDeviceRepository for SqliteSqlxDeviceRepository {
                 .fetch_optional(self.db.pool())
                 .await?;
                 row.as_ref()
-                    .map(|row| row_to_device_record(row))
+                    .map(row_to_device_record)
                     .transpose()
             })
             .ok()
