@@ -14,12 +14,24 @@ function readEnv(key: string, fallback: string): string {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
 }
 
+function readPrivateEnv(key: string): string | undefined {
+  const processEnv = (
+    globalThis as typeof globalThis & {
+      process?: {
+        env?: Record<string, string | undefined>;
+      };
+    }
+  ).process?.env;
+
+  const value = processEnv?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
 let aiotAppSdkClient: SdkworkAiotAppClient | null = null;
 
 export function createAiotH5AppSdkClientConfig(): SdkworkAiotAppClientConfig {
   return {
-    accessToken: normalizeBearerToken(readEnv('VITE_SDKWORK_ACCESS_TOKEN', '')),
-    authToken: normalizeBearerToken(readEnv('VITE_SDKWORK_AUTH_TOKEN', '')),
+    accessToken: normalizeBearerToken(readPrivateEnv('SDKWORK_ACCESS_TOKEN')),
     baseUrl: readEnv('VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL', 'http://127.0.0.1:8082'),
     platform: 'h5',
   };

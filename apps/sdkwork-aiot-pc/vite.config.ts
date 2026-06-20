@@ -1,9 +1,14 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname, '');
+  return {
+    define: {
+      'process.env.SDKWORK_ACCESS_TOKEN': JSON.stringify(env.SDKWORK_ACCESS_TOKEN ?? ''),
+    },
+      plugins: [react()],
   resolve: {
     alias: {
       '@sdkwork/aiot-pc-console-agent': path.resolve(__dirname, 'packages/sdkwork-aiot-pc-console-agent/src/index.ts'),

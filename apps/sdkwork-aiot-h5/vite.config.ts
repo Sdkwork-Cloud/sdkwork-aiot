@@ -1,10 +1,16 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, '.', '');
+
+  return {
   plugins: [react(), tailwindcss()],
+  define: {
+    'process.env.SDKWORK_ACCESS_TOKEN': JSON.stringify(env.SDKWORK_ACCESS_TOKEN ?? ''),
+  },
   resolve: {
     alias: {
       '@sdkwork/aiot-h5-core': path.resolve(__dirname, 'packages/sdkwork-aiot-h5-core/src/index.ts'),
@@ -17,4 +23,5 @@ export default defineConfig({
     },
   },
   server: { port: 5176 },
+  };
 });
