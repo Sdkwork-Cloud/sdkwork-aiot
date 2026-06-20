@@ -15,6 +15,16 @@
     "test:app-openapi-context": "node --test scripts/dev/sdkwork-aiot-app-openapi-context.test.mjs",
     "test:openapi-web-context": "node --test scripts/dev/sdkwork-aiot-openapi-web-context.test.mjs",
     "test:topology-validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root .",
-    "verify": "pnpm test:topology-validate && pnpm test:topology-baggage && pnpm test:app-openapi-context && pnpm test:openapi-web-context && cargo fmt --all -- --check && cargo clippy --workspace --tests -- -D warnings && cargo test --workspace"
+    "verify": "pnpm test:topology-validate && pnpm test:topology-baggage && pnpm test:app-openapi-context && pnpm test:openapi-web-context && cargo fmt --all -- --check && cargo clippy --workspace --tests -- -D warnings && cargo test --workspace",
+    "db:validate": "node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .",
+    "db:plan": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . plan",
+    "db:init": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . init",
+    "db:migrate": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . migrate",
+    "db:seed": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . seed",
+    "db:status": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . status",
+    "db:drift": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . drift",
+    "db:drift:check": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . drift-check",
+    "db:bootstrap": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . bootstrap",
+    "test": "node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root ."
   }
 }
