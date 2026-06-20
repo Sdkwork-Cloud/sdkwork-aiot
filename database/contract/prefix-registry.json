@@ -1,5 +1,11 @@
 {
   "schemaVersion": 1,
   "kind": "sdkwork.database.prefix-registry",
-  "prefixes": []
+  "prefixes": [
+    {
+      "prefix": "iot_",
+      "owner": "aiot-platform",
+      "domain": "aiot"
+    }
+  ]
 }

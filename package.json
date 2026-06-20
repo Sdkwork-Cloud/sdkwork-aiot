@@ -16,6 +16,7 @@
     "test:openapi-web-context": "node --test scripts/dev/sdkwork-aiot-openapi-web-context.test.mjs",
     "test:topology-validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root .",
     "verify": "pnpm test:topology-validate && pnpm test:topology-baggage && pnpm test:app-openapi-context && pnpm test:openapi-web-context && cargo fmt --all -- --check && cargo clippy --workspace --tests -- -D warnings && cargo test --workspace",
+    "db:materialize:contract": "node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline database/ddl/baseline/postgres/0001_aiot_legacy_baseline.sql --module-id aiot --owner aiot-platform --prefixes iot_ --engines postgres,sqlite",
     "db:validate": "node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .",
     "db:plan": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . plan",
     "db:init": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . init",

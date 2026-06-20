@@ -1,5 +1,210 @@
 {
   "schemaVersion": 1,
   "kind": "sdkwork.database.table-registry",
-  "tables": []
+  "tables": [
+    {
+      "table_name": "iot_product",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_hardware_profile",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_protocol_profile",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_capability_model",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_capability_definition",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_credential",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_binding",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_gateway_child_device",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_connection",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_session",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_online_lease",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_command",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_command_delivery",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_command_result",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_twin",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_twin_property",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_telemetry_latest",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_telemetry_event",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_event",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_security_event",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_media_resource",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_device_media",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_firmware_artifact",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_firmware_rollout",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_firmware_rollout_target",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_firmware_deployment",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_provisioning_challenge",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_activation_record",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_protocol_message_dead_letter",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_outbox_event",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_inbox_event",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_audit_log",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    },
+    {
+      "table_name": "iot_protocol_ingest_record",
+      "owner": "aiot-platform",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
+    }
+  ]
 }

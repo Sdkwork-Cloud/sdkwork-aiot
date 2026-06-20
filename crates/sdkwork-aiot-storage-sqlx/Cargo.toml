@@ -5,6 +5,7 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
+sdkwork-aiot-database-host = { path = "../sdkwork-aiot-database-host" }
 sdkwork-database-config.workspace = true
 sdkwork-database-sqlx.workspace = true
 sqlx.workspace = true

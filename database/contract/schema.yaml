@@ -1,11 +1,113 @@
 schema_version: 1
 kind: sdkwork.database.schema
 module_id: aiot
-contract_version: 0.1.0
+contract_version: 1.0.0
 owner_team: aiot-platform
 compliance_level: L2
 engines:
   - postgres
   - sqlite
-table_prefix: aiot_
-tables: []
+table_prefix: iot_
+tables:
+  - name: iot_product
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_hardware_profile
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_protocol_profile
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_capability_model
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_capability_definition
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_credential
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_binding
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_gateway_child_device
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_connection
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_session
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_online_lease
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_command
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_command_delivery
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_command_result
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_twin
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_twin_property
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_telemetry_latest
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_telemetry_event
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_event
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_security_event
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_media_resource
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_device_media
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_firmware_artifact
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_firmware_rollout
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_firmware_rollout_target
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_firmware_deployment
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_provisioning_challenge
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_activation_record
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_protocol_message_dead_letter
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_outbox_event
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_inbox_event
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_audit_log
+    lifecycle_status: active
+    owner: aiot-platform
+  - name: iot_protocol_ingest_record
+    lifecycle_status: active
+    owner: aiot-platform

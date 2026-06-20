@@ -6,6 +6,7 @@ mod credential;
 mod database_bootstrap;
 mod device_database;
 mod device_repository_sqlite;
+mod framework_bootstrap;
 mod persisted_entity;
 mod schema;
 mod sqlite_sync;
@@ -18,6 +19,11 @@ pub use database_bootstrap::{
     aiot_device_blocking_pool, aiot_device_pool_from_env, aiot_device_sqlite_memory_config,
     aiot_device_sqlite_memory_pool, resolve_device_database_config,
     AIOT_DEVICE_DATABASE_SERVICE_NAME,
+};
+pub use framework_bootstrap::{
+    bootstrap_aiot_database, bootstrap_aiot_database_from_env,
+    connect_and_bootstrap_aiot_database_from_env, connect_aiot_database_pool_from_env,
+    AiotDatabaseHost, AiotDatabasePool,
 };
 pub use device_database::{open_aiot_device_database, AiotDeviceDatabase};
 pub use device_repository_sqlite::SqliteSqlxDeviceRepository;

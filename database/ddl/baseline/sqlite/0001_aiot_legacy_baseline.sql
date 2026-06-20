@@ -1,0 +1,806 @@
+CREATE TABLE iot_product (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    product_key VARCHAR(128) NOT NULL,
+    display_name VARCHAR(200) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_product_uuid UNIQUE (uuid),
+    CONSTRAINT uk_iot_product_tenant_key UNIQUE (tenant_id, product_key)
+);
+
+CREATE TABLE iot_hardware_profile (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    profile_key VARCHAR(128) NOT NULL,
+    chip_family VARCHAR(64) NOT NULL,
+    runtime_profile VARCHAR(64) NOT NULL,
+    connectivity_profile VARCHAR(64) NOT NULL,
+    security_profile VARCHAR(64),
+    ota_profile VARCHAR(64),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_hardware_profile_uuid UNIQUE (uuid),
+    CONSTRAINT uk_iot_hardware_profile_tenant_key UNIQUE (tenant_id, profile_key)
+);
+
+CREATE INDEX idx_iot_hardware_profile_tenant_chip
+    ON iot_hardware_profile (tenant_id, chip_family, runtime_profile);
+
+CREATE TABLE iot_protocol_profile (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    profile_key VARCHAR(128) NOT NULL,
+    default_protocol_id VARCHAR(128) NOT NULL,
+    allowed_transports TEXT NOT NULL,
+    allowed_message_classes TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_protocol_profile_uuid UNIQUE (uuid),
+    CONSTRAINT uk_iot_protocol_profile_tenant_key UNIQUE (tenant_id, profile_key)
+);
+
+CREATE INDEX idx_iot_protocol_profile_tenant_protocol
+    ON iot_protocol_profile (tenant_id, default_protocol_id, status);
+
+CREATE TABLE iot_capability_model (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    model_key VARCHAR(128) NOT NULL,
+    display_name VARCHAR(200) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_capability_model_tenant_key UNIQUE (tenant_id, model_key)
+);
+
+CREATE TABLE iot_capability_definition (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    capability_model_id BIGINT NOT NULL,
+    capability_name VARCHAR(128) NOT NULL,
+    capability_kind VARCHAR(32) NOT NULL,
+    schema_json TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_capability_definition_tenant_model_name
+        UNIQUE (tenant_id, capability_model_id, capability_name)
+);
+
+CREATE TABLE iot_device (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    device_key VARCHAR(128) NOT NULL,
+    product_id BIGINT NOT NULL,
+    hardware_profile_id BIGINT,
+    protocol_profile_id BIGINT,
+    display_name VARCHAR(200) NOT NULL,
+    device_id VARCHAR(128) NOT NULL,
+    client_id VARCHAR(128),
+    serial_number VARCHAR(128),
+    mac_address VARCHAR(128),
+    chip_family VARCHAR(64),
+    runtime_profile VARCHAR(64),
+    firmware_version VARCHAR(64),
+    auth_state INTEGER NOT NULL DEFAULT 0,
+    lifecycle_state INTEGER NOT NULL DEFAULT 0,
+    last_seen_at TIMESTAMP,
+    metadata TEXT,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    deleted_at TIMESTAMP,
+    deleted_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_device_uuid UNIQUE (uuid),
+    CONSTRAINT uk_iot_device_tenant_device_key UNIQUE (tenant_id, device_key),
+    CONSTRAINT uk_iot_device_tenant_product_device_id UNIQUE (tenant_id, product_id, device_id),
+    CONSTRAINT uk_iot_device_tenant_client_id UNIQUE (tenant_id, client_id)
+);
+
+CREATE INDEX idx_iot_device_tenant_product_status
+    ON iot_device (tenant_id, product_id, status);
+
+CREATE INDEX idx_iot_device_tenant_last_seen
+    ON iot_device (tenant_id, last_seen_at);
+
+CREATE TABLE iot_device_credential (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    credential_type VARCHAR(64) NOT NULL,
+    credential_hash VARCHAR(256),
+    credential_ref VARCHAR(512),
+    expires_at TIMESTAMP,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_device_credential_tenant_device_status
+    ON iot_device_credential (tenant_id, device_id, status);
+
+CREATE TABLE iot_device_binding (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    binding_type VARCHAR(64) NOT NULL,
+    target_type VARCHAR(64) NOT NULL,
+    target_id VARCHAR(128) NOT NULL,
+    role VARCHAR(64),
+    status INTEGER NOT NULL,
+    bound_at TIMESTAMP NOT NULL,
+    bound_by BIGINT,
+    expires_at TIMESTAMP,
+    metadata TEXT,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_device_binding_tenant_target
+    ON iot_device_binding (tenant_id, target_type, target_id, status);
+
+CREATE TABLE iot_gateway_child_device (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    gateway_device_id VARCHAR(128) NOT NULL,
+    child_device_id VARCHAR(128) NOT NULL,
+    topology_role VARCHAR(64) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_gateway_child_device_tenant_pair
+        UNIQUE (tenant_id, gateway_device_id, child_device_id)
+);
+
+CREATE TABLE iot_device_connection (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    connection_id VARCHAR(128) NOT NULL,
+    device_id VARCHAR(128),
+    transport VARCHAR(64) NOT NULL,
+    remote_addr VARCHAR(256),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_device_connection_tenant_connection UNIQUE (tenant_id, connection_id)
+);
+
+CREATE INDEX idx_iot_device_connection_tenant_device_created
+    ON iot_device_connection (tenant_id, device_id, created_at);
+
+CREATE TABLE iot_device_session (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    session_id VARCHAR(128) NOT NULL,
+    connection_id VARCHAR(128) NOT NULL,
+    protocol_id VARCHAR(128) NOT NULL,
+    adapter_id VARCHAR(128) NOT NULL,
+    node_id VARCHAR(128),
+    status INTEGER NOT NULL,
+    connected_at TIMESTAMP NOT NULL,
+    last_seen_at TIMESTAMP,
+    disconnected_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_device_session_tenant_session UNIQUE (tenant_id, session_id)
+);
+
+CREATE INDEX idx_iot_device_session_tenant_device_status
+    ON iot_device_session (tenant_id, device_id, status);
+
+CREATE TABLE iot_device_online_lease (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    session_id VARCHAR(128) NOT NULL,
+    node_id VARCHAR(128) NOT NULL,
+    lease_expires_at TIMESTAMP NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_device_online_lease_tenant_device UNIQUE (tenant_id, device_id)
+);
+
+CREATE INDEX idx_iot_device_online_lease_tenant_expires
+    ON iot_device_online_lease (tenant_id, lease_expires_at);
+
+CREATE TABLE iot_command (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    command_id VARCHAR(128) NOT NULL,
+    device_id VARCHAR(128) NOT NULL,
+    session_id VARCHAR(128),
+    capability_name VARCHAR(128) NOT NULL,
+    command_name VARCHAR(128) NOT NULL,
+    request_payload TEXT NOT NULL,
+    request_media_resource_id VARCHAR(128),
+    request_object_blob_id VARCHAR(128),
+    request_media_resource_snapshot TEXT,
+    status INTEGER NOT NULL,
+    idempotency_key VARCHAR(128),
+    timeout_at TIMESTAMP,
+    ack_at TIMESTAMP,
+    result_at TIMESTAMP,
+    trace_id VARCHAR(128),
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_command_tenant_command_id UNIQUE (tenant_id, command_id),
+    CONSTRAINT uk_iot_command_tenant_idempotency_key
+        UNIQUE (tenant_id, organization_id, idempotency_key)
+);
+
+CREATE INDEX idx_iot_command_tenant_device_status_created
+    ON iot_command (tenant_id, device_id, status, created_at);
+
+CREATE INDEX idx_iot_command_tenant_status_timeout
+    ON iot_command (tenant_id, status, timeout_at);
+
+CREATE TABLE iot_command_delivery (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    command_id VARCHAR(128) NOT NULL,
+    session_id VARCHAR(128),
+    delivery_state VARCHAR(64) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_command_delivery_tenant_session_status
+    ON iot_command_delivery (tenant_id, session_id, status);
+
+CREATE TABLE iot_command_result (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    command_id VARCHAR(128) NOT NULL,
+    result_payload TEXT,
+    result_media_resource_id VARCHAR(128),
+    result_object_blob_id VARCHAR(128),
+    result_media_resource_snapshot TEXT,
+    result_code VARCHAR(128),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_command_result_tenant_command
+    ON iot_command_result (tenant_id, command_id);
+
+CREATE TABLE iot_device_twin (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    desired_version BIGINT NOT NULL DEFAULT 0,
+    reported_version BIGINT NOT NULL DEFAULT 0,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_device_twin_tenant_device UNIQUE (tenant_id, device_id)
+);
+
+CREATE TABLE iot_device_twin_property (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    property_name VARCHAR(128) NOT NULL,
+    desired_value TEXT,
+    desired_version BIGINT NOT NULL DEFAULT 0,
+    desired_updated_at TIMESTAMP,
+    reported_value TEXT,
+    reported_version BIGINT NOT NULL DEFAULT 0,
+    reported_updated_at TIMESTAMP,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_twin_property_tenant_device_property
+        UNIQUE (tenant_id, device_id, property_name)
+);
+
+CREATE INDEX idx_iot_twin_property_tenant_device_property
+    ON iot_device_twin_property (tenant_id, device_id, property_name);
+
+CREATE TABLE iot_telemetry_latest (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    metric_key VARCHAR(128) NOT NULL,
+    metric_value TEXT NOT NULL,
+    metric_type VARCHAR(32) NOT NULL,
+    measured_at TIMESTAMP NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_telemetry_latest_tenant_device_key
+        UNIQUE (tenant_id, device_id, metric_key)
+);
+
+CREATE INDEX idx_iot_telemetry_latest_tenant_device_key
+    ON iot_telemetry_latest (tenant_id, device_id, metric_key);
+
+CREATE TABLE iot_telemetry_event (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    metric_key VARCHAR(128) NOT NULL,
+    metric_value TEXT NOT NULL,
+    measured_at TIMESTAMP NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_telemetry_event_tenant_device_time
+    ON iot_telemetry_event (tenant_id, device_id, measured_at);
+
+CREATE TABLE iot_device_event (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    device_id VARCHAR(128) NOT NULL,
+    event_type VARCHAR(128) NOT NULL,
+    event_payload TEXT NOT NULL,
+    media_resource_id VARCHAR(128),
+    object_blob_id VARCHAR(128),
+    media_resource_snapshot TEXT,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_device_event_tenant_device_time
+    ON iot_device_event (tenant_id, device_id, created_at);
+
+CREATE TABLE iot_security_event (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    security_event_type VARCHAR(128) NOT NULL,
+    severity VARCHAR(64) NOT NULL,
+    actor_type VARCHAR(64),
+    actor_id VARCHAR(128),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    trace_id VARCHAR(128),
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_security_event_tenant_time
+    ON iot_security_event (tenant_id, created_at);
+
+CREATE TABLE iot_media_resource (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    media_resource_id VARCHAR(128) NOT NULL,
+    kind VARCHAR(32) NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    object_blob_id VARCHAR(128),
+    resource_snapshot TEXT,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_media_resource_tenant_resource_id
+        UNIQUE (tenant_id, media_resource_id)
+);
+
+CREATE INDEX idx_iot_media_resource_tenant_owner
+    ON iot_media_resource (tenant_id, owner_type, owner_id, status);
+
+CREATE INDEX idx_iot_media_resource_tenant_object_blob
+    ON iot_media_resource (tenant_id, object_blob_id);
+
+CREATE TABLE iot_device_media (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    media_role VARCHAR(64) NOT NULL,
+    media_resource_id VARCHAR(128) NOT NULL,
+    object_blob_id VARCHAR(128),
+    resource_snapshot TEXT,
+    alt_text VARCHAR(512),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_device_media_tenant_owner_role
+    ON iot_device_media (tenant_id, owner_type, owner_id, media_role, sort_order);
+
+CREATE INDEX idx_iot_device_media_tenant_media
+    ON iot_device_media (tenant_id, media_resource_id);
+
+CREATE TABLE iot_firmware_artifact (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    version_name VARCHAR(128) NOT NULL,
+    media_resource_id VARCHAR(128) NOT NULL,
+    object_blob_id VARCHAR(128),
+    media_resource_snapshot TEXT,
+    file_name VARCHAR(256),
+    size_bytes BIGINT NOT NULL,
+    sha256 VARCHAR(128) NOT NULL,
+    signature TEXT,
+    signature_algorithm VARCHAR(64),
+    target_chip_family VARCHAR(64),
+    target_runtime_profile VARCHAR(64),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_firmware_artifact_tenant_media_resource
+        UNIQUE (tenant_id, media_resource_id)
+);
+
+CREATE TABLE iot_firmware_rollout (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    owner_type VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(128) NOT NULL,
+    artifact_id BIGINT NOT NULL,
+    rollout_policy TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_by BIGINT,
+    updated_by BIGINT,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_firmware_rollout_tenant_status
+    ON iot_firmware_rollout (tenant_id, status);
+
+CREATE TABLE iot_firmware_rollout_target (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    rollout_id BIGINT NOT NULL,
+    target_type VARCHAR(64) NOT NULL,
+    target_id VARCHAR(128) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_firmware_rollout_target_tenant_rollout
+    ON iot_firmware_rollout_target (tenant_id, rollout_id);
+
+CREATE TABLE iot_firmware_deployment (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    rollout_id BIGINT,
+    device_id VARCHAR(128) NOT NULL,
+    deployment_state VARCHAR(64) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_firmware_deployment_tenant_device_status
+    ON iot_firmware_deployment (tenant_id, device_id, status);
+
+CREATE TABLE iot_provisioning_challenge (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    challenge_id VARCHAR(128) NOT NULL,
+    device_hint VARCHAR(128),
+    expires_at TIMESTAMP NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_provisioning_challenge_tenant_id UNIQUE (tenant_id, challenge_id)
+);
+
+CREATE INDEX idx_iot_provisioning_challenge_tenant_expires
+    ON iot_provisioning_challenge (tenant_id, expires_at);
+
+CREATE TABLE iot_activation_record (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    activation_id VARCHAR(128) NOT NULL,
+    device_id VARCHAR(128),
+    activation_profile VARCHAR(128) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_activation_record_tenant_device
+    ON iot_activation_record (tenant_id, device_id);
+
+CREATE TABLE iot_protocol_message_dead_letter (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    protocol_id VARCHAR(128) NOT NULL,
+    adapter_id VARCHAR(128) NOT NULL,
+    device_id VARCHAR(128),
+    reason_code VARCHAR(128) NOT NULL,
+    payload_ref VARCHAR(512),
+    payload_hash VARCHAR(128),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    trace_id VARCHAR(128),
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_protocol_dead_letter_tenant_created
+    ON iot_protocol_message_dead_letter (tenant_id, created_at);
+
+CREATE TABLE iot_outbox_event (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    event_id VARCHAR(128) NOT NULL,
+    event_type VARCHAR(128) NOT NULL,
+    event_version VARCHAR(16) NOT NULL DEFAULT '1',
+    aggregate_type VARCHAR(128) NOT NULL,
+    aggregate_id VARCHAR(128) NOT NULL,
+    payload TEXT NOT NULL,
+    payload_hash VARCHAR(128),
+    status INTEGER NOT NULL,
+    next_attempt_at TIMESTAMP,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL,
+    published_at TIMESTAMP,
+    trace_id VARCHAR(128),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_outbox_event_tenant_event_id UNIQUE (tenant_id, event_id)
+);
+
+CREATE INDEX idx_iot_outbox_event_status_next_attempt
+    ON iot_outbox_event (status, next_attempt_at);
+
+CREATE TABLE iot_inbox_event (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    source_system VARCHAR(128) NOT NULL,
+    message_id VARCHAR(128) NOT NULL,
+    consumer_name VARCHAR(128) NOT NULL,
+    payload_hash VARCHAR(128),
+    error_message VARCHAR(1000),
+    processed_at TIMESTAMP,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_inbox_event_consumer_message
+        UNIQUE (source_system, message_id, consumer_name)
+);
+
+CREATE TABLE iot_audit_log (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    operator_id BIGINT,
+    action VARCHAR(128) NOT NULL,
+    target_type VARCHAR(128) NOT NULL,
+    target_id VARCHAR(128) NOT NULL,
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    trace_id VARCHAR(128),
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_iot_audit_log_tenant_created
+    ON iot_audit_log (tenant_id, created_at);
+
+CREATE TABLE iot_protocol_ingest_record (
+    id BIGINT NOT NULL,
+    uuid VARCHAR(64) NOT NULL,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    data_scope INTEGER NOT NULL DEFAULT 0,
+    protocol_id VARCHAR(128) NOT NULL,
+    adapter_id VARCHAR(128) NOT NULL,
+    device_id VARCHAR(128),
+    message_id VARCHAR(128),
+    correlation_id VARCHAR(128),
+    media_resource_id VARCHAR(128),
+    object_blob_id VARCHAR(128),
+    media_resource_snapshot TEXT,
+    idempotency_key VARCHAR(256) NOT NULL,
+    trace_id VARCHAR(128),
+    status INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_iot_protocol_ingest_tenant_idempotency
+        UNIQUE (tenant_id, idempotency_key)
+);
+
+CREATE INDEX idx_iot_protocol_ingest_tenant_message
+    ON iot_protocol_ingest_record (tenant_id, protocol_id, message_id);
+

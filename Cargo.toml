@@ -6,6 +6,7 @@ members = [
     "crates/sdkwork-aiot-service-host",
     "crates/sdkwork-aiot-storage",
     "crates/sdkwork-aiot-storage-sqlx",
+    "crates/sdkwork-aiot-database-host",
     "crates/sdkwork-aiot-security",
     "crates/sdkwork-aiot-observability",
     "crates/sdkwork-aiot-adapter-xiaozhi",
@@ -54,7 +55,14 @@ sdkwork-router-iot-backend-api = { path = "crates/sdkwork-router-iot-backend-api
 sdkwork-aiot-architecture = { path = "crates/sdkwork-aiot-architecture" }
 
 sdkwork-database-config = { path = "../sdkwork-database/crates/sdkwork-database-config" }
+sdkwork-database-lifecycle = { path = "../sdkwork-database/crates/sdkwork-database-lifecycle" }
+sdkwork-database-spi = { path = "../sdkwork-database/crates/sdkwork-database-spi" }
 sdkwork-database-sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sqlx" }
+sdkwork_database_config = { path = "../sdkwork-database/crates/sdkwork-database-config", package = "sdkwork-database-config" }
+sdkwork_database_lifecycle = { path = "../sdkwork-database/crates/sdkwork-database-lifecycle", package = "sdkwork-database-lifecycle" }
+sdkwork_database_spi = { path = "../sdkwork-database/crates/sdkwork-database-spi", package = "sdkwork-database-spi" }
+sdkwork_database_sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sqlx", package = "sdkwork-database-sqlx" }
+sdkwork-aiot-database-host = { path = "crates/sdkwork-aiot-database-host" }
 sdkwork-iam-web-adapter = { path = "../sdkwork-appbase/crates/sdkwork-iam-web-adapter" }
 sdkwork-web-axum = { path = "../sdkwork-web-framework/crates/sdkwork-web-axum" }
 sdkwork-web-contract = { path = "../sdkwork-web-framework/crates/sdkwork-web-contract" }
