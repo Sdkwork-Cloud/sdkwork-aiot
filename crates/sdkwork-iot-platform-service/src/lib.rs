@@ -31,6 +31,7 @@ use sdkwork_aiot_storage::{
 };
 use sdkwork_aiot_transport::{build_health_response, HttpRequest, HttpResponse, HttpStatus};
 use sdkwork_iot_device_service::{CapabilityDefinition, CapabilityKind, ProtocolProfile};
+use sdkwork_utils_rust::{base64url_decode, hex_encode, hmac_sha256, secure_compare};
 
 mod service_stores;
 mod sqlite_admin;
@@ -469,8 +470,8 @@ fn dev_fixture_dual_token_claims(request: &HttpRequest) -> Option<(JsonValue, Js
             "user_id": "30001",
         }),
         serde_json::json!({
-            "tenant_id": "10001",
-            "organization_id": "20001",
+            "tenant_id": "100001",
+            "organization_id": "0",
         }),
     ))
 }
@@ -552,7 +553,7 @@ fn parse_bearer_jwt_claims(token: &str) -> Result<JsonValue, &'static str> {
         return Err("api.auth.invalid_bearer");
     }
 
-    let payload = base64_url_decode(parts[1]).ok_or("api.auth.invalid_bearer")?;
+    let payload = base64url_decode(parts[1]).ok_or("api.auth.invalid_bearer")?;
     serde_json::from_slice(&payload).map_err(|_| "api.auth.invalid_bearer")
 }
 
@@ -593,12 +594,12 @@ fn verify_dev_hmac_token(token: &str, secret: &str) -> bool {
         return false;
     }
     let signing_input = format!("{}.{}", parts[0], parts[1]);
-    let signature = match base64_url_decode(parts[2]) {
-        Some(value) => value,
-        None => return false,
+    let Some(signature) = base64url_decode(parts[2]) else {
+        return false;
     };
-    let expected = hmac_sha256(secret.as_bytes(), signing_input.as_bytes());
-    constant_time_eq(&signature, &expected)
+    let expected_hex = hmac_sha256(signing_input.as_bytes(), secret.as_bytes());
+    let signature_hex = hex_encode(&signature);
+    secure_compare(&signature_hex, &expected_hex)
 }
 
 fn auth_failure_rate_limited(request: &HttpRequest) -> bool {
@@ -627,190 +628,6 @@ fn client_ip_from_request(request: &HttpRequest) -> String {
         .or_else(|| optional_header(request, "x-real-ip"))
         .unwrap_or("unknown")
         .to_string()
-}
-
-fn base64_url_decode(input: &str) -> Option<Vec<u8>> {
-    let mut normalized = input.replace('-', "+").replace('_', "/");
-    let padding = normalized.len() % 4;
-    if padding != 0 {
-        normalized.push_str(&"=".repeat(4 - padding));
-    }
-    base64_decode(&normalized).ok()
-}
-
-fn base64_decode(input: &str) -> Result<Vec<u8>, ()> {
-    const TABLE: &[u8; 256] = &{
-        let mut table = [255u8; 256];
-        let mut index = 0u8;
-        while index < 64 {
-            let ascii = match index {
-                0..=25 => b'A' + index,
-                26..=51 => b'a' + (index - 26),
-                52..=61 => b'0' + (index - 52),
-                62 => b'+',
-                _ => b'/',
-            };
-            table[ascii as usize] = index;
-            index += 1;
-        }
-        table
-    };
-
-    let bytes = input.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len() * 3 / 4);
-    let mut buffer = 0u32;
-    let mut bits = 0u32;
-
-    for &byte in bytes {
-        if byte == b'=' {
-            break;
-        }
-        let value = TABLE[byte as usize];
-        if value == 255 {
-            return Err(());
-        }
-        buffer = (buffer << 6) | u32::from(value);
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push((buffer >> bits) as u8);
-            buffer &= (1 << bits) - 1;
-        }
-    }
-
-    Ok(out)
-}
-
-fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
-    const BLOCK_SIZE: usize = 64;
-    let mut normalized_key = [0u8; BLOCK_SIZE];
-    if key.len() > BLOCK_SIZE {
-        normalized_key[..32].copy_from_slice(&sha256_digest(key));
-    } else {
-        normalized_key[..key.len()].copy_from_slice(key);
-    }
-
-    let mut ipad = [0x36u8; BLOCK_SIZE];
-    let mut opad = [0x5cu8; BLOCK_SIZE];
-    for index in 0..BLOCK_SIZE {
-        ipad[index] ^= normalized_key[index];
-        opad[index] ^= normalized_key[index];
-    }
-
-    let mut inner = ipad.to_vec();
-    inner.extend_from_slice(message);
-    let inner_hash = sha256_digest(&inner);
-
-    let mut outer = opad.to_vec();
-    outer.extend_from_slice(&inner_hash);
-    sha256_digest(&outer)
-}
-
-fn sha256_digest(input: &[u8]) -> [u8; 32] {
-    const K: [u32; 64] = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
-        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
-        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
-        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
-        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
-        0xc67178f2,
-    ];
-
-    let bit_len = (input.len() as u64) * 8;
-    let mut msg = input.to_vec();
-    msg.push(0x80);
-    while msg.len() % 64 != 56 {
-        msg.push(0);
-    }
-    msg.extend_from_slice(&bit_len.to_be_bytes());
-
-    let mut h = [
-        0x6a09e667u32,
-        0xbb67ae85,
-        0x3c6ef372,
-        0xa54ff53a,
-        0x510e527f,
-        0x9b05688c,
-        0x1f83d9ab,
-        0x5be0cd19,
-    ];
-
-    for chunk in msg.chunks(64) {
-        let mut w = [0u32; 64];
-        for (index, word) in w.iter_mut().take(16).enumerate() {
-            let offset = index * 4;
-            *word = u32::from_be_bytes([
-                chunk[offset],
-                chunk[offset + 1],
-                chunk[offset + 2],
-                chunk[offset + 3],
-            ]);
-        }
-        for index in 16..64 {
-            let s0 = w[index - 15].rotate_right(7)
-                ^ w[index - 15].rotate_right(18)
-                ^ (w[index - 15] >> 3);
-            let s1 = w[index - 2].rotate_right(17)
-                ^ w[index - 2].rotate_right(19)
-                ^ (w[index - 2] >> 10);
-            w[index] = w[index - 16]
-                .wrapping_add(s0)
-                .wrapping_add(w[index - 7])
-                .wrapping_add(s1);
-        }
-
-        let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h0) =
-            (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
-        for index in 0..64 {
-            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
-            let ch = (e & f) ^ ((!e) & g);
-            let temp1 = h0
-                .wrapping_add(s1)
-                .wrapping_add(ch)
-                .wrapping_add(K[index])
-                .wrapping_add(w[index]);
-            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
-            let maj = (a & b) ^ (a & c) ^ (b & c);
-            let temp2 = s0.wrapping_add(maj);
-            h0 = g;
-            g = f;
-            f = e;
-            e = d.wrapping_add(temp1);
-            d = c;
-            c = b;
-            b = a;
-            a = temp1.wrapping_add(temp2);
-        }
-        h[0] = h[0].wrapping_add(a);
-        h[1] = h[1].wrapping_add(b);
-        h[2] = h[2].wrapping_add(c);
-        h[3] = h[3].wrapping_add(d);
-        h[4] = h[4].wrapping_add(e);
-        h[5] = h[5].wrapping_add(f);
-        h[6] = h[6].wrapping_add(g);
-        h[7] = h[7].wrapping_add(h0);
-    }
-
-    let mut out = [0u8; 32];
-    for (index, word) in h.iter().enumerate() {
-        out[index * 4..index * 4 + 4].copy_from_slice(&word.to_be_bytes());
-    }
-    out
-}
-
-fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
-    if left.len() != right.len() {
-        return false;
-    }
-    let mut diff = 0u8;
-    for (left_byte, right_byte) in left.iter().zip(right.iter()) {
-        diff |= left_byte ^ right_byte;
-    }
-    diff == 0
 }
 
 fn apply_security_headers(mut response: HttpResponse) -> HttpResponse {

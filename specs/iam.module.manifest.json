@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.iam.module",
+  "moduleId": "iot",
+  "catalogVersion": "1.0.0",
+  "domain": "iot",
+  "owner": "sdkwork-aiot",
+  "displayName": "IoT Platform Module",
+  "permissions": {
+    "catalog": [
+      {
+        "code": "iot.products.read",
+        "name": "Read IoT products",
+        "resource": "iot.products",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.products.write",
+        "name": "Write IoT products",
+        "resource": "iot.products",
+        "action": "write",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.profiles.read",
+        "name": "Read IoT device profiles",
+        "resource": "iot.profiles",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.profiles.write",
+        "name": "Write IoT device profiles",
+        "resource": "iot.profiles",
+        "action": "write",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.devices.read",
+        "name": "Read IoT devices",
+        "resource": "iot.devices",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.devices.write",
+        "name": "Write IoT devices",
+        "resource": "iot.devices",
+        "action": "write",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.devices.bind",
+        "name": "Bind IoT devices",
+        "resource": "iot.devices",
+        "action": "bind",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.devices.delete",
+        "name": "Delete IoT devices",
+        "resource": "iot.devices",
+        "action": "delete",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.sessions.read",
+        "name": "Read IoT device sessions",
+        "resource": "iot.sessions",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.sessions.disconnect",
+        "name": "Disconnect IoT device sessions",
+        "resource": "iot.sessions",
+        "action": "disconnect",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.commands.read",
+        "name": "Read IoT commands",
+        "resource": "iot.commands",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.commands.execute",
+        "name": "Execute IoT commands",
+        "resource": "iot.commands",
+        "action": "execute",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.commands.cancel",
+        "name": "Cancel IoT commands",
+        "resource": "iot.commands",
+        "action": "cancel",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.twins.read",
+        "name": "Read IoT digital twins",
+        "resource": "iot.twins",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.twins.write",
+        "name": "Write IoT digital twins",
+        "resource": "iot.twins",
+        "action": "write",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.telemetry.read",
+        "name": "Read IoT telemetry",
+        "resource": "iot.telemetry",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.firmware.read",
+        "name": "Read IoT firmware artifacts",
+        "resource": "iot.firmware",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.firmware.write",
+        "name": "Write IoT firmware artifacts",
+        "resource": "iot.firmware",
+        "action": "write",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.firmware.rollout",
+        "name": "Roll out IoT firmware",
+        "resource": "iot.firmware",
+        "action": "rollout",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.protocolAdapters.read",
+        "name": "Read IoT protocol adapters",
+        "resource": "iot.protocolAdapters",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.protocolAdapters.write",
+        "name": "Write IoT protocol adapters",
+        "resource": "iot.protocolAdapters",
+        "action": "write",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "iot.runtime.read",
+        "name": "Read IoT runtime diagnostics",
+        "resource": "iot.runtime",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      }
+    ],
+    "openapiAuthorities": []
+  },
+  "roles": {
+    "domainStandardRoles": [
+      {
+        "code": "iot_field_operator",
+        "name": "IoT Field Operator",
+        "surface": "organization",
+        "scope": "organization",
+        "standard": true,
+        "assignable": true,
+        "bindingPrincipalKind": "organization_membership",
+        "permissionPatterns": [
+          "iot.devices.read",
+          "iot.commands.read",
+          "iot.commands.execute",
+          "iot.telemetry.read",
+          "iot.sessions.read"
+        ]
+      },
+      {
+        "code": "iot_platform_admin",
+        "name": "IoT Platform Administrator",
+        "surface": "organization",
+        "scope": "organization",
+        "standard": true,
+        "assignable": true,
+        "bindingPrincipalKind": "organization_membership",
+        "permissionPatterns": [
+          "iot.*"
+        ]
+      }
+    ],
+    "roleGrantExtensions": [
+      {
+        "roleCode": "org_operations",
+        "patterns": [
+          "iot.devices.read",
+          "iot.telemetry.read"
+        ]
+      }
+    ],
+    "roleExclusions": []
+  },
+  "directory": {
+    "organizationTemplates": [],
+    "departmentTemplates": [],
+    "positionTemplates": [],
+    "membershipTemplates": []
+  },
+  "policyConditions": {
+    "supportedAttributes": []
+  },
+  "oauthScopeMappings": [],
+  "dependencies": {
+    "requiresModules": [
+      "iam-kernel"
+    ]
+  }
+}

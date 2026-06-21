@@ -526,6 +526,83 @@ fn local_component_specs_exist_for_sdkwork_discovery() {
     assert!(manifest_text.contains("API_SPEC.md"));
     assert!(manifest_text.contains("DATABASE_SPEC.md"));
     assert!(manifest_text.contains("COMPONENT_SPEC.md"));
+    assert!(manifest_text.contains("DATABASE_FRAMEWORK_SPEC.md"));
+    assert!(manifest_text.contains("IAM_MODULE_MANIFEST_SPEC.md"));
+    assert!(manifest_text.contains("SDK_WORKSPACE_GENERATION_SPEC.md"));
+    assert!(manifest_text.contains(r#""iamModuleManifest": "specs/iam.module.manifest.json""#));
+}
+
+#[test]
+fn iam_module_manifest_is_present_and_valid() {
+    let root = workspace_root();
+    let manifest_path = root.join("specs/iam.module.manifest.json");
+    assert!(
+        manifest_path.exists(),
+        "specs/iam.module.manifest.json is required for IMF federation"
+    );
+    let manifest_text = fs::read_to_string(&manifest_path).expect("iam module manifest");
+    assert!(manifest_text.contains(r#""kind": "sdkwork.iam.module""#));
+    assert!(manifest_text.contains(r#""moduleId": "iot""#));
+    assert!(manifest_text.contains(r#""domain": "iot""#));
+    assert!(manifest_text.contains("iot.devices.read"));
+    assert!(manifest_text.contains("iot_platform_admin"));
+}
+
+#[test]
+fn authored_crates_do_not_reimplement_crypto_primitives() {
+    let root = workspace_root();
+    let forbidden_patterns = ["fn sha256_digest", "const K: [u32; 64]"];
+    let mut source_files = Vec::new();
+    for dir in ["crates", "services"] {
+        for entry in walkdir_files(root.join(dir)) {
+            if entry.components().any(|component| component.as_os_str() == "src")
+                && entry.extension().is_some_and(|ext| ext == "rs")
+            {
+                source_files.push(entry);
+            }
+        }
+    }
+
+    for source_path in source_files {
+        let source = fs::read_to_string(&source_path).expect("rust source");
+        for pattern in forbidden_patterns {
+            assert!(
+                !source.contains(pattern),
+                "{} must not reimplement crypto primitives; use sdkwork-utils-rust",
+                source_path.display()
+            );
+        }
+    }
+
+    for crate_dir in [
+        "crates/sdkwork-iot-platform-service",
+        "crates/sdkwork-aiot-storage-sqlx",
+        "crates/sdkwork-aiot-service-host",
+    ] {
+        let cargo =
+            fs::read_to_string(root.join(crate_dir).join("Cargo.toml")).expect("Cargo.toml");
+        assert!(
+            cargo.contains("sdkwork-utils-rust"),
+            "{crate_dir} must depend on sdkwork-utils-rust"
+        );
+    }
+}
+
+fn walkdir_files(dir: std::path::PathBuf) -> Vec<std::path::PathBuf> {
+    let mut files = Vec::new();
+    if !dir.exists() {
+        return files;
+    }
+    for entry in fs::read_dir(dir).expect("read dir") {
+        let entry = entry.expect("dir entry");
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(walkdir_files(path));
+        } else {
+            files.push(path);
+        }
+    }
+    files
 }
 
 #[test]

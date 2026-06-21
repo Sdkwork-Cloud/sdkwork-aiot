@@ -293,7 +293,7 @@ fn transport_websocket_message_handler_can_pass_resolved_appbase_context_to_runt
             .semantic_type("hello")
             .build(),
     };
-    let ctx = AiotRequestContext::new("10001", "20001")
+    let ctx = AiotRequestContext::new("100001", "0")
         .with_user("30001")
         .with_data_scope("7");
     let frame_bytes = [
@@ -310,8 +310,8 @@ fn transport_websocket_message_handler_can_pass_resolved_appbase_context_to_runt
     )
     .expect("pipeline result");
 
-    assert_eq!(result.storage_command.association.tenant_id, 10001);
-    assert_eq!(result.storage_command.association.organization_id, 20001);
+    assert_eq!(result.storage_command.association.tenant_id, 100001);
+    assert_eq!(result.storage_command.association.organization_id, 0);
     assert_eq!(result.storage_command.association.user_id, Some(30001));
     assert_eq!(result.storage_command.association.data_scope, 7);
 }

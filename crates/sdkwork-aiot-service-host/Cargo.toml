@@ -10,4 +10,4 @@ sdkwork-iot-device-service.workspace = true
 sdkwork-aiot-protocol.workspace = true
 sdkwork-aiot-security.workspace = true
 sdkwork-aiot-storage.workspace = true
-sha2 = "0.10"
+sdkwork-utils-rust.workspace = true

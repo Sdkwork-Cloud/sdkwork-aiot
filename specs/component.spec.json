@@ -39,6 +39,21 @@
       "purpose": "Database prefix, table contract, tenant isolation, ownership, audit, and schema evolution rules."
     },
     {
+      "file": "DATABASE_FRAMEWORK_SPEC.md",
+      "path": "../sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md",
+      "purpose": "sdkwork-database lifecycle, migrations, seeds, drift observation, and bootstrap SPI."
+    },
+    {
+      "file": "IAM_MODULE_MANIFEST_SPEC.md",
+      "path": "../sdkwork-specs/IAM_MODULE_MANIFEST_SPEC.md",
+      "purpose": "IMF module manifest schema for federated IAM permission and role catalogs."
+    },
+    {
+      "file": "SDK_WORKSPACE_GENERATION_SPEC.md",
+      "path": "../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md",
+      "purpose": "Application-root sdks/ workspace layout, OpenAPI authority inputs, and SDK generation boundaries."
+    },
+    {
       "file": "COMPONENT_SPEC.md",
       "path": "../sdkwork-specs/COMPONENT_SPEC.md",
       "purpose": "Local component manifest, public entrypoints, integration boundaries, and verification requirements."
@@ -105,6 +120,7 @@
     }
   ],
   "contracts": {
+    "iamModuleManifest": "specs/iam.module.manifest.json",
     "publicExports": [
       "crates/sdkwork-aiot-contract",
       "crates/sdkwork-iot-device-service",

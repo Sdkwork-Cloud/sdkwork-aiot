@@ -1,10 +1,6 @@
 import { formatDatetime, now, uuid } from '@sdkwork/utils';
 
 export function createSessionId(prefix = 'aiot'): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-
   return `${prefix}-${uuid()}`;
 }
 

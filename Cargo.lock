@@ -71,6 +71,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "argon2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+dependencies = [
+ "base64ct",
+ "blake2",
+ "cpufeatures",
+ "password-hash",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -176,6 +188,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "blake2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+dependencies = [
+ "digest",
 ]
 
 [[package]]
@@ -1333,6 +1354,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "password-hash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+dependencies = [
+ "base64ct",
+ "rand_core 0.6.4",
+ "subtle",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1981,7 +2013,7 @@ dependencies = [
  "sdkwork-aiot-security",
  "sdkwork-aiot-storage",
  "sdkwork-iot-device-service",
- "sha2",
+ "sdkwork-utils-rust",
 ]
 
 [[package]]
@@ -2022,6 +2054,16 @@ dependencies = [
  "sdkwork-aiot-adapter-xiaozhi",
  "serde_json",
  "tungstenite 0.24.0",
+]
+
+[[package]]
+name = "sdkwork-appbase-iam-bootstrap"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "sdkwork-iam-context-service",
+ "sdkwork-iam-module-registry",
+ "sqlx",
 ]
 
 [[package]]
@@ -2091,21 +2133,40 @@ dependencies = [
 [[package]]
 name = "sdkwork-iam-context-service"
 version = "0.1.0"
+dependencies = [
+ "sdkwork-utils-rust",
+]
+
+[[package]]
+name = "sdkwork-iam-module-registry"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "sdkwork-iam-context-service",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+]
 
 [[package]]
 name = "sdkwork-iam-web-adapter"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "argon2",
  "async-trait",
  "axum",
  "base64",
  "chrono",
  "hmac",
+ "password-hash",
  "rand_core 0.6.4",
  "reqwest",
+ "sdkwork-appbase-iam-bootstrap",
  "sdkwork-database-sqlx",
  "sdkwork-iam-context-service",
+ "sdkwork-utils-rust",
  "sdkwork-web-axum",
  "sdkwork-web-core",
  "serde",
@@ -2135,6 +2196,7 @@ dependencies = [
  "sdkwork-aiot-storage-sqlx",
  "sdkwork-aiot-transport",
  "sdkwork-iot-device-service",
+ "sdkwork-utils-rust",
  "sdkwork-web-core",
  "serde_json",
 ]

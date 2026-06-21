@@ -14,7 +14,6 @@ use sdkwork_aiot_storage::{
 use sdkwork_iot_device_service::{
     protocol_ingest_plan, ProtocolIngestAction, ProtocolIngestPlan, ProtocolIngestRecord,
 };
-use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
@@ -507,7 +506,7 @@ impl AiotProtocolMessageResult {
     }
 
     fn standard_outbox_payload_hash(&self) -> String {
-        sha256_hex(&self.standard_outbox_payload_json())
+        sdkwork_utils_rust::sha256_hash(self.standard_outbox_payload_json().as_bytes())
     }
 }
 
@@ -666,14 +665,6 @@ fn message_class_name(class: MessageClass) -> &'static str {
 fn json_escape(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
-
-fn sha256_hex(value: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(value.as_bytes());
-    let digest = hasher.finalize();
-    format!("{digest:x}")
-}
-
 fn protocol_message_action(
     message_class: MessageClass,
 ) -> (AiotProtocolMessageAction, &'static str, bool) {

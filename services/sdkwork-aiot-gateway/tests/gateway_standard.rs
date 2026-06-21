@@ -2884,7 +2884,7 @@ fn xiaozhi_device_token_valid_accepts_sqlite_stored_credentials_in_production_mo
         Arc::new(SqliteSqlxCredentialRepository::new_in_memory().expect("credential repository"));
     let created = repository
         .create_credential(SqliteCredentialCreateCommand {
-            association: AiotStorageAssociation::tenant_org(10001, 20001),
+            association: AiotStorageAssociation::tenant_org(100001, 0),
             device_id: "gateway-device-001".to_string(),
             credential_type: "device-bearer".to_string(),
             expires_at: None,

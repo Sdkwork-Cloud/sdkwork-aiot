@@ -16,6 +16,7 @@ sdkwork-aiot-service-host.workspace = true
 sdkwork-aiot-storage.workspace = true
 sdkwork-aiot-storage-sqlx.workspace = true
 sdkwork-aiot-transport.workspace = true
+sdkwork-utils-rust.workspace = true
 
 [dev-dependencies]
 sdkwork-aiot-storage-sqlx.workspace = true

@@ -21,7 +21,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn sqlx_device_repository_tracks_create_update_delete_writes() {
     let repo = InMemorySqlxDeviceRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     let created = repo
         .create_device(
@@ -66,7 +66,7 @@ fn sqlx_device_repository_tracks_create_update_delete_writes() {
 #[test]
 fn sqlx_device_repository_propagates_duplicate_and_not_found_errors() {
     let repo = InMemorySqlxDeviceRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     repo.create_device(AiotDeviceCreateCommand::new(
         association.clone(),
@@ -104,7 +104,7 @@ fn sqlite_sqlx_device_repository_persists_crud_and_reopen_reads_state() {
 
     {
         let repo = SqliteSqlxDeviceRepository::open(&path).expect("open sqlite repo");
-        let association = AiotStorageAssociation::tenant_org(10001, 20001);
+        let association = AiotStorageAssociation::tenant_org(100001, 0);
         repo.create_device(
             AiotDeviceCreateCommand::new(
                 association.clone(),
@@ -130,7 +130,7 @@ fn sqlite_sqlx_device_repository_persists_crud_and_reopen_reads_state() {
 
     {
         let reopened = SqliteSqlxDeviceRepository::open(&path).expect("reopen sqlite repo");
-        let association = AiotStorageAssociation::tenant_org(10001, 20001);
+        let association = AiotStorageAssociation::tenant_org(100001, 0);
         let retrieved = reopened
             .get_device(&association, "sqlite-device-001")
             .expect("retrieve after reopen");
@@ -162,7 +162,7 @@ fn sqlite_sqlx_command_repository_persists_create_and_list() {
     let _ = std::fs::remove_file(&path);
 
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("open sqlite repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     let created = repo
         .create_command(
             AiotCommandCreateCommand::new(association.clone(), "device-001", "speaker", "play")
@@ -205,7 +205,7 @@ fn sqlite_sqlx_command_repository_supports_cancel_command() {
     let _ = std::fs::remove_file(&path);
 
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("open sqlite repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     repo.create_command(
         AiotCommandCreateCommand::new(association.clone(), "device-cancel-001", "speaker", "play")
@@ -244,8 +244,8 @@ fn sqlite_sqlx_command_repository_scopes_idempotency_by_tenant_and_organization(
     let _ = std::fs::remove_file(&path);
 
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("open sqlite repo");
-    let association_a = AiotStorageAssociation::tenant_org(10001, 20001);
-    let association_b = AiotStorageAssociation::tenant_org(10001, 20002);
+    let association_a = AiotStorageAssociation::tenant_org(100001, 0);
+    let association_b = AiotStorageAssociation::tenant_org(100001, 1);
 
     let created_a = repo
         .create_command(
@@ -300,7 +300,7 @@ fn sqlite_sqlx_event_and_twin_repositories_persist_and_read_snapshot() {
     let _ = std::fs::remove_file(&path);
 
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("open sqlite repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     repo.record_event(
         AiotDeviceEventCreateCommand::new(
@@ -367,7 +367,7 @@ fn sqlite_sqlx_device_session_repository_supports_disconnect_lifecycle() {
     let _ = std::fs::remove_file(&path);
 
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("open sqlite repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     let device_id = "device-session-001";
     let session_id = "session-device-session-001-primary";
 
@@ -390,7 +390,7 @@ fn sqlite_sqlx_device_session_repository_supports_disconnect_lifecycle() {
 #[test]
 fn sqlx_device_repository_rejects_non_numeric_product_id() {
     let repo = InMemorySqlxDeviceRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     let result = repo.create_device(AiotDeviceCreateCommand::new(
         association,
@@ -1092,7 +1092,7 @@ fn sql_protocol_ingest_planner_writes_appbase_association_fields() {
         AiotStorageWriteKind::RecordTelemetry,
         "iot_telemetry_event",
     )
-    .with_association(AiotStorageAssociation::tenant_org(10001, 20001).with_data_scope(7))
+    .with_association(AiotStorageAssociation::tenant_org(100001, 0).with_data_scope(7))
     .with_message_id("msg-008")
     .with_trace_id("trace-008")
     .with_idempotency_key("idem-008")
@@ -1119,12 +1119,12 @@ fn sql_protocol_ingest_planner_writes_appbase_association_fields() {
             statement.statement_kind
         );
         assert!(
-            statement.binds.contains(&SqlBindValue::Int64(10001)),
+            statement.binds.contains(&SqlBindValue::Int64(100001)),
             "{} missing tenant bind",
             statement.statement_kind
         );
         assert!(
-            statement.binds.contains(&SqlBindValue::Int64(20001)),
+            statement.binds.contains(&SqlBindValue::Int64(0)),
             "{} missing organization bind",
             statement.statement_kind
         );
@@ -1274,7 +1274,7 @@ fn sql_statement_plans_validate_placeholder_count_matches_bind_count() {
         "iot_telemetry_event",
         "INSERT INTO iot_telemetry_event (tenant_id, organization_id) VALUES ($1, $2)",
     )
-    .with_binds(vec![SqlBindValue::Int64(10001)]);
+    .with_binds(vec![SqlBindValue::Int64(100001)]);
     let error = invalid
         .validate()
         .expect_err("placeholder/bind mismatch must fail");
@@ -1288,7 +1288,7 @@ fn sql_statement_plan_validation_rejects_columns_missing_from_target_ddl() {
         "iot_telemetry_event",
         "INSERT INTO iot_telemetry_event (tenant_id, missing_column) VALUES ($1, $2)",
     )
-    .with_binds(vec![SqlBindValue::Int64(10001), SqlBindValue::Int64(1)]);
+    .with_binds(vec![SqlBindValue::Int64(100001), SqlBindValue::Int64(1)]);
     let insert_error = invalid_insert
         .validate()
         .expect_err("insert column missing from DDL must fail");
@@ -1302,7 +1302,7 @@ fn sql_statement_plan_validation_rejects_columns_missing_from_target_ddl() {
         "iot_protocol_ingest_record",
         "UPDATE iot_protocol_ingest_record SET missing_column = $1 WHERE tenant_id = $2",
     )
-    .with_binds(vec![SqlBindValue::Int64(1), SqlBindValue::Int64(10001)]);
+    .with_binds(vec![SqlBindValue::Int64(1), SqlBindValue::Int64(100001)]);
     let update_error = invalid_update
         .validate()
         .expect_err("update column missing from DDL must fail");
@@ -1322,7 +1322,7 @@ fn sql_statement_batch_and_transaction_validation_reject_invalid_nested_statemen
         "iot_protocol_ingest_record",
         "UPDATE iot_protocol_ingest_record SET missing_column = $1 WHERE tenant_id = $2",
     )
-    .with_binds(vec![SqlBindValue::Int64(1), SqlBindValue::Int64(10001)]);
+    .with_binds(vec![SqlBindValue::Int64(1), SqlBindValue::Int64(100001)]);
     let batch = SqlStatementBatch::single("invalid_batch", invalid_statement.clone());
     let batch_error = batch
         .validate()
@@ -1376,7 +1376,7 @@ fn sql_protocol_dead_letter_plan_writes_appbase_association_fields() {
         "decode.invalid_frame",
         "object-store://payloads/msg-009",
     )
-    .with_association(AiotStorageAssociation::tenant_org(10001, 20001).with_data_scope(7))
+    .with_association(AiotStorageAssociation::tenant_org(100001, 0).with_data_scope(7))
     .with_device_id("device-009")
     .with_trace_id("trace-009");
 
@@ -1387,8 +1387,8 @@ fn sql_protocol_dead_letter_plan_writes_appbase_association_fields() {
     assert!(statement.sql.contains("tenant_id"));
     assert!(statement.sql.contains("organization_id"));
     assert!(statement.sql.contains("data_scope"));
-    assert!(statement.binds.contains(&SqlBindValue::Int64(10001)));
-    assert!(statement.binds.contains(&SqlBindValue::Int64(20001)));
+    assert!(statement.binds.contains(&SqlBindValue::Int64(100001)));
+    assert!(statement.binds.contains(&SqlBindValue::Int64(0)));
     assert!(statement.binds.contains(&SqlBindValue::Int64(7)));
     assert!(statement
         .binds
@@ -1434,8 +1434,8 @@ fn idempotency_guard_for_test() -> SqlStatementPlan {
         "INSERT INTO iot_protocol_ingest_record (tenant_id, organization_id, data_scope, protocol_id, adapter_id, device_id, idempotency_key, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING",
     )
     .with_binds(vec![
-        SqlBindValue::Int64(10001),
-        SqlBindValue::Int64(20001),
+        SqlBindValue::Int64(100001),
+        SqlBindValue::Int64(0),
         SqlBindValue::Int64(7),
         SqlBindValue::Text("mqtt.v5".to_string()),
         SqlBindValue::Text("mqtt".to_string()),
@@ -1557,8 +1557,8 @@ fn sqlx_pool_sql_statement_executor_persists_device_create_batch() {
     let executor = SqlxPoolSqlStatementExecutor::open(&path).expect("open sqlx executor");
     let record = AiotDeviceRecord {
         id: "1".to_string(),
-        tenant_id: 10001,
-        organization_id: 20001,
+        tenant_id: 100001,
+        organization_id: 0,
         device_id: "sqlx-device-001".to_string(),
         display_name: "Sqlx Device".to_string(),
         product_id: "1008".to_string(),
@@ -1574,7 +1574,7 @@ fn sqlx_pool_sql_statement_executor_persists_device_create_batch() {
     executor.execute_batch(batch);
 
     let repo = SqliteSqlxDeviceRepository::open(&path).expect("reopen sqlite repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     let loaded = repo
         .get_device(&association, "sqlx-device-001")
         .expect("device persisted");
@@ -1591,7 +1591,7 @@ fn sqlite_credential_repository_verifies_hashed_bearer_tokens() {
     };
 
     let repository = SqliteSqlxCredentialRepository::new_in_memory().expect("credential repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     let created = repository
         .create_credential(SqliteCredentialCreateCommand {
             association,
@@ -1609,7 +1609,7 @@ fn sqlite_credential_repository_verifies_hashed_bearer_tokens() {
     assert!(!repository.verify_bearer_token("other-device", &issued_secret));
 
     let listed = repository.list_credentials(
-        &AiotStorageAssociation::tenant_org(10001, 20001),
+        &AiotStorageAssociation::tenant_org(100001, 0),
         "device-auth-001",
     );
     assert_eq!(listed.len(), 1);
@@ -1617,7 +1617,7 @@ fn sqlite_credential_repository_verifies_hashed_bearer_tokens() {
 
     repository
         .revoke_credential(
-            &AiotStorageAssociation::tenant_org(10001, 20001),
+            &AiotStorageAssociation::tenant_org(100001, 0),
             "device-auth-001",
             &created.credential_id,
         )
@@ -1636,7 +1636,7 @@ fn shared_sqlite_memory_uri_uses_one_schema_for_device_and_credential_repositori
         SqliteSqlxDeviceRepository::open(DEFAULT_SHARED_SQLITE_MEMORY_URI).expect("device repo");
     let credential_repo = SqliteSqlxCredentialRepository::open(DEFAULT_SHARED_SQLITE_MEMORY_URI)
         .expect("credential repo");
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     device_repo
         .create_device(AiotDeviceCreateCommand::new(

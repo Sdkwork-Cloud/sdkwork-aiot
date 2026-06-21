@@ -11,7 +11,6 @@ use sdkwork_aiot_service_host::{
 };
 use sdkwork_aiot_storage::AiotStorageWriteKind;
 use sdkwork_iot_device_service::{DomainEventKind, ProtocolIngestAction};
-use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone)]
 struct FakeCodec {
@@ -376,12 +375,7 @@ fn runtime_storage_command_outbox_payload_hash_matches_payload_json_sha256() {
     let command = result.to_storage_command();
     let outbox = command.outbox.as_ref().expect("outbox");
 
-    let expected = {
-        let mut hasher = Sha256::new();
-        hasher.update(outbox.payload_json.as_bytes());
-        let digest = hasher.finalize();
-        format!("{digest:x}")
-    };
+    let expected = sdkwork_utils_rust::sha256_hash(outbox.payload_json.as_bytes());
 
     assert_eq!(outbox.payload_hash.as_deref(), Some(expected.as_str()));
 }
@@ -397,7 +391,7 @@ fn runtime_maps_request_context_to_storage_command_association_without_iam_depen
     let result = runtime
         .handle_protocol_envelope(envelope)
         .expect("runtime result");
-    let ctx = AiotRequestContext::new("10001", "20001")
+    let ctx = AiotRequestContext::new("100001", "0")
         .with_user("30001")
         .with_data_scope("7");
 
@@ -405,8 +399,8 @@ fn runtime_maps_request_context_to_storage_command_association_without_iam_depen
         .to_storage_command_with_context(&ctx)
         .expect("storage command with context");
 
-    assert_eq!(command.association.tenant_id, 10001);
-    assert_eq!(command.association.organization_id, 20001);
+    assert_eq!(command.association.tenant_id, 100001);
+    assert_eq!(command.association.organization_id, 0);
     assert_eq!(command.association.user_id, Some(30001));
     assert_eq!(command.association.data_scope, 7);
 }
@@ -424,12 +418,12 @@ fn runtime_rejects_invalid_request_context_association_for_storage_command() {
         .expect("runtime result");
 
     let invalid_tenant = result
-        .to_storage_command_with_context(&AiotRequestContext::new("tenant-a", "20001"))
+        .to_storage_command_with_context(&AiotRequestContext::new("tenant-a", "1"))
         .expect_err("invalid tenant id must fail");
     assert_eq!(invalid_tenant.code, "runtime.context.invalid_tenant_id");
 
     let invalid_organization = result
-        .to_storage_command_with_context(&AiotRequestContext::new("10001", "org-a"))
+        .to_storage_command_with_context(&AiotRequestContext::new("100001", "org-a"))
         .expect_err("invalid organization id must fail");
     assert_eq!(
         invalid_organization.code,
@@ -438,14 +432,14 @@ fn runtime_rejects_invalid_request_context_association_for_storage_command() {
 
     let invalid_user = result
         .to_storage_command_with_context(
-            &AiotRequestContext::new("10001", "20001").with_user("user-a"),
+            &AiotRequestContext::new("100001", "0").with_user("user-a"),
         )
         .expect_err("invalid user id must fail");
     assert_eq!(invalid_user.code, "runtime.context.invalid_user_id");
 
     let invalid_scope = result
         .to_storage_command_with_context(
-            &AiotRequestContext::new("10001", "20001").with_data_scope("tenant:t1"),
+            &AiotRequestContext::new("100001", "0").with_data_scope("tenant:t1"),
         )
         .expect_err("invalid data scope must fail");
     assert_eq!(invalid_scope.code, "runtime.context.invalid_data_scope");
@@ -516,7 +510,7 @@ fn runtime_gateway_pipeline_with_context_maps_storage_association() {
             .semantic_type("hello")
             .build(),
     );
-    let ctx = AiotRequestContext::new("10001", "20001")
+    let ctx = AiotRequestContext::new("100001", "0")
         .with_user("30001")
         .with_data_scope("7");
 
@@ -529,8 +523,8 @@ fn runtime_gateway_pipeline_with_context_maps_storage_association() {
         )
         .expect("pipeline result");
 
-    assert_eq!(result.storage_command.association.tenant_id, 10001);
-    assert_eq!(result.storage_command.association.organization_id, 20001);
+    assert_eq!(result.storage_command.association.tenant_id, 100001);
+    assert_eq!(result.storage_command.association.organization_id, 0);
     assert_eq!(result.storage_command.association.user_id, Some(30001));
     assert_eq!(result.storage_command.association.data_scope, 7);
 }
@@ -544,7 +538,7 @@ fn runtime_gateway_pipeline_with_context_rejects_invalid_association() {
             .semantic_type("hello")
             .build(),
     );
-    let ctx = AiotRequestContext::new("tenant-a", "20001");
+    let ctx = AiotRequestContext::new("tenant-a", "1");
 
     let error = runtime
         .handle_inbound_frame_with_context(

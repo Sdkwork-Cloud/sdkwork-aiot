@@ -51,7 +51,7 @@ fn admin_api_server_exposes_runtime_backed_protocol_catalog() {
 
     let response = handle_api_request_bytes(
         &server,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.protocolAdapters.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.protocolAdapters.read\r\n\r\n",
     )
     .expect("protocol adapter catalog");
 
@@ -76,7 +76,7 @@ fn app_api_server_exposes_safe_device_collection_boundary() {
 
     let response = handle_api_request_bytes(
         &server,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("device list");
 
@@ -91,7 +91,7 @@ fn admin_api_server_exposes_runtime_capacity_policy_from_standard_bundle() {
 
     let response = handle_api_request_bytes(
         &server,
-        b"GET /backend/v3/api/iot/runtime/capacity HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.runtime.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/runtime/capacity HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.runtime.read\r\n\r\n",
     )
     .expect("runtime capacity");
 
@@ -153,7 +153,7 @@ fn protected_api_routes_require_sdkwork_dual_token_and_resolved_appbase_context(
 
     let invalid_context = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 20001\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 0\r\n\r\n",
     )
     .expect("invalid context problem");
     assert!(invalid_context.starts_with("HTTP/1.1 400"));
@@ -175,8 +175,8 @@ fn protected_api_request_resolution_exposes_appbase_context_to_downstream_handle
     );
     match resolved.context() {
         AiotApiRequestContext::Protected(ctx) => {
-            assert_eq!(ctx.tenant_id, "10001");
-            assert_eq!(ctx.organization_id, "20001");
+            assert_eq!(ctx.tenant_id, "100001");
+            assert_eq!(ctx.organization_id, "0");
             assert_eq!(ctx.user_id.as_deref(), Some("30001"));
             assert!(ctx.data_scope.is_empty());
         }
@@ -257,7 +257,7 @@ fn protected_api_routes_require_resolved_permission_scope_from_appbase_context()
 
     let missing_permission = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("missing permission problem");
     assert!(missing_permission.starts_with("HTTP/1.1 403"));
@@ -266,7 +266,7 @@ fn protected_api_routes_require_resolved_permission_scope_from_appbase_context()
 
     let allowed = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.protocolAdapters.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.protocolAdapters.read\r\n\r\n",
     )
     .expect("allowed protocol adapters");
     assert!(allowed.starts_with("HTTP/1.1 200"));
@@ -285,7 +285,7 @@ fn templated_api_route_contracts_match_concrete_paths_before_dispatch() {
 
     let missing_permission = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"POST /app/v3/api/iot/devices/device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("templated route permission problem");
 
@@ -305,7 +305,7 @@ fn declared_backend_collection_routes_return_structured_catalog_payloads() {
         ("/backend/v3/api/iot/devices", "iot.devices.read"),
     ] {
         let request = format!(
-            "GET {path} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: {permission}\r\n\r\n"
+            "GET {path} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: {permission}\r\n\r\n"
         );
 
         let response = handle_api_request_bytes(&admin, request.as_bytes())
@@ -382,7 +382,7 @@ fn capability_model_retrieve_route_returns_standard_model_payload() {
 
     let response = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/capability_models/capmodel-xiaozhi-core HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/capability_models/capmodel-xiaozhi-core HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
     )
     .expect("capability model retrieve");
     assert!(response.starts_with("HTTP/1.1 200"));
@@ -411,7 +411,7 @@ fn capability_model_retrieve_route_returns_standard_model_payload() {
 
     let not_found_response = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/capability_models/not-exists HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/capability_models/not-exists HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
     )
     .expect("capability model not found");
     assert!(not_found_response.starts_with("HTTP/1.1 404"));
@@ -431,14 +431,14 @@ fn backend_device_sessions_and_capabilities_routes_are_device_scoped_and_typed()
 
     let create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"session-capability-001\",\"displayName\":\"Session Capability Device\",\"productId\":\"9101\",\"chipFamily\":\"esp32_s3\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"session-capability-001\",\"displayName\":\"Session Capability Device\",\"productId\":\"9101\",\"chipFamily\":\"esp32_s3\"}",
     )
     .expect("backend devices.create session-capability");
     assert!(create.starts_with("HTTP/1.1 201"));
 
     let sessions = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-capability-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-capability-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
     )
     .expect("backend devices.sessions.list");
     assert!(sessions.starts_with("HTTP/1.1 200"));
@@ -473,7 +473,7 @@ fn backend_device_sessions_and_capabilities_routes_are_device_scoped_and_typed()
 
     let capabilities = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-capability-001/capabilities HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-capability-001/capabilities HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.capabilities.list");
     assert!(capabilities.starts_with("HTTP/1.1 200"));
@@ -494,7 +494,7 @@ fn backend_device_sessions_and_capabilities_routes_are_device_scoped_and_typed()
 
     let sessions_wrong_scope = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-capability-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-capability-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
     )
     .expect("backend devices.sessions.list wrong scope");
     assert!(sessions_wrong_scope.starts_with("HTTP/1.1 404"));
@@ -502,7 +502,7 @@ fn backend_device_sessions_and_capabilities_routes_are_device_scoped_and_typed()
 
     let capabilities_wrong_scope = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-capability-001/capabilities HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-capability-001/capabilities HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.capabilities.list wrong scope");
     assert!(capabilities_wrong_scope.starts_with("HTTP/1.1 404"));
@@ -525,14 +525,14 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
 
     let create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"session-cancel-001\",\"displayName\":\"Session Cancel Device\",\"productId\":\"9501\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"session-cancel-001\",\"displayName\":\"Session Cancel Device\",\"productId\":\"9501\"}",
     )
     .expect("create session-cancel device");
     assert!(create.starts_with("HTTP/1.1 201"));
 
     let sessions_before = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-cancel-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-cancel-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
     )
     .expect("list sessions before disconnect");
     assert!(sessions_before.starts_with("HTTP/1.1 200"));
@@ -551,7 +551,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let disconnect_wrong_permission = handle_api_request_bytes(
         &admin,
         format!(
-            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n"
+            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -562,7 +562,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let disconnect = handle_api_request_bytes(
         &admin,
         format!(
-            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n"
+            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -571,7 +571,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
 
     let sessions_after = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-cancel-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-cancel-001/sessions HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.read\r\n\r\n",
     )
     .expect("list sessions after disconnect");
     assert!(sessions_after.starts_with("HTTP/1.1 200"));
@@ -586,7 +586,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let disconnect_again = handle_api_request_bytes(
         &admin,
         format!(
-            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n"
+            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -597,7 +597,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let disconnect_wrong_scope = handle_api_request_bytes(
         &admin,
         format!(
-            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23999\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n"
+            "DELETE /backend/v3/api/iot/devices/session-cancel-001/sessions/{session_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23999\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -607,7 +607,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
 
     let create_command = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/session-cancel-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"cancel-me\"}}",
+        b"POST /app/v3/api/iot/devices/session-cancel-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"cancel-me\"}}",
     )
     .expect("create command for cancel");
     assert!(create_command.starts_with("HTTP/1.1 202"));
@@ -621,7 +621,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let cancel_wrong_permission = handle_api_request_bytes(
         &admin,
         format!(
-            "POST /backend/v3/api/iot/devices/session-cancel-001/commands/{command_id}/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n"
+            "POST /backend/v3/api/iot/devices/session-cancel-001/commands/{command_id}/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -632,7 +632,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let cancel = handle_api_request_bytes(
         &admin,
         format!(
-            "POST /backend/v3/api/iot/devices/session-cancel-001/commands/{command_id}/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n"
+            "POST /backend/v3/api/iot/devices/session-cancel-001/commands/{command_id}/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -654,7 +654,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
 
     let list_after_cancel = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/session-cancel-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/session-cancel-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("list commands after cancel");
     assert!(list_after_cancel.starts_with("HTTP/1.1 200"));
@@ -680,7 +680,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
 
     let cancel_missing_command = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/session-cancel-001/commands/cmd-missing-001/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n",
+        b"POST /backend/v3/api/iot/devices/session-cancel-001/commands/cmd-missing-001/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23001\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n",
     )
     .expect("cancel missing command");
     assert!(cancel_missing_command.starts_with("HTTP/1.1 404"));
@@ -689,7 +689,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
     let cancel_wrong_scope = handle_api_request_bytes(
         &admin,
         format!(
-            "POST /backend/v3/api/iot/devices/session-cancel-001/commands/{command_id}/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 23999\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n"
+            "POST /backend/v3/api/iot/devices/session-cancel-001/commands/{command_id}/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 23999\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -701,7 +701,7 @@ fn backend_device_session_disconnect_and_command_cancel_routes_are_scoped_and_ef
 #[test]
 fn events_routes_return_typed_event_collections_with_media_resource_identity() {
     let shared_repo = Arc::new(sdkwork_aiot_storage_sqlx::InMemorySqlxDeviceRepository::new());
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     shared_repo
         .record_event(
@@ -745,7 +745,7 @@ fn events_routes_return_typed_event_collections_with_media_resource_identity() {
         .with_event_repository(shared_repo.clone());
     let admin_response = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.telemetry.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.telemetry.read\r\n\r\n",
     )
     .expect("backend events.list");
 
@@ -764,7 +764,7 @@ fn events_routes_return_typed_event_collections_with_media_resource_identity() {
         .with_event_repository(shared_repo);
     let app_response = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/device-777/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/device-777/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app devices.events.list");
 
@@ -783,7 +783,7 @@ fn command_routes_return_typed_command_payloads_with_media_resource_fields() {
         .with_command_repository(shared_repo.clone());
     let create_response = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\",\"payload\":{\"text\":\"xiaozhi-ready\",\"lang\":\"zh-CN\"},\"requestMediaResourceId\":\"media-res-xyz\",\"requestObjectBlobId\":\"obj-blob-xyz\",\"requestMedia\":{\"id\":\"media-res-xyz\",\"kind\":\"audio\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-xyz\",\"mimeType\":\"audio/wav\",\"sizeBytes\":\"8192\"}}",
+        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\",\"payload\":{\"text\":\"xiaozhi-ready\",\"lang\":\"zh-CN\"},\"requestMediaResourceId\":\"media-res-xyz\",\"requestObjectBlobId\":\"obj-blob-xyz\",\"requestMedia\":{\"id\":\"media-res-xyz\",\"kind\":\"audio\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-xyz\",\"mimeType\":\"audio/wav\",\"sizeBytes\":\"8192\"}}",
     )
     .expect("app devices.commands.create");
 
@@ -804,7 +804,7 @@ fn command_routes_return_typed_command_payloads_with_media_resource_fields() {
         .with_command_repository(shared_repo);
     let list_response = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("backend devices.commands.list");
 
@@ -820,7 +820,7 @@ fn command_create_rejects_invalid_json_body() {
     let app = standard_app_api_server().expect("app api server");
     let response = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
+        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
     )
     .expect("invalid json response");
 
@@ -834,7 +834,7 @@ fn command_create_requires_non_empty_body_and_required_fields() {
     let app = standard_app_api_server().expect("app api server");
     let missing_body = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
+        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
     )
     .expect("missing command body response");
 
@@ -843,7 +843,7 @@ fn command_create_requires_non_empty_body_and_required_fields() {
 
     let missing_payload = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\"}",
+        b"POST /app/v3/api/iot/devices/device-888/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\"}",
     )
     .expect("missing payload response");
     assert!(missing_payload.starts_with("HTTP/1.1 400"));
@@ -860,7 +860,7 @@ fn command_create_uses_idempotency_key_header_for_deduplication() {
 
     let first = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-889/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-command-key-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\",\"payload\":{\"text\":\"once\"}}",
+        b"POST /app/v3/api/iot/devices/device-889/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-command-key-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\",\"payload\":{\"text\":\"once\"}}",
     )
     .expect("first command create response");
     assert!(first.starts_with("HTTP/1.1 202"));
@@ -868,7 +868,7 @@ fn command_create_uses_idempotency_key_header_for_deduplication() {
 
     let second = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-889/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-command-key-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\",\"payload\":{\"text\":\"once\"}}",
+        b"POST /app/v3/api/iot/devices/device-889/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-command-key-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\",\"payload\":{\"text\":\"once\"}}",
     )
     .expect("second command create response");
     assert!(second.starts_with("HTTP/1.1 202"));
@@ -885,9 +885,9 @@ fn command_create_idempotency_is_scoped_by_tenant_and_organization() {
 
     let org_a = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-890/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-tenant-different-org-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak-org-a\",\"payload\":{\"text\":\"a\"}}",
+        b"POST /app/v3/api/iot/devices/device-890/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-tenant-different-org-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak-org-a\",\"payload\":{\"text\":\"a\"}}",
     )
-    .expect("tenant=10001 org=20001 command create");
+    .expect("tenant=100001 org=0 command create");
     assert!(org_a.starts_with("HTTP/1.1 202"));
     let org_a_json = response_body_json(&org_a);
     let org_a_command_id = org_a_json
@@ -904,9 +904,9 @@ fn command_create_idempotency_is_scoped_by_tenant_and_organization() {
 
     let org_b = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-890/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-tenant-different-org-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak-org-b\",\"payload\":{\"text\":\"b\"}}",
+        b"POST /app/v3/api/iot/devices/device-890/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: same-tenant-different-org-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak-org-b\",\"payload\":{\"text\":\"b\"}}",
     )
-    .expect("tenant=10001 org=20002 command create");
+    .expect("tenant=100001 org=1 command create");
     assert!(org_b.starts_with("HTTP/1.1 202"));
     let org_b_json = response_body_json(&org_b);
     let org_b_command_id = org_b_json
@@ -929,7 +929,7 @@ fn command_create_idempotency_is_scoped_by_tenant_and_organization() {
 #[test]
 fn twin_routes_return_repository_backed_desired_and_reported_snapshots() {
     let shared_repo = Arc::new(sdkwork_aiot_storage_sqlx::InMemorySqlxDeviceRepository::new());
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     shared_repo
         .upsert_twin_property(
             AiotTwinPropertyUpsertCommand::new(association, "device-001", "volume")
@@ -949,7 +949,7 @@ fn twin_routes_return_repository_backed_desired_and_reported_snapshots() {
 
     let admin_response = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("backend devices.twin.retrieve");
     assert!(admin_response.starts_with("HTTP/1.1 200"));
@@ -959,7 +959,7 @@ fn twin_routes_return_repository_backed_desired_and_reported_snapshots() {
 
     let app_response = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/device-404/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/device-404/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("app devices.twin.retrieve");
     assert!(app_response.starts_with("HTTP/1.1 200"));
@@ -986,7 +986,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let create_device = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"e2e-device-001\",\"displayName\":\"E2E Device\",\"productId\":\"9001\",\"clientId\":\"e2e-client-001\",\"chipFamily\":\"esp32_s3\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"e2e-device-001\",\"displayName\":\"E2E Device\",\"productId\":\"9001\",\"clientId\":\"e2e-client-001\",\"chipFamily\":\"esp32_s3\"}",
     )
     .expect("backend devices.create e2e");
     assert!(create_device.starts_with("HTTP/1.1 201"));
@@ -1012,7 +1012,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let app_retrieve = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app devices.retrieve e2e");
     assert!(app_retrieve.starts_with("HTTP/1.1 200"));
@@ -1032,7 +1032,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let app_list = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app devices.list e2e");
     assert!(app_list.starts_with("HTTP/1.1 200"));
@@ -1057,7 +1057,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let app_command_create = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/e2e-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: e2e-command-key-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"hello-e2e\",\"lang\":\"zh-CN\"},\"requestMedia\":{\"id\":\"media-e2e-001\",\"kind\":\"audio\",\"source\":\"object_storage\",\"objectBlobId\":\"blob-e2e-001\",\"mimeType\":\"audio/opus\",\"sizeBytes\":\"2048\"}}",
+        b"POST /app/v3/api/iot/devices/e2e-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: e2e-command-key-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"hello-e2e\",\"lang\":\"zh-CN\"},\"requestMedia\":{\"id\":\"media-e2e-001\",\"kind\":\"audio\",\"source\":\"object_storage\",\"objectBlobId\":\"blob-e2e-001\",\"mimeType\":\"audio/opus\",\"sizeBytes\":\"2048\"}}",
     )
     .expect("app devices.commands.create e2e");
     assert!(app_command_create.starts_with("HTTP/1.1 202"));
@@ -1100,7 +1100,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let admin_command_list = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/e2e-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/e2e-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("backend devices.commands.list e2e");
     assert!(admin_command_list.starts_with("HTTP/1.1 200"));
@@ -1129,7 +1129,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
     shared_repo
         .record_event(
             AiotDeviceEventCreateCommand::new(
-                AiotStorageAssociation::tenant_org(10001, 20001),
+                AiotStorageAssociation::tenant_org(100001, 0),
                 "e2e-device-001",
                 "iot.device.media_frame.ingested",
             )
@@ -1157,7 +1157,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
     shared_repo
         .upsert_twin_property(
             AiotTwinPropertyUpsertCommand::new(
-                AiotStorageAssociation::tenant_org(10001, 20001),
+                AiotStorageAssociation::tenant_org(100001, 0),
                 "e2e-device-001",
                 "volume",
             )
@@ -1170,7 +1170,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let app_events = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app devices.events.list e2e");
     assert!(app_events.starts_with("HTTP/1.1 200"));
@@ -1207,7 +1207,7 @@ fn admin_and_app_end_to_end_flow_matches_sdk_response_shapes() {
 
     let app_twin = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("app devices.twin.retrieve e2e");
     assert!(app_twin.starts_with("HTTP/1.1 200"));
@@ -1259,7 +1259,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let create_denied = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"deviceId\":\"e2e-auth-device-001\",\"displayName\":\"E2E Auth Device\",\"productId\":\"9101\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"deviceId\":\"e2e-auth-device-001\",\"displayName\":\"E2E Auth Device\",\"productId\":\"9101\"}",
     )
     .expect("devices.create denied");
     assert!(create_denied.starts_with("HTTP/1.1 403"));
@@ -1268,14 +1268,14 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let create_allowed = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"e2e-auth-device-001\",\"displayName\":\"E2E Auth Device\",\"productId\":\"9101\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"e2e-auth-device-001\",\"displayName\":\"E2E Auth Device\",\"productId\":\"9101\"}",
     )
     .expect("devices.create allowed");
     assert!(create_allowed.starts_with("HTTP/1.1 201"));
 
     let retrieve_denied = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-auth-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-auth-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
     )
     .expect("devices.retrieve denied");
     assert!(retrieve_denied.starts_with("HTTP/1.1 403"));
@@ -1284,14 +1284,14 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let retrieve_allowed = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-auth-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-auth-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("devices.retrieve allowed");
     assert!(retrieve_allowed.starts_with("HTTP/1.1 200"));
 
     let command_create_denied = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"hello\"}}",
+        b"POST /app/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"hello\"}}",
     )
     .expect("devices.commands.create denied");
     assert!(command_create_denied.starts_with("HTTP/1.1 403"));
@@ -1300,14 +1300,14 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let command_create_allowed = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"hello\"}}",
+        b"POST /app/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play\",\"payload\":{\"text\":\"hello\"}}",
     )
     .expect("devices.commands.create allowed");
     assert!(command_create_allowed.starts_with("HTTP/1.1 202"));
 
     let command_list_denied = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("devices.commands.list denied");
     assert!(command_list_denied.starts_with("HTTP/1.1 403"));
@@ -1316,7 +1316,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let command_list_allowed = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/e2e-auth-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("devices.commands.list allowed");
     assert!(command_list_allowed.starts_with("HTTP/1.1 200"));
@@ -1324,7 +1324,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
     shared_repo
         .record_event(
             AiotDeviceEventCreateCommand::new(
-                AiotStorageAssociation::tenant_org(10001, 20001),
+                AiotStorageAssociation::tenant_org(100001, 0),
                 "e2e-auth-device-001",
                 "iot.device.media_frame.ingested",
             )
@@ -1335,7 +1335,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let app_events_denied = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("devices.events.list denied");
     assert!(app_events_denied.starts_with("HTTP/1.1 403"));
@@ -1344,7 +1344,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let app_events_allowed = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("devices.events.list allowed");
     assert!(app_events_allowed.starts_with("HTTP/1.1 200"));
@@ -1352,7 +1352,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
     shared_repo
         .upsert_twin_property(
             AiotTwinPropertyUpsertCommand::new(
-                AiotStorageAssociation::tenant_org(10001, 20001),
+                AiotStorageAssociation::tenant_org(100001, 0),
                 "e2e-auth-device-001",
                 "volume",
             )
@@ -1363,7 +1363,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let app_twin_denied = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("devices.twin.retrieve denied");
     assert!(app_twin_denied.starts_with("HTTP/1.1 403"));
@@ -1372,7 +1372,7 @@ fn admin_and_app_end_to_end_flow_enforces_minimum_permissions_per_step() {
 
     let app_twin_allowed = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/e2e-auth-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("devices.twin.retrieve allowed");
     assert!(app_twin_allowed.starts_with("HTTP/1.1 200"));
@@ -1396,21 +1396,21 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let create_tenant_a = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"scope-device-001\",\"displayName\":\"Scope Device A\",\"productId\":\"9201\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"scope-device-001\",\"displayName\":\"Scope Device A\",\"productId\":\"9201\"}",
     )
     .expect("create tenant A device");
     assert!(create_tenant_a.starts_with("HTTP/1.1 201"));
 
     let create_tenant_b = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"scope-device-001\",\"displayName\":\"Scope Device B\",\"productId\":\"9201\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"scope-device-001\",\"displayName\":\"Scope Device B\",\"productId\":\"9201\"}",
     )
     .expect("create tenant B device");
     assert!(create_tenant_b.starts_with("HTTP/1.1 201"));
 
     let app_retrieve_tenant_a = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app retrieve tenant A");
     assert!(app_retrieve_tenant_a.starts_with("HTTP/1.1 200"));
@@ -1425,18 +1425,18 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
         app_retrieve_tenant_a_json
             .pointer("/data/tenantId")
             .and_then(serde_json::Value::as_str),
-        Some("10001")
+        Some("100001")
     );
     assert_eq!(
         app_retrieve_tenant_a_json
             .pointer("/data/organizationId")
             .and_then(serde_json::Value::as_str),
-        Some("20001")
+        Some("0")
     );
 
     let app_retrieve_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app retrieve tenant B");
     assert!(app_retrieve_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1462,7 +1462,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_list_tenant_a = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app list tenant A");
     assert!(app_list_tenant_a.starts_with("HTTP/1.1 200"));
@@ -1481,7 +1481,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_list_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app list tenant B");
     assert!(app_list_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1500,21 +1500,21 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let create_command_tenant_a = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: scope-cmd-a-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play-a\",\"payload\":{\"text\":\"a\"}}",
+        b"POST /app/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: scope-cmd-a-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play-a\",\"payload\":{\"text\":\"a\"}}",
     )
     .expect("create command tenant A");
     assert!(create_command_tenant_a.starts_with("HTTP/1.1 202"));
 
     let create_command_tenant_b = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: scope-cmd-b-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play-b\",\"payload\":{\"text\":\"b\"}}",
+        b"POST /app/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: scope-cmd-b-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play-b\",\"payload\":{\"text\":\"b\"}}",
     )
     .expect("create command tenant B");
     assert!(create_command_tenant_b.starts_with("HTTP/1.1 202"));
 
     let admin_commands_tenant_a = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("admin commands tenant A");
     assert!(admin_commands_tenant_a.starts_with("HTTP/1.1 200"));
@@ -1533,7 +1533,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let admin_commands_tenant_b = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("admin commands tenant B");
     assert!(admin_commands_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1553,7 +1553,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
     shared_repo
         .record_event(
             AiotDeviceEventCreateCommand::new(
-                AiotStorageAssociation::tenant_org(10001, 20001),
+                AiotStorageAssociation::tenant_org(100001, 0),
                 "scope-device-001",
                 "iot.device.media_frame.ingested",
             )
@@ -1575,7 +1575,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_events_tenant_a = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app events tenant A");
     assert!(app_events_tenant_a.starts_with("HTTP/1.1 200"));
@@ -1594,7 +1594,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_events_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app events tenant B");
     assert!(app_events_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1614,7 +1614,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
     shared_repo
         .upsert_twin_property(
             AiotTwinPropertyUpsertCommand::new(
-                AiotStorageAssociation::tenant_org(10001, 20001),
+                AiotStorageAssociation::tenant_org(100001, 0),
                 "scope-device-001",
                 "volume",
             )
@@ -1636,7 +1636,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_twin_tenant_a = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("app twin tenant A");
     assert!(app_twin_tenant_a.starts_with("HTTP/1.1 200"));
@@ -1656,7 +1656,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_twin_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("app twin tenant B");
     assert!(app_twin_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1687,28 +1687,28 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let create_org_a = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"crud-scope-001\",\"displayName\":\"CRUD Scope A\",\"productId\":\"9301\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"crud-scope-001\",\"displayName\":\"CRUD Scope A\",\"productId\":\"9301\"}",
     )
     .expect("create device org A");
     assert!(create_org_a.starts_with("HTTP/1.1 201"));
 
     let create_org_b = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21002\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"crud-scope-001\",\"displayName\":\"CRUD Scope B\",\"productId\":\"9301\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21002\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"crud-scope-001\",\"displayName\":\"CRUD Scope B\",\"productId\":\"9301\"}",
     )
     .expect("create device org B");
     assert!(create_org_b.starts_with("HTTP/1.1 201"));
 
     let update_org_a = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"CRUD Scope A Updated\"}",
+        b"PUT /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"CRUD Scope A Updated\"}",
     )
     .expect("update device org A");
     assert!(update_org_a.starts_with("HTTP/1.1 200"));
 
     let retrieve_org_a = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("retrieve device org A");
     assert!(retrieve_org_a.starts_with("HTTP/1.1 200"));
@@ -1722,7 +1722,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let retrieve_org_b = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("retrieve device org B");
     assert!(retrieve_org_b.starts_with("HTTP/1.1 200"));
@@ -1736,7 +1736,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let credential_org_a = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
+        b"POST /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
     )
     .expect("create credential org A");
     assert!(credential_org_a.starts_with("HTTP/1.1 201"));
@@ -1744,7 +1744,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let credential_list_org_a = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("list credentials org A");
     assert!(credential_list_org_a.starts_with("HTTP/1.1 200"));
@@ -1780,7 +1780,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let credential_wrong_scope = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21999\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
+        b"POST /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21999\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
     )
     .expect("create credential wrong scope");
     assert!(credential_wrong_scope.starts_with("HTTP/1.1 404"));
@@ -1788,7 +1788,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let credential_list_wrong_scope = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21999\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21999\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("list credential wrong scope");
     assert!(credential_list_wrong_scope.starts_with("HTTP/1.1 404"));
@@ -1797,7 +1797,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
     let credential_delete_org_a = handle_api_request_bytes(
         &admin,
         format!(
-            "DELETE /backend/v3/api/iot/devices/crud-scope-001/credentials/{credential_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n"
+            "DELETE /backend/v3/api/iot/devices/crud-scope-001/credentials/{credential_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -1807,7 +1807,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
     let credential_retrieve_after_delete = handle_api_request_bytes(
         &admin,
         format!(
-            "GET /backend/v3/api/iot/devices/crud-scope-001/credentials/{credential_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n"
+            "GET /backend/v3/api/iot/devices/crud-scope-001/credentials/{credential_id} HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n"
         )
         .as_bytes(),
     )
@@ -1830,7 +1830,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let credential_list_after_delete = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("list credentials after delete");
     assert!(credential_list_after_delete.starts_with("HTTP/1.1 200"));
@@ -1859,7 +1859,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let missing_credential_delete = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/devices/crud-scope-001/credentials/credential-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/devices/crud-scope-001/credentials/credential-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n",
     )
     .expect("delete missing credential");
     assert!(missing_credential_delete.starts_with("HTTP/1.1 404"));
@@ -1867,7 +1867,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let missing_credential_retrieve = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials/credential-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001/credentials/credential-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("retrieve missing credential");
     assert!(missing_credential_retrieve.starts_with("HTTP/1.1 404"));
@@ -1875,14 +1875,14 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let delete_org_a = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.delete\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.delete\r\n\r\n",
     )
     .expect("delete device org A");
     assert!(delete_org_a.starts_with("HTTP/1.1 204"));
 
     let retrieve_deleted_org_a = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("retrieve deleted device org A");
     assert!(retrieve_deleted_org_a.starts_with("HTTP/1.1 404"));
@@ -1890,7 +1890,7 @@ fn backend_device_crud_and_credentials_are_scoped_by_tenant_and_organization() {
 
     let retrieve_org_b_after_a_delete = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 21002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/crud-scope-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 21002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("retrieve device org B after org A delete");
     assert!(retrieve_org_b_after_a_delete.starts_with("HTTP/1.1 200"));
@@ -1915,21 +1915,21 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let create_org_a = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"twin-update-001\",\"displayName\":\"Twin Scope A\",\"productId\":\"9401\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"twin-update-001\",\"displayName\":\"Twin Scope A\",\"productId\":\"9401\"}",
     )
     .expect("create org A twin device");
     assert!(create_org_a.starts_with("HTTP/1.1 201"));
 
     let create_org_b = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22002\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"twin-update-001\",\"displayName\":\"Twin Scope B\",\"productId\":\"9401\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22002\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"twin-update-001\",\"displayName\":\"Twin Scope B\",\"productId\":\"9401\"}",
     )
     .expect("create org B twin device");
     assert!(create_org_b.starts_with("HTTP/1.1 201"));
 
     let update_twin_org_a = handle_api_request_bytes(
         &admin,
-        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":{\"volume\":42,\"lang\":\"zh-CN\"},\"reported\":{\"volume\":40,\"ready\":true}}",
+        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":{\"volume\":42,\"lang\":\"zh-CN\"},\"reported\":{\"volume\":40,\"ready\":true}}",
     )
     .expect("update twin org A");
     assert!(update_twin_org_a.starts_with("HTTP/1.1 200"));
@@ -1949,7 +1949,7 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let update_twin_wrong_permission = handle_api_request_bytes(
         &admin,
-        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n{\"desired\":{\"volume\":41}}",
+        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n{\"desired\":{\"volume\":41}}",
     )
     .expect("update twin with read permission");
     assert!(update_twin_wrong_permission.starts_with("HTTP/1.1 403"));
@@ -1957,7 +1957,7 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let update_twin_invalid_json = handle_api_request_bytes(
         &admin,
-        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":",
+        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":",
     )
     .expect("update twin invalid json");
     assert!(update_twin_invalid_json.starts_with("HTTP/1.1 400"));
@@ -1965,7 +1965,7 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let update_twin_invalid_field = handle_api_request_bytes(
         &admin,
-        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":[1,2,3]}",
+        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":[1,2,3]}",
     )
     .expect("update twin invalid desired shape");
     assert!(update_twin_invalid_field.starts_with("HTTP/1.1 400"));
@@ -1973,7 +1973,7 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let retrieve_twin_org_a = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22001\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("retrieve twin org A");
     assert!(retrieve_twin_org_a.starts_with("HTTP/1.1 200"));
@@ -1986,7 +1986,7 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let retrieve_twin_org_b = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22002\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22002\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("retrieve twin org B");
     assert!(retrieve_twin_org_b.starts_with("HTTP/1.1 200"));
@@ -2000,7 +2000,7 @@ fn backend_device_twin_update_is_scoped_and_validated() {
 
     let update_twin_wrong_scope = handle_api_request_bytes(
         &admin,
-        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 22999\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":{\"volume\":11}}",
+        b"PATCH /backend/v3/api/iot/devices/twin-update-001/twin HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 22999\r\nX-Sdkwork-Permission-Scope: iot.twins.write\r\n\r\n{\"desired\":{\"volume\":11}}",
     )
     .expect("update twin wrong scope");
     assert!(update_twin_wrong_scope.starts_with("HTTP/1.1 404"));
@@ -2013,7 +2013,7 @@ fn declared_backend_device_detail_routes_are_mounted_with_expected_status_codes(
 
     let missing_before_create = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.retrieve before create");
     assert!(missing_before_create.starts_with("HTTP/1.1 404"));
@@ -2021,7 +2021,7 @@ fn declared_backend_device_detail_routes_are_mounted_with_expected_status_codes(
 
     let create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"device-001\",\"displayName\":\"Front Door\",\"productId\":\"1001\",\"clientId\":\"client-1\",\"chipFamily\":\"esp32_s3\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"device-001\",\"displayName\":\"Front Door\",\"productId\":\"1001\",\"clientId\":\"client-1\",\"chipFamily\":\"esp32_s3\"}",
     )
     .expect("backend devices.create");
     assert!(create.starts_with("HTTP/1.1 201"));
@@ -2034,7 +2034,7 @@ fn declared_backend_device_detail_routes_are_mounted_with_expected_status_codes(
 
     let retrieve = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.retrieve");
     assert!(retrieve.starts_with("HTTP/1.1 200"));
@@ -2043,7 +2043,7 @@ fn declared_backend_device_detail_routes_are_mounted_with_expected_status_codes(
 
     let list = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.list");
     assert!(list.starts_with("HTTP/1.1 200"));
@@ -2051,7 +2051,7 @@ fn declared_backend_device_detail_routes_are_mounted_with_expected_status_codes(
 
     let update = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Front Door Updated\",\"status\":\"inactive\",\"metadata\":{\"firmware\":\"1.0.1\"}}",
+        b"PUT /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Front Door Updated\",\"status\":\"inactive\",\"metadata\":{\"firmware\":\"1.0.1\"}}",
     )
     .expect("backend devices.update");
     assert!(update.starts_with("HTTP/1.1 200"));
@@ -2061,14 +2061,14 @@ fn declared_backend_device_detail_routes_are_mounted_with_expected_status_codes(
 
     let delete = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.delete\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.delete\r\n\r\n",
     )
     .expect("backend devices.delete");
     assert!(delete.starts_with("HTTP/1.1 204"));
 
     let missing_after_delete = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.retrieve after delete");
     assert!(missing_after_delete.starts_with("HTTP/1.1 404"));
@@ -2081,7 +2081,7 @@ fn backend_device_create_validates_required_fields_and_duplicate_ids() {
 
     let missing_required = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Only Name\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Only Name\"}",
     )
     .expect("backend devices.create missing required");
     assert!(missing_required.starts_with("HTTP/1.1 400"));
@@ -2089,14 +2089,14 @@ fn backend_device_create_validates_required_fields_and_duplicate_ids() {
 
     let first_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"dup-device\",\"displayName\":\"Dup\",\"productId\":\"1001\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"dup-device\",\"displayName\":\"Dup\",\"productId\":\"1001\"}",
     )
     .expect("backend devices.create first");
     assert!(first_create.starts_with("HTTP/1.1 201"));
 
     let duplicate_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"dup-device\",\"displayName\":\"Dup2\",\"productId\":\"1002\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"dup-device\",\"displayName\":\"Dup2\",\"productId\":\"1002\"}",
     )
     .expect("backend devices.create duplicate");
     assert!(duplicate_create.starts_with("HTTP/1.1 409"));
@@ -2109,7 +2109,7 @@ fn backend_device_create_rejects_non_numeric_product_id() {
 
     let invalid_product = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"bad-product-id\",\"displayName\":\"Bad Product\",\"productId\":\"product-alpha\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"bad-product-id\",\"displayName\":\"Bad Product\",\"productId\":\"product-alpha\"}",
     )
     .expect("backend devices.create invalid product id");
 
@@ -2130,14 +2130,14 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"mutation-semantics-001\",\"displayName\":\"Mutation Semantics Device\",\"productId\":\"9401\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"mutation-semantics-001\",\"displayName\":\"Mutation Semantics Device\",\"productId\":\"9401\"}",
     )
     .expect("create baseline device");
     assert!(create.starts_with("HTTP/1.1 201"));
 
     let duplicate_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"mutation-semantics-001\",\"displayName\":\"Mutation Semantics Device Duplicate\",\"productId\":\"9401\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"mutation-semantics-001\",\"displayName\":\"Mutation Semantics Device Duplicate\",\"productId\":\"9401\"}",
     )
     .expect("duplicate create semantics");
     assert!(duplicate_create.starts_with("HTTP/1.1 409"));
@@ -2145,7 +2145,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let update_invalid_json = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":",
+        b"PUT /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":",
     )
     .expect("update invalid json semantics");
     assert!(update_invalid_json.starts_with("HTTP/1.1 400"));
@@ -2153,7 +2153,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let update_wrong_permission = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"displayName\":\"Mutation Semantics Updated\"}",
+        b"PUT /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"displayName\":\"Mutation Semantics Updated\"}",
     )
     .expect("update wrong permission semantics");
     assert!(update_wrong_permission.starts_with("HTTP/1.1 403"));
@@ -2162,7 +2162,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let update_missing_scope = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Mutation Semantics Wrong Scope\"}",
+        b"PUT /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Mutation Semantics Wrong Scope\"}",
     )
     .expect("update missing scope semantics");
     assert!(update_missing_scope.starts_with("HTTP/1.1 404"));
@@ -2170,7 +2170,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let delete_wrong_permission = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n",
     )
     .expect("delete wrong permission semantics");
     assert!(delete_wrong_permission.starts_with("HTTP/1.1 403"));
@@ -2179,7 +2179,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let delete_missing_scope = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.delete\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/devices/mutation-semantics-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.delete\r\n\r\n",
     )
     .expect("delete missing scope semantics");
     assert!(delete_missing_scope.starts_with("HTTP/1.1 404"));
@@ -2187,7 +2187,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let credential_invalid_json = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/mutation-semantics-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":",
+        b"POST /backend/v3/api/iot/devices/mutation-semantics-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":",
     )
     .expect("credentials invalid json semantics");
     assert!(credential_invalid_json.starts_with("HTTP/1.1 400"));
@@ -2195,7 +2195,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let credential_wrong_permission = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/mutation-semantics-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"credentialType\":\"hmac\"}",
+        b"POST /backend/v3/api/iot/devices/mutation-semantics-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n{\"credentialType\":\"hmac\"}",
     )
     .expect("credentials wrong permission semantics");
     assert!(credential_wrong_permission.starts_with("HTTP/1.1 403"));
@@ -2204,7 +2204,7 @@ fn backend_device_mutation_routes_enforce_standard_error_code_semantics() {
 
     let credential_missing_scope = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/mutation-semantics-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
+        b"POST /backend/v3/api/iot/devices/mutation-semantics-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
     )
     .expect("credentials missing scope semantics");
     assert!(credential_missing_scope.starts_with("HTTP/1.1 404"));
@@ -2232,7 +2232,7 @@ fn problem_json_errors_expose_standard_fields_across_core_failure_paths() {
 
     let invalid_context = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 20001\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 0\r\n\r\n",
     )
     .expect("invalid context problem");
     assert!(invalid_context.starts_with("HTTP/1.1 400"));
@@ -2240,7 +2240,7 @@ fn problem_json_errors_expose_standard_fields_across_core_failure_paths() {
 
     let permission_denied = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("permission denied problem");
     assert!(permission_denied.starts_with("HTTP/1.1 403"));
@@ -2255,7 +2255,7 @@ fn problem_json_errors_expose_standard_fields_across_core_failure_paths() {
 
     let device_not_found = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/problem-json-missing HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/problem-json-missing HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("device not found problem");
     assert!(device_not_found.starts_with("HTTP/1.1 404"));
@@ -2270,14 +2270,14 @@ fn problem_json_errors_expose_standard_fields_across_core_failure_paths() {
 
     let create_first = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"problem-json-dup-001\",\"displayName\":\"Problem Json Device\",\"productId\":\"9501\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"problem-json-dup-001\",\"displayName\":\"Problem Json Device\",\"productId\":\"9501\"}",
     )
     .expect("create first for duplicate");
     assert!(create_first.starts_with("HTTP/1.1 201"));
 
     let duplicate_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"problem-json-dup-001\",\"displayName\":\"Problem Json Device Duplicate\",\"productId\":\"9501\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"problem-json-dup-001\",\"displayName\":\"Problem Json Device Duplicate\",\"productId\":\"9501\"}",
     )
     .expect("duplicate create problem");
     assert!(duplicate_create.starts_with("HTTP/1.1 409"));
@@ -2313,7 +2313,7 @@ fn app_api_problem_json_errors_expose_standard_fields_across_core_failure_paths(
 
     let permission_denied = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
     )
     .expect("app permission denied problem");
     assert!(permission_denied.starts_with("HTTP/1.1 403"));
@@ -2328,7 +2328,7 @@ fn app_api_problem_json_errors_expose_standard_fields_across_core_failure_paths(
 
     let invalid_json = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-problem-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
+        b"POST /app/v3/api/iot/devices/device-problem-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
     )
     .expect("app invalid json problem");
     assert!(invalid_json.starts_with("HTTP/1.1 400"));
@@ -2336,7 +2336,7 @@ fn app_api_problem_json_errors_expose_standard_fields_across_core_failure_paths(
 
     let missing_field = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/device-problem-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\"}",
+        b"POST /app/v3/api/iot/devices/device-problem-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\"}",
     )
     .expect("app invalid field problem");
     assert!(missing_field.starts_with("HTTP/1.1 400"));
@@ -2344,7 +2344,7 @@ fn app_api_problem_json_errors_expose_standard_fields_across_core_failure_paths(
 
     let not_found = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/app-problem-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/app-problem-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app not found problem");
     assert!(not_found.starts_with("HTTP/1.1 404"));
@@ -2363,7 +2363,7 @@ fn backend_device_credentials_create_validates_request_and_requires_existing_dev
 
     let missing_device = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/device-credentials-missing/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
+        b"POST /backend/v3/api/iot/devices/device-credentials-missing/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
     )
     .expect("backend devices.credentials.create missing device");
     assert!(missing_device.starts_with("HTTP/1.1 404"));
@@ -2371,14 +2371,14 @@ fn backend_device_credentials_create_validates_request_and_requires_existing_dev
 
     let create_device = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"device-cred-001\",\"displayName\":\"Credential Device\",\"productId\":\"1005\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"device-cred-001\",\"displayName\":\"Credential Device\",\"productId\":\"1005\"}",
     )
     .expect("backend devices.create credential target");
     assert!(create_device.starts_with("HTTP/1.1 201"));
 
     let missing_body = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/device-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n",
+        b"POST /backend/v3/api/iot/devices/device-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n",
     )
     .expect("backend devices.credentials.create missing body");
     assert!(missing_body.starts_with("HTTP/1.1 400"));
@@ -2386,7 +2386,7 @@ fn backend_device_credentials_create_validates_request_and_requires_existing_dev
 
     let invalid_type = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/device-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"api_key\"}",
+        b"POST /backend/v3/api/iot/devices/device-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"api_key\"}",
     )
     .expect("backend devices.credentials.create invalid type");
     assert!(invalid_type.starts_with("HTTP/1.1 400"));
@@ -2395,7 +2395,7 @@ fn backend_device_credentials_create_validates_request_and_requires_existing_dev
 
     let created = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/device-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\",\"expiresAt\":\"2026-06-30T00:00:00Z\"}",
+        b"POST /backend/v3/api/iot/devices/device-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\",\"expiresAt\":\"2026-06-30T00:00:00Z\"}",
     )
     .expect("backend devices.credentials.create success");
     assert!(created.starts_with("HTTP/1.1 201"));
@@ -2419,14 +2419,14 @@ fn admin_and_app_servers_can_share_external_device_repository_state() {
 
     let create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"shared-001\",\"displayName\":\"Shared Device\",\"productId\":\"1003\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"shared-001\",\"displayName\":\"Shared Device\",\"productId\":\"1003\"}",
     )
     .expect("backend devices.create");
     assert!(create.starts_with("HTTP/1.1 201"));
 
     let app_retrieve = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/shared-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/shared-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app devices.retrieve shared");
     assert!(app_retrieve.starts_with("HTTP/1.1 200"));
@@ -2489,7 +2489,7 @@ fn backend_device_create_maps_storage_failure_to_500_problem() {
 
     let response = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"storage-fail-001\",\"displayName\":\"Storage Fail\",\"productId\":\"1009\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"storage-fail-001\",\"displayName\":\"Storage Fail\",\"productId\":\"1009\"}",
     )
     .expect("backend devices.create storage failure");
 
@@ -2504,7 +2504,7 @@ fn backend_firmware_artifact_create_response_uses_media_resource_shape() {
 
     let response = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-main-shape\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-001\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-001\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1048576\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-main-shape\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-001\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-001\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1048576\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create");
 
@@ -2536,7 +2536,7 @@ fn backend_firmware_artifact_crud_routes_are_complete_and_scoped() {
 
     let create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-main\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-201\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-201\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1048576\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-main\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-201\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-201\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1048576\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create");
     assert!(create.starts_with("HTTP/1.1 201"));
@@ -2545,7 +2545,7 @@ fn backend_firmware_artifact_crud_routes_are_complete_and_scoped() {
 
     let list = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.list");
     assert!(list.starts_with("HTTP/1.1 200"));
@@ -2553,7 +2553,7 @@ fn backend_firmware_artifact_crud_routes_are_complete_and_scoped() {
 
     let retrieve = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.retrieve");
     assert!(retrieve.starts_with("HTTP/1.1 200"));
@@ -2561,7 +2561,7 @@ fn backend_firmware_artifact_crud_routes_are_complete_and_scoped() {
 
     let update = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"version\":\"1.0.1\",\"status\":\"deprecated\"}",
+        b"PUT /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"version\":\"1.0.1\",\"status\":\"deprecated\"}",
     )
     .expect("backend firmwareArtifacts.update");
     assert!(update.starts_with("HTTP/1.1 200"));
@@ -2570,7 +2570,7 @@ fn backend_firmware_artifact_crud_routes_are_complete_and_scoped() {
 
     let cross_scope = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.retrieve cross scope");
     assert!(cross_scope.starts_with("HTTP/1.1 404"));
@@ -2578,14 +2578,14 @@ fn backend_firmware_artifact_crud_routes_are_complete_and_scoped() {
 
     let delete = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.delete");
     assert!(delete.starts_with("HTTP/1.1 204"));
 
     let retrieve_deleted = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.retrieve deleted");
     assert!(retrieve_deleted.starts_with("HTTP/1.1 404"));
@@ -2597,14 +2597,14 @@ fn backend_firmware_rollout_crud_routes_are_complete_and_scoped() {
 
     let create_artifact = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-rollout\",\"version\":\"2.0.0\",\"resource\":{\"id\":\"media-res-301\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-301\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"2048\"},\"sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-rollout\",\"version\":\"2.0.0\",\"resource\":{\"id\":\"media-res-301\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-301\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"2048\"},\"sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}",
     )
     .expect("backend firmwareArtifacts.create rollout anchor");
     assert!(create_artifact.starts_with("HTTP/1.1 201"));
 
     let create_rollout = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":\"firmware-artifact-0001\",\"targetPolicy\":{\"scope\":\"all\",\"batch\":10}}",
+        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":\"firmware-artifact-0001\",\"targetPolicy\":{\"scope\":\"all\",\"batch\":10}}",
     )
     .expect("backend firmwareRollouts.create");
     assert!(create_rollout.starts_with("HTTP/1.1 202"));
@@ -2613,7 +2613,7 @@ fn backend_firmware_rollout_crud_routes_are_complete_and_scoped() {
 
     let list = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareRollouts.list");
     assert!(list.starts_with("HTTP/1.1 200"));
@@ -2621,7 +2621,7 @@ fn backend_firmware_rollout_crud_routes_are_complete_and_scoped() {
 
     let retrieve = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareRollouts.retrieve");
     assert!(retrieve.starts_with("HTTP/1.1 200"));
@@ -2629,7 +2629,7 @@ fn backend_firmware_rollout_crud_routes_are_complete_and_scoped() {
 
     let update = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"status\":\"paused\",\"targetPolicy\":{\"scope\":\"all\",\"batch\":5}}",
+        b"PUT /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"status\":\"paused\",\"targetPolicy\":{\"scope\":\"all\",\"batch\":5}}",
     )
     .expect("backend firmwareRollouts.update");
     assert!(update.starts_with("HTTP/1.1 200"));
@@ -2637,7 +2637,7 @@ fn backend_firmware_rollout_crud_routes_are_complete_and_scoped() {
 
     let cross_scope = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 29999\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareRollouts.retrieve cross scope");
     assert!(cross_scope.starts_with("HTTP/1.1 404"));
@@ -2645,14 +2645,14 @@ fn backend_firmware_rollout_crud_routes_are_complete_and_scoped() {
 
     let delete = handle_api_request_bytes(
         &admin,
-        b"DELETE /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n",
+        b"DELETE /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n",
     )
     .expect("backend firmwareRollouts.delete");
     assert!(delete.starts_with("HTTP/1.1 204"));
 
     let retrieve_deleted = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareRollouts.retrieve deleted");
     assert!(retrieve_deleted.starts_with("HTTP/1.1 404"));
@@ -2664,14 +2664,14 @@ fn backend_firmware_mutation_error_semantics_are_stable() {
 
     let create_artifact = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-err\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-err-001\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-err-001\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-err\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-err-001\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-err-001\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create error anchor");
     assert!(create_artifact.starts_with("HTTP/1.1 201"));
 
     let artifact_wrong_permission = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n{\"artifactKey\":\"fw-err-denied\",\"version\":\"1.0.1\",\"resource\":{\"id\":\"media-res-err-002\",\"kind\":\"document\",\"source\":\"object_storage\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n{\"artifactKey\":\"fw-err-denied\",\"version\":\"1.0.1\",\"resource\":{\"id\":\"media-res-err-002\",\"kind\":\"document\",\"source\":\"object_storage\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create wrong permission");
     assert!(artifact_wrong_permission.starts_with("HTTP/1.1 403"));
@@ -2680,7 +2680,7 @@ fn backend_firmware_mutation_error_semantics_are_stable() {
 
     let artifact_invalid_json = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":",
     )
     .expect("backend firmwareArtifacts.create invalid json");
     assert!(artifact_invalid_json.starts_with("HTTP/1.1 400"));
@@ -2689,7 +2689,7 @@ fn backend_firmware_mutation_error_semantics_are_stable() {
 
     let artifact_invalid_field = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-err-invalid\",\"version\":\"1.0.2\",\"resource\":\"not-an-object\",\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-err-invalid\",\"version\":\"1.0.2\",\"resource\":\"not-an-object\",\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create invalid field");
     assert!(artifact_invalid_field.starts_with("HTTP/1.1 400"));
@@ -2698,7 +2698,7 @@ fn backend_firmware_mutation_error_semantics_are_stable() {
 
     let rollout_invalid_reference = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":\"firmware-artifact-does-not-exist\",\"targetPolicy\":{\"scope\":\"all\"}}",
+        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":\"firmware-artifact-does-not-exist\",\"targetPolicy\":{\"scope\":\"all\"}}",
     )
     .expect("backend firmwareRollouts.create invalid reference");
     assert!(rollout_invalid_reference.starts_with("HTTP/1.1 400"));
@@ -2707,7 +2707,7 @@ fn backend_firmware_mutation_error_semantics_are_stable() {
 
     let rollout_wrong_permission = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n{\"artifactId\":\"firmware-artifact-0001\",\"targetPolicy\":{\"scope\":\"all\"}}",
+        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n{\"artifactId\":\"firmware-artifact-0001\",\"targetPolicy\":{\"scope\":\"all\"}}",
     )
     .expect("backend firmwareRollouts.create wrong permission");
     assert!(rollout_wrong_permission.starts_with("HTTP/1.1 403"));
@@ -2716,7 +2716,7 @@ fn backend_firmware_mutation_error_semantics_are_stable() {
 
     let rollout_invalid_json = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":",
+        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":",
     )
     .expect("backend firmwareRollouts.create invalid json");
     assert!(rollout_invalid_json.starts_with("HTTP/1.1 400"));
@@ -2730,14 +2730,14 @@ fn backend_firmware_update_accepts_empty_body_as_noop() {
 
     let create_artifact = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-empty-update\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-empty-update\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-empty-update\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-empty-update\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-empty-update\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-empty-update\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create for empty update");
     assert!(create_artifact.starts_with("HTTP/1.1 201"));
 
     let artifact_empty_update = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n",
+        b"PUT /backend/v3/api/iot/firmware_artifacts/firmware-artifact-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.update empty body");
     assert!(artifact_empty_update.starts_with("HTTP/1.1 200"));
@@ -2745,14 +2745,14 @@ fn backend_firmware_update_accepts_empty_body_as_noop() {
 
     let create_rollout = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":\"firmware-artifact-0001\",\"targetPolicy\":{\"scope\":\"all\",\"batch\":8}}",
+        b"POST /backend/v3/api/iot/firmware_rollouts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n{\"artifactId\":\"firmware-artifact-0001\",\"targetPolicy\":{\"scope\":\"all\",\"batch\":8}}",
     )
     .expect("backend firmwareRollouts.create for empty update");
     assert!(create_rollout.starts_with("HTTP/1.1 202"));
 
     let rollout_empty_update = handle_api_request_bytes(
         &admin,
-        b"PUT /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n",
+        b"PUT /backend/v3/api/iot/firmware_rollouts/firmware-rollout-0001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.rollout\r\n\r\n",
     )
     .expect("backend firmwareRollouts.update empty body");
     assert!(rollout_empty_update.starts_with("HTTP/1.1 200"));
@@ -2765,7 +2765,7 @@ fn api_server_rejects_cross_surface_routes_with_problem_json() {
 
     let response = handle_api_request_bytes(
         &app,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.protocolAdapters.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.protocolAdapters.read\r\n\r\n",
     )
     .expect("problem json");
 
@@ -2991,7 +2991,7 @@ fn backend_openapi_problem_declaration_covers_observed_runtime_error_statuses() 
 
     let invalid_context = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 20001\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 0\r\n\r\n",
     )
     .expect("backend invalid context");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3002,7 +3002,7 @@ fn backend_openapi_problem_declaration_covers_observed_runtime_error_statuses() 
 
     let permission_denied = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend permission denied");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3013,14 +3013,14 @@ fn backend_openapi_problem_declaration_covers_observed_runtime_error_statuses() 
 
     let first_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"openapi-problem-dup-001\",\"displayName\":\"OpenAPI Problem Device\",\"productId\":\"9601\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"openapi-problem-dup-001\",\"displayName\":\"OpenAPI Problem Device\",\"productId\":\"9601\"}",
     )
     .expect("backend create for duplicate");
     assert!(first_create.starts_with("HTTP/1.1 201"));
 
     let duplicate_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"openapi-problem-dup-001\",\"displayName\":\"OpenAPI Problem Device Duplicate\",\"productId\":\"9601\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"openapi-problem-dup-001\",\"displayName\":\"OpenAPI Problem Device Duplicate\",\"productId\":\"9601\"}",
     )
     .expect("backend duplicate create");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3031,7 +3031,7 @@ fn backend_openapi_problem_declaration_covers_observed_runtime_error_statuses() 
 
     let device_not_found = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/openapi-problem-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/openapi-problem-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend device not found");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3066,7 +3066,7 @@ fn app_openapi_problem_declaration_covers_observed_runtime_error_statuses() {
 
     let permission_denied = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
     )
     .expect("app permission denied");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3077,7 +3077,7 @@ fn app_openapi_problem_declaration_covers_observed_runtime_error_statuses() {
 
     let invalid_json = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/openapi-problem-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
+        b"POST /app/v3/api/iot/devices/openapi-problem-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
     )
     .expect("app invalid json");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3088,7 +3088,7 @@ fn app_openapi_problem_declaration_covers_observed_runtime_error_statuses() {
 
     let device_not_found = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/openapi-problem-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/openapi-problem-missing-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app device not found");
     assert_runtime_error_status_is_declared_via_openapi_problem_default(
@@ -3237,69 +3237,69 @@ fn typescript_problem_code_catalogs_cover_observed_runtime_problem_codes() {
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 20001\r\n\r\n",
+            b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 0\r\n\r\n",
         )
         .expect("backend invalid tenant response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+            b"GET /backend/v3/api/iot/protocol_adapters HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
         )
         .expect("backend permission denied response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":",
+            b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":",
         )
         .expect("backend invalid json response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Missing DeviceId\",\"productId\":\"9001\"}",
+            b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"displayName\":\"Missing DeviceId\",\"productId\":\"9001\"}",
         )
         .expect("backend missing field response"),
     ));
     let backend_create = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"runtime-problem-catalog-001\",\"displayName\":\"Catalog Device\",\"productId\":\"9001\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"runtime-problem-catalog-001\",\"displayName\":\"Catalog Device\",\"productId\":\"9001\"}",
     )
     .expect("backend create response");
     assert!(backend_create.starts_with("HTTP/1.1 201"));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"runtime-problem-catalog-001\",\"displayName\":\"Catalog Device Duplicate\",\"productId\":\"9001\"}",
+            b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"runtime-problem-catalog-001\",\"displayName\":\"Catalog Device Duplicate\",\"productId\":\"9001\"}",
         )
         .expect("backend duplicate response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"GET /backend/v3/api/iot/devices/runtime-problem-catalog-missing HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+            b"GET /backend/v3/api/iot/devices/runtime-problem-catalog-missing HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
         )
         .expect("backend not found response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"DELETE /backend/v3/api/iot/devices/runtime-problem-catalog-001/sessions/session-runtime-problem-catalog-001-unknown HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n",
+            b"DELETE /backend/v3/api/iot/devices/runtime-problem-catalog-001/sessions/session-runtime-problem-catalog-001-unknown HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n",
         )
         .expect("backend session not found response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"POST /backend/v3/api/iot/devices/runtime-problem-catalog-001/commands/runtime-problem-catalog-command-001/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n",
+            b"POST /backend/v3/api/iot/devices/runtime-problem-catalog-001/commands/runtime-problem-catalog-command-001/cancel HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.cancel\r\n\r\n",
         )
         .expect("backend command not found response"),
     ));
     observed_backend.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &admin,
-            b"DELETE /backend/v3/api/iot/devices/runtime-problem-catalog-missing/sessions/session-runtime-problem-catalog-missing-primary HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n",
+            b"DELETE /backend/v3/api/iot/devices/runtime-problem-catalog-missing/sessions/session-runtime-problem-catalog-missing-primary HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.sessions.disconnect\r\n\r\n",
         )
         .expect("backend session device missing response"),
     ));
@@ -3322,35 +3322,35 @@ fn typescript_problem_code_catalogs_cover_observed_runtime_problem_codes() {
     observed_app.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &app,
-            b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 20001\r\n\r\n",
+            b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: tenant-a\r\nX-Sdkwork-Organization-Id: 0\r\n\r\n",
         )
         .expect("app invalid tenant response"),
     ));
     observed_app.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &app,
-            b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
+            b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n",
         )
         .expect("app permission denied response"),
     ));
     observed_app.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &app,
-            b"POST /app/v3/api/iot/devices/runtime-problem-catalog-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
+            b"POST /app/v3/api/iot/devices/runtime-problem-catalog-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":",
         )
         .expect("app invalid json response"),
     ));
     observed_app.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &app,
-            b"POST /app/v3/api/iot/devices/runtime-problem-catalog-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\"}",
+            b"POST /app/v3/api/iot/devices/runtime-problem-catalog-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"player\",\"commandName\":\"speak\"}",
         )
         .expect("app missing field response"),
     ));
     observed_app.insert(problem_code_from_response(
         &handle_api_request_bytes(
             &app,
-            b"GET /app/v3/api/iot/devices/runtime-problem-catalog-missing HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+            b"GET /app/v3/api/iot/devices/runtime-problem-catalog-missing HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
         )
         .expect("app not found response"),
     ));
@@ -3590,14 +3590,14 @@ fn sqlite_credential_repository_adapter_persists_and_lists_credentials() {
 
     let create_device = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"sqlite-cred-001\",\"displayName\":\"SQLite Credential Device\",\"productId\":\"1005\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"sqlite-cred-001\",\"displayName\":\"SQLite Credential Device\",\"productId\":\"1005\"}",
     )
     .expect("backend devices.create sqlite credential target");
     assert!(create_device.starts_with("HTTP/1.1 201"));
 
     let created = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices/sqlite-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
+        b"POST /backend/v3/api/iot/devices/sqlite-cred-001/credentials HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"credentialType\":\"hmac\"}",
     )
     .expect("backend devices.credentials.create sqlite");
     assert!(created.starts_with("HTTP/1.1 201"));
@@ -3606,7 +3606,7 @@ fn sqlite_credential_repository_adapter_persists_and_lists_credentials() {
 
     let listed = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/sqlite-cred-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/sqlite-cred-001/credentials HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("backend devices.credentials.list sqlite");
     assert!(listed.starts_with("HTTP/1.1 200"));
@@ -3641,7 +3641,7 @@ fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
 
     let create_product = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/products HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.products.write\r\n\r\n{\"productId\":\"sqlite-product-001\",\"displayName\":\"SQLite Product\",\"defaultHardwareProfileId\":\"hw-esp32-s3\",\"defaultProtocolProfileId\":\"proto-xiaozhi\",\"defaultCapabilityModelId\":\"capmodel-xiaozhi-core\"}",
+        b"POST /backend/v3/api/iot/products HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.products.write\r\n\r\n{\"productId\":\"sqlite-product-001\",\"displayName\":\"SQLite Product\",\"defaultHardwareProfileId\":\"hw-esp32-s3\",\"defaultProtocolProfileId\":\"proto-xiaozhi\",\"defaultCapabilityModelId\":\"capmodel-xiaozhi-core\"}",
     )
     .expect("backend products.create sqlite");
     assert!(create_product.starts_with("HTTP/1.1 201"));
@@ -3649,7 +3649,7 @@ fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
 
     let create_hardware = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/hardware_profiles HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.profiles.write\r\n\r\n{\"hardwareProfileId\":\"hw-sqlite-001\",\"chipFamily\":\"esp32_s3\",\"hardwareClasses\":[\"mcu\"],\"runtimeProfiles\":[\"esp_idf\"],\"connectivityProfiles\":[\"wifi\"],\"securityProfiles\":[\"device_secret\"],\"otaProfiles\":[\"xiaozhi_ota\"]}",
+        b"POST /backend/v3/api/iot/hardware_profiles HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.profiles.write\r\n\r\n{\"hardwareProfileId\":\"hw-sqlite-001\",\"chipFamily\":\"esp32_s3\",\"hardwareClasses\":[\"mcu\"],\"runtimeProfiles\":[\"esp_idf\"],\"connectivityProfiles\":[\"wifi\"],\"securityProfiles\":[\"device_secret\"],\"otaProfiles\":[\"xiaozhi_ota\"]}",
     )
     .expect("backend hardwareProfiles.create sqlite");
     assert!(create_hardware.starts_with("HTTP/1.1 201"));
@@ -3657,7 +3657,7 @@ fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
 
     let create_artifact = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-sqlite\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-sqlite\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-sqlite\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        b"POST /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.write\r\n\r\n{\"artifactKey\":\"fw-sqlite\",\"version\":\"1.0.0\",\"resource\":{\"id\":\"media-res-sqlite\",\"kind\":\"document\",\"source\":\"object_storage\",\"objectBlobId\":\"obj-blob-sqlite\",\"mimeType\":\"application/octet-stream\",\"sizeBytes\":\"1024\"},\"sha256\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
     )
     .expect("backend firmwareArtifacts.create sqlite");
     assert!(create_artifact.starts_with("HTTP/1.1 201"));
@@ -3680,7 +3680,7 @@ fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
 
     let get_product = handle_api_request_bytes(
         &reopened_admin,
-        b"GET /backend/v3/api/iot/products/sqlite-product-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.products.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/products/sqlite-product-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.products.read\r\n\r\n",
     )
     .expect("backend products.retrieve sqlite");
     assert!(get_product.starts_with("HTTP/1.1 200"));
@@ -3688,7 +3688,7 @@ fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
 
     let get_hardware = handle_api_request_bytes(
         &reopened_admin,
-        b"GET /backend/v3/api/iot/hardware_profiles/hw-sqlite-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/hardware_profiles/hw-sqlite-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.profiles.read\r\n\r\n",
     )
     .expect("backend hardwareProfiles.retrieve sqlite");
     assert!(get_hardware.starts_with("HTTP/1.1 200"));
@@ -3696,7 +3696,7 @@ fn sqlite_catalog_and_firmware_handles_persist_across_reopen() {
 
     let list_artifacts = handle_api_request_bytes(
         &reopened_admin,
-        b"GET /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10001\r\nX-Sdkwork-Organization-Id: 20001\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/firmware_artifacts HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 100001\r\nX-Sdkwork-Organization-Id: 0\r\nX-Sdkwork-Permission-Scope: iot.firmware.read\r\n\r\n",
     )
     .expect("backend firmwareArtifacts.list sqlite");
     assert!(list_artifacts.starts_with("HTTP/1.1 200"));

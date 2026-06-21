@@ -129,7 +129,7 @@ fn xiaozhi_gateway_pipeline_preserves_host_resolved_appbase_context_into_storage
         (DEVICE_ID_HEADER, "device-001"),
         (CLIENT_ID_HEADER, "client-abc"),
     ]));
-    let ctx = AiotRequestContext::new("10001", "20001")
+    let ctx = AiotRequestContext::new("100001", "0")
         .with_user("30001")
         .with_data_scope("7");
     let payload = r#"{"type":"hello","session_id":"session-001","message_id":"msg-001","idempotency_key":"idem-001","trace_id":"trace-001"}"#;
@@ -144,15 +144,15 @@ fn xiaozhi_gateway_pipeline_preserves_host_resolved_appbase_context_into_storage
     assert!(receipt.accepted);
     assert_eq!(snapshot.primary_writes.len(), 1);
     assert_eq!(snapshot.outbox_events.len(), 1);
-    assert_eq!(snapshot.primary_writes[0].association.tenant_id, 10001);
+    assert_eq!(snapshot.primary_writes[0].association.tenant_id, 100001);
     assert_eq!(
         snapshot.primary_writes[0].association.organization_id,
-        20001
+        0
     );
     assert_eq!(snapshot.primary_writes[0].association.user_id, Some(30001));
     assert_eq!(snapshot.primary_writes[0].association.data_scope, 7);
-    assert_eq!(snapshot.outbox_events[0].association.tenant_id, 10001);
-    assert_eq!(snapshot.outbox_events[0].association.organization_id, 20001);
+    assert_eq!(snapshot.outbox_events[0].association.tenant_id, 100001);
+    assert_eq!(snapshot.outbox_events[0].association.organization_id, 0);
     assert_eq!(snapshot.outbox_events[0].association.user_id, Some(30001));
     assert_eq!(snapshot.outbox_events[0].association.data_scope, 7);
 }

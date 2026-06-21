@@ -98,7 +98,7 @@ fn protocol_ingest_storage_ports_define_unit_of_work_boundaries() {
 #[test]
 fn in_memory_device_repository_supports_scoped_crud_lifecycle() {
     let repo = InMemoryAiotDeviceRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     let create =
         AiotDeviceCreateCommand::new(association.clone(), "device-001", "Front Door", "1001")
             .with_client_id("client-1")
@@ -143,7 +143,7 @@ fn in_memory_device_repository_supports_scoped_crud_lifecycle() {
 #[test]
 fn in_memory_device_repository_rejects_duplicate_and_cross_scope_operations() {
     let repo = InMemoryAiotDeviceRepository::new();
-    let assoc_a = AiotStorageAssociation::tenant_org(10001, 20001);
+    let assoc_a = AiotStorageAssociation::tenant_org(100001, 0);
     let assoc_b = AiotStorageAssociation::tenant_org(10002, 20002);
 
     repo.create_device(AiotDeviceCreateCommand::new(
@@ -194,7 +194,7 @@ fn in_memory_device_repository_rejects_duplicate_and_cross_scope_operations() {
 #[test]
 fn in_memory_device_repository_rejects_non_numeric_product_id() {
     let repo = InMemoryAiotDeviceRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     let result = repo.create_device(AiotDeviceCreateCommand::new(
         association,
@@ -212,7 +212,7 @@ fn in_memory_device_repository_rejects_non_numeric_product_id() {
 #[test]
 fn in_memory_command_repository_supports_create_and_scoped_list() {
     let repo = InMemoryAiotCommandRepository::new();
-    let assoc_a = AiotStorageAssociation::tenant_org(10001, 20001);
+    let assoc_a = AiotStorageAssociation::tenant_org(100001, 0);
     let assoc_b = AiotStorageAssociation::tenant_org(10002, 20002);
 
     let created = repo
@@ -264,7 +264,7 @@ fn in_memory_command_repository_supports_create_and_scoped_list() {
 #[test]
 fn in_memory_command_repository_supports_cancel_command() {
     let repo = InMemoryAiotCommandRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
 
     let created = repo
         .create_command(
@@ -300,7 +300,7 @@ fn in_memory_command_repository_supports_cancel_command() {
 #[test]
 fn in_memory_device_session_repository_supports_disconnect_lifecycle() {
     let repo = InMemoryAiotDeviceSessionRepository::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001);
+    let association = AiotStorageAssociation::tenant_org(100001, 0);
     let device_id = "device-session-001";
     let session_id = "session-device-session-001-primary";
 
@@ -322,7 +322,7 @@ fn in_memory_device_session_repository_supports_disconnect_lifecycle() {
 #[test]
 fn in_memory_event_repository_supports_record_and_scoped_list() {
     let repo = InMemoryAiotEventRepository::new();
-    let assoc = AiotStorageAssociation::tenant_org(10001, 20001);
+    let assoc = AiotStorageAssociation::tenant_org(100001, 0);
 
     repo.record_event(
         AiotDeviceEventCreateCommand::new(
@@ -372,7 +372,7 @@ fn in_memory_event_repository_supports_record_and_scoped_list() {
 #[test]
 fn in_memory_twin_repository_supports_upsert_and_snapshot_read() {
     let repo = InMemoryAiotDeviceTwinRepository::new();
-    let assoc = AiotStorageAssociation::tenant_org(10001, 20001);
+    let assoc = AiotStorageAssociation::tenant_org(100001, 0);
 
     let empty = repo
         .get_twin_snapshot(&assoc, "device-001")
@@ -515,10 +515,10 @@ fn protocol_storage_command_carries_appbase_association_fields_without_iam_depen
         AiotStorageWriteKind::RecordTelemetry,
         "iot_telemetry_event",
     )
-    .with_association(AiotStorageAssociation::tenant_org(10001, 20001).with_data_scope(7));
+    .with_association(AiotStorageAssociation::tenant_org(100001, 0).with_data_scope(7));
 
-    assert_eq!(command.association.tenant_id, 10001);
-    assert_eq!(command.association.organization_id, 20001);
+    assert_eq!(command.association.tenant_id, 100001);
+    assert_eq!(command.association.organization_id, 0);
     assert_eq!(command.association.data_scope, 7);
     assert_eq!(command.association.user_id, None);
     assert_eq!(command.association.owner_type, None);
@@ -555,10 +555,10 @@ fn protocol_dead_letter_intent_carries_appbase_association_fields_without_iam_de
         "decode.invalid_frame",
         "object-store://payloads/msg-009",
     )
-    .with_association(AiotStorageAssociation::tenant_org(10001, 20001).with_data_scope(7));
+    .with_association(AiotStorageAssociation::tenant_org(100001, 0).with_data_scope(7));
 
-    assert_eq!(dead_letter.association.tenant_id, 10001);
-    assert_eq!(dead_letter.association.organization_id, 20001);
+    assert_eq!(dead_letter.association.tenant_id, 100001);
+    assert_eq!(dead_letter.association.organization_id, 0);
     assert_eq!(dead_letter.association.data_scope, 7);
 }
 
@@ -839,7 +839,7 @@ fn in_memory_protocol_uow_records_primary_write_and_outbox_atomically() {
 #[test]
 fn in_memory_protocol_uow_preserves_appbase_association_in_primary_and_outbox_records() {
     let uow = InMemoryProtocolIngestUnitOfWork::new();
-    let association = AiotStorageAssociation::tenant_org(10001, 20001)
+    let association = AiotStorageAssociation::tenant_org(100001, 0)
         .with_user_id(30001)
         .with_data_scope(7);
     let command = AiotProtocolStorageCommand::new(
