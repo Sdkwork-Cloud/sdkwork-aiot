@@ -4,6 +4,7 @@ import {
   type SdkworkAiotAppClient,
   type SdkworkAiotAppClientConfig,
 } from '@sdkwork/aiot-app-sdk';
+import { readOptionalBearerToken } from '@sdkwork/aiot-app-core';
 
 import { resolveAiotAppApiBaseUrl } from './sdkBaseUrls';
 
@@ -11,18 +12,13 @@ export type SdkworkAiotPcAppClientConfig = SdkworkAiotAppClientConfig;
 
 let aiotAppSdkClient: SdkworkAiotAppClient | null = null;
 
-function normalizeBearerToken(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-}
-
 export function createAiotAppSdkClientConfig(
   session = readPcReactRuntimeSession(),
 ): SdkworkAiotPcAppClientConfig {
   return {
     baseUrl: resolveAiotAppApiBaseUrl(),
-    authToken: normalizeBearerToken(session.authToken),
-    accessToken: normalizeBearerToken(session.accessToken),
+    authToken: readOptionalBearerToken(session.authToken),
+    accessToken: readOptionalBearerToken(session.accessToken),
     platform: 'pc',
   };
 }

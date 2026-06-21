@@ -5,6 +5,12 @@ import type {
   SdkworkAiotAppClient,
 } from "@sdkwork/aiot-app-sdk";
 import {
+  normalizeText,
+  readNumber,
+  readRecord,
+  readString,
+} from "@sdkwork/aiot-app-core";
+import {
   createEmptySdkworkIotCatalog,
   type SdkworkIotAlert,
   type SdkworkIotCatalogData,
@@ -27,37 +33,6 @@ export interface CreateSdkworkIotServiceOptions {
 export interface SdkworkIotService {
   getCatalog(input?: GetSdkworkIotCatalogInput): Promise<SdkworkIotCatalogData>;
   getEmptyCatalog(input?: GetSdkworkIotCatalogInput): SdkworkIotCatalogData;
-}
-
-function normalizeText(value: string | undefined): string {
-  return (value ?? "").trim().toLowerCase();
-}
-
-function readRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
-function readString(value: unknown, fallback = ""): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return fallback;
-}
-
-function readNumber(value: unknown, fallback = 0): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-  return fallback;
 }
 
 function normalizeHealth(status: string): SdkworkIotNode["healthLevel"] {

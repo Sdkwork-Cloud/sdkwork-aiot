@@ -4,6 +4,7 @@ packages:
   - "../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core"
   - "../../../sdkwork-core/sdkwork-core-pc-react"
   - "../../../sdkwork-ui/sdkwork-ui-pc-react"
+  - "../../../sdkwork-utils/packages/sdkwork-utils-typescript"
 
 catalog:
   "@types/react": ^19.2.14

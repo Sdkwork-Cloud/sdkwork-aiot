@@ -12,7 +12,7 @@ import {
   loadProfile,
   mergeRuntimeEnv,
   REPO_ROOT,
-  resolveDevProfileId,
+  resolveDevProfileFromDeploymentProfile,
   resolveGatewayBind,
   resolveSurfaceHttpUrl,
   shouldAutostartGateway,
@@ -33,8 +33,9 @@ function cargoCommand() {
 
 function parseArgs(argv) {
   const settings = {
-    hosting: 'self-hosted',
+    deploymentProfile: 'standalone',
     serviceLayout: 'split-services',
+    database: 'sqlite',
     withSimulator: false,
     dryRun: false,
     help: false,
@@ -46,8 +47,8 @@ function parseArgs(argv) {
       settings.help = true;
       continue;
     }
-    if (arg === '--hosting') {
-      settings.hosting = argv[index + 1] ?? settings.hosting;
+    if (arg === '--deployment-profile') {
+      settings.deploymentProfile = argv[index + 1] ?? settings.deploymentProfile;
       index += 1;
       continue;
     }
@@ -56,13 +57,23 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (arg === '--database') {
+      settings.database = argv[index + 1] ?? settings.database;
+      index += 1;
+      continue;
+    }
     if (arg === '--with-simulator') {
       settings.withSimulator = true;
       continue;
     }
+    if (arg === '--hosting') {
+      throw new Error(
+        '--hosting is retired; use --deployment-profile standalone or --deployment-profile cloud',
+      );
+    }
     if (arg === '--topology') {
       throw new Error(
-        '--topology is retired; use --hosting (standalone -> self-hosted, cloud -> cloud-hosted)',
+        '--topology is retired; use --deployment-profile standalone or --deployment-profile cloud',
       );
     }
     if (arg === '--dry-run') {
@@ -79,8 +90,9 @@ function printHelp() {
 Topology-aware AIoT dev entry. Loads configs/topology profile env via @sdkwork/app-topology.
 
 Options:
-  --hosting <self-hosted|cloud-hosted>              Default: self-hosted
+  --deployment-profile <standalone|cloud>           Default: standalone
   --service-layout <split-services>                 Default: split-services
+  --database <sqlite|postgres>                      Default: sqlite
   --with-simulator                                  Also start sdkwork-aiot-xiaozhi-simulator-ui
   --dry-run                                         Print plan without executing
   --help, -h
@@ -219,8 +231,10 @@ async function main() {
     process.exit(0);
   }
 
-  const profileId = resolveDevProfileId(settings.hosting, settings.serviceLayout)
-    || DEFAULT_DEV_PROFILE_ID;
+  const profileId = resolveDevProfileFromDeploymentProfile(
+    settings.deploymentProfile,
+    settings.serviceLayout,
+  ) || DEFAULT_DEV_PROFILE_ID;
   const profileEnv = loadProfile(profileId);
   const runtimeEnv = mergeRuntimeEnv(process.env, profileEnv, {
     SDKWORK_AIOT_PROFILE_ID: profileId,

@@ -24,21 +24,22 @@ fn quoted_json_values_after_key(document: &str, key: &str) -> Vec<String> {
         .collect()
 }
 
+fn strip_utf8_bom(text: &str) -> &str {
+    text.strip_prefix('\u{FEFF}').unwrap_or(text)
+}
+
 fn topology_retired_env_keys(document: &str) -> Vec<String> {
-    let marker = r#""retired": {
-    "envKeys": ["#;
-    let start = document.find(marker).expect("retired envKeys array") + marker.len();
-    let rest = &document[start..];
-    let end = rest.find(']').expect("retired envKeys array end");
-    rest[..end]
-        .split(',')
-        .filter_map(|entry| {
-            let trimmed = entry.trim().trim_matches('"');
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
+    let parsed: serde_json::Value = serde_json::from_str(strip_utf8_bom(document))
+        .expect("topology.spec.json must be valid JSON");
+    parsed["retired"]["envKeys"]
+        .as_array()
+        .expect("topology.spec.json retired.envKeys must be an array")
+        .iter()
+        .map(|entry| {
+            entry
+                .as_str()
+                .expect("topology.spec.json retired.envKeys entries must be strings")
+                .to_string()
         })
         .collect()
 }
@@ -190,6 +191,96 @@ fn service_shells_bootstrap_shared_device_database() {
 }
 
 #[test]
+fn github_packaging_workflow_declares_sdkwork_utils() {
+    let workflow_text =
+        fs::read_to_string(workspace_root().join("sdkwork.workflow.json")).expect("workflow");
+    assert!(workflow_text.contains("sdkwork-utils"));
+}
+
+#[test]
+fn root_package_json_exposes_standard_pnpm_scripts() {
+    let package_json =
+        fs::read_to_string(workspace_root().join("package.json")).expect("package.json");
+    for script in [
+        "\"dev\"",
+        "\"build\"",
+        "\"test\"",
+        "\"check\"",
+        "\"verify\"",
+        "\"clean\"",
+        "\"topology:validate\"",
+        "\"api:check\"",
+        "\"api:materialize\"",
+        "\"api:materialize:check\"",
+        "\"sdk:generate\"",
+        "\"sdk:generate:check\"",
+        "\"sdk:check\"",
+        "\"gateway:run\"",
+        "\"gateway:validate\"",
+        "\"gateway:plan\"",
+        "\"release:build\"",
+        "\"release:validate\"",
+        "\"release:plan\"",
+        "\"deploy:plan\"",
+        "\"deploy:validate\"",
+        "\"sbom:generate\"",
+        "\"sbom:check\"",
+        "\"topology:plan\"",
+        "\"test:workspace-standard\"",
+    ] {
+        assert!(
+            package_json.contains(script),
+            "package.json must expose standard script {script}"
+        );
+    }
+}
+
+#[test]
+fn shared_app_core_declares_sdkwork_utils_typescript() {
+    let root = workspace_root();
+    let shared_workspace =
+        fs::read_to_string(root.join("apps/sdkwork-aiot-shared/pnpm-workspace.yaml"))
+            .expect("shared pnpm workspace");
+    assert!(
+        shared_workspace.contains("sdkwork-utils-typescript"),
+        "shared pnpm workspace must include sdkwork-utils-typescript"
+    );
+
+    let app_core_package = fs::read_to_string(
+        root.join("apps/sdkwork-aiot-shared/packages/sdkwork-aiot-app-core/package.json"),
+    )
+    .expect("app-core package.json");
+    assert!(
+        app_core_package.contains("@sdkwork/utils"),
+        "app-core must depend on @sdkwork/utils"
+    );
+    assert!(
+        root.join("tools/aiot_sdk_generate.mjs").exists(),
+        "tools/aiot_sdk_generate.mjs is required for sdk:generate and sdk:check"
+    );
+}
+
+#[test]
+fn shared_app_core_exports_runtime_env_helpers() {
+    let root = workspace_root();
+    let app_core_index = fs::read_to_string(
+        root.join("apps/sdkwork-aiot-shared/packages/sdkwork-aiot-app-core/src/index.ts"),
+    )
+    .expect("app-core index");
+    let runtime_env =
+        fs::read_to_string(root.join(
+            "apps/sdkwork-aiot-shared/packages/sdkwork-aiot-app-core/src/utils/runtimeEnv.ts",
+        ))
+        .expect("runtime env helpers");
+
+    assert!(runtime_env.contains("@sdkwork/utils"));
+    assert!(runtime_env.contains("readImportMetaEnv"));
+    assert!(runtime_env.contains("readProcessEnv"));
+    assert!(app_core_index.contains("readImportMetaEnv"));
+    assert!(app_core_index.contains("readOptionalBearerToken"));
+}
+
+#[test]
 fn standards_alignment_roadmap_is_documented() {
     let root = workspace_root();
     let adr = root.join("docs/adr/004-standards-alignment-roadmap.md");
@@ -197,6 +288,7 @@ fn standards_alignment_roadmap_is_documented() {
     let adr_text = fs::read_to_string(&adr).expect("standards alignment ADR");
     assert!(adr_text.contains("sdkwork-web-framework"));
     assert!(adr_text.contains("sdkwork-database"));
+    assert!(adr_text.contains("sdkwork-utils"));
     assert!(adr_text.contains("sdkwork-discovery"));
 }
 
@@ -241,6 +333,7 @@ fn workspace_declares_sdkwork_web_framework_dependencies() {
         "sdkwork-iam-web-adapter",
         "sdkwork-database-config",
         "sdkwork-database-sqlx",
+        "sdkwork-utils-rust",
     ] {
         assert!(
             cargo.contains(dependency),
@@ -575,8 +668,12 @@ fn topology_dev_orchestrator_reads_spec_processes() {
         "scripts/aiot-dev.mjs must centralize process planning"
     );
     assert!(
-        dev.contains("resolveDevProfileId"),
-        "scripts/aiot-dev.mjs must resolve profile ids from hosting/service layout"
+        dev.contains("resolveDevProfileFromDeploymentProfile"),
+        "scripts/aiot-dev.mjs must resolve profiles from deployment-profile axis"
+    );
+    assert!(
+        dev.contains("--deployment-profile"),
+        "scripts/aiot-dev.mjs must accept --deployment-profile"
     );
 }
 

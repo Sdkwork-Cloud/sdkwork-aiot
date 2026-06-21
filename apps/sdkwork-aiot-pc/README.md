@@ -14,7 +14,7 @@ Client runtime reads v2 topology surface keys from `specs/topology.spec.json` vi
 Start the backend stack from the repository root:
 
 ```bash
-pnpm aiot:dev
+pnpm dev
 ```
 
 Optional renderer overrides: copy `.env.example` into this directory when running a Vite shell locally.

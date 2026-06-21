@@ -86,7 +86,11 @@ function collectFiles(relativeRoot) {
 }
 
 function readText(relativePath) {
-  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8').replace(/^\uFEFF/u, '');
+}
+
+function readJson(relativePath) {
+  return JSON.parse(readText(relativePath));
 }
 
 const files = scanRoots.flatMap((root) => collectFiles(root));
@@ -110,7 +114,7 @@ for (const { id, pattern } of bannedPatterns) {
 }
 
 assert.ok(fs.existsSync(path.join(repoRoot, 'specs/topology.spec.json')), 'topology spec required');
-const spec = JSON.parse(readText('specs/topology.spec.json'));
+const spec = readJson('specs/topology.spec.json');
 assert.equal(spec.schemaVersion, 2);
 assert.equal(spec.archetype, 'application-rest-edge-device');
 assert.equal(spec.defaults.developmentProfileId, 'self-hosted.split-services.development');
@@ -138,12 +142,17 @@ assert.match(
   'package.json must depend on @sdkwork/app-topology',
 );
 assert.match(
+  JSON.stringify(packageJson.scripts?.dev ?? ''),
+  /--deployment-profile\s+standalone/u,
+  'package.json dev script must use --deployment-profile standalone',
+);
+assert.doesNotMatch(
   JSON.stringify(packageJson.scripts ?? {}),
-  /aiot:dev/u,
-  'package.json must expose aiot:dev',
+  /"aiot:/u,
+  'package.json must not expose application-code-prefixed public root scripts',
 );
 
-assert.equal(spec.scripts?.aiotDev, 'scripts/aiot-dev.mjs');
+assert.equal(spec.scripts?.devOrchestrator, 'scripts/aiot-dev.mjs');
 
 const aiotDevScript = readText('scripts/aiot-dev.mjs');
 assert.match(aiotDevScript, /listOrchestrationProcesses/u, 'aiot-dev must spawn from topology orchestration');

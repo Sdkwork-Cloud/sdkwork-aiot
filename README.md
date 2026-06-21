@@ -7,6 +7,7 @@ Standards alignment status and migration phases are tracked in `docs/adr/004-sta
 Quick verification:
 
 ```bash
+pnpm check
 pnpm verify
 ```
 
@@ -25,7 +26,7 @@ Root directory dictionary (active capabilities):
 | `docs/` | ADRs, topology, production readiness |
 | `specs/` | Component and topology contracts |
 | `tests/` | Cross-package test index |
-| `jobs/`, `tools/`, `examples/` | Reserved capability placeholders |
+| `jobs/`, `tools/`, `plugins/`, `examples/` | Reserved capability placeholders |
 
 Inactive standard directories are documented rather than omitted without explanation.
 
@@ -34,19 +35,19 @@ Inactive standard directories are documented rather than omitted without explana
 Default profile: `self-hosted.split-services.development` (`specs/topology.spec.json`).
 
 ```bash
-pnpm aiot:dev
+pnpm dev
 ```
 
 Cloud development profile:
 
 ```bash
-pnpm aiot:dev:cloud
+pnpm dev:server:sqlite:split-services:cloud
 ```
 
 Include the Xiaozhi simulator UI:
 
 ```bash
-pnpm aiot:dev:simulator
+node scripts/dev-with-simulator.mjs
 ```
 
 See `docs/topology-standard.md` and `configs/topology/README.md`.
@@ -56,8 +57,8 @@ See `docs/topology-standard.md` and `configs/topology/README.md`.
 The standalone gateway includes a cross-platform terminal UI simulator for
 local Xiaozhi compatibility checks.
 
-`pnpm aiot:dev` starts app-api, admin-api, and edge gateway from the active
-topology profile. Use `pnpm aiot:dev:simulator` to also launch the simulator UI.
+`pnpm dev` starts app-api, admin-api, and edge gateway from the active
+topology profile. Use `node scripts/dev-with-simulator.mjs` to also launch the simulator UI.
 
 The simulator exercises the same compatibility surface used by ESP32 firmware:
 

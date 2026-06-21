@@ -30,8 +30,8 @@ pub async fn bootstrap_aiot_database(pool: DatabasePool) -> Result<AiotDatabaseH
     let manifest = DatabaseManifest::from_file(module.manifest_path())
         .map_err(|error| format!("read aiot database manifest failed: {error}"))?;
     let options = lifecycle_options_from_env("AIOT_DEVICE", &manifest);
-    let orchestrator = LifecycleOrchestrator::new(pool.clone(), module.clone())
-        .with_applied_by("sdkwork-aiot");
+    let orchestrator =
+        LifecycleOrchestrator::new(pool.clone(), module.clone()).with_applied_by("sdkwork-aiot");
 
     orchestrator
         .init()

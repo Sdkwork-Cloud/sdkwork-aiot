@@ -1,4 +1,9 @@
 import {
+  readFirstNonBlank,
+  readImportMetaEnv,
+  readProcessEnv,
+} from '@sdkwork/aiot-app-core';
+import {
   DEFAULT_LOCAL_APPLICATION_ADMIN_HTTP_URL,
   DEFAULT_LOCAL_APPLICATION_APP_HTTP_URL,
   DEFAULT_LOCAL_EDGE_DEVICE_INGRESS_HTTP_URL,
@@ -25,18 +30,11 @@ function readRuntimeImportMetaEnv(): RuntimeImportMetaEnv {
 }
 
 export function readSdkBaseUrlEnvValue(key: string): string | undefined {
-  const value = readRuntimeImportMetaEnv()[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+  return readImportMetaEnv(key);
 }
 
 function readNodeEnvValue(key: string): string | undefined {
-  const processLike = (globalThis as {
-    process?: {
-      env?: Record<string, string | undefined>;
-    };
-  }).process;
-  const value = processLike?.env?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+  return readProcessEnv(key);
 }
 
 export function isSdkRuntimeDev(): boolean {
@@ -134,38 +132,42 @@ function resolveLocalDevPlatformApiGatewayBaseUrl(): string | undefined {
 }
 
 export function resolveAiotAppApiBaseUrl(): string {
-  const value =
-    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL)
-    ?? resolveLocalDevApplicationAppHttpBaseUrl()
-    ?? resolveSameOriginHttpBaseUrl()
-    ?? DEFAULT_LOCAL_APPLICATION_APP_HTTP_URL;
+  const value = readFirstNonBlank([
+    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL),
+    resolveLocalDevApplicationAppHttpBaseUrl(),
+    resolveSameOriginHttpBaseUrl(),
+    DEFAULT_LOCAL_APPLICATION_APP_HTTP_URL,
+  ]) ?? DEFAULT_LOCAL_APPLICATION_APP_HTTP_URL;
   return normalizeHttpSdkBaseUrl(value);
 }
 
 export function resolveAiotAdminApiBaseUrl(): string {
-  const value =
-    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL)
-    ?? resolveLocalDevApplicationAdminHttpBaseUrl()
-    ?? resolveSameOriginHttpBaseUrl()
-    ?? DEFAULT_LOCAL_APPLICATION_ADMIN_HTTP_URL;
+  const value = readFirstNonBlank([
+    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL),
+    resolveLocalDevApplicationAdminHttpBaseUrl(),
+    resolveSameOriginHttpBaseUrl(),
+    DEFAULT_LOCAL_APPLICATION_ADMIN_HTTP_URL,
+  ]) ?? DEFAULT_LOCAL_APPLICATION_ADMIN_HTTP_URL;
   return normalizeHttpSdkBaseUrl(value);
 }
 
 export function resolveAiotPlatformApiGatewayBaseUrl(): string {
-  const value =
-    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL)
-    ?? resolveLocalDevPlatformApiGatewayBaseUrl()
-    ?? resolveSameOriginHttpBaseUrl()
-    ?? DEFAULT_LOCAL_PLATFORM_API_GATEWAY_HTTP_URL;
+  const value = readFirstNonBlank([
+    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL),
+    resolveLocalDevPlatformApiGatewayBaseUrl(),
+    resolveSameOriginHttpBaseUrl(),
+    DEFAULT_LOCAL_PLATFORM_API_GATEWAY_HTTP_URL,
+  ]) ?? DEFAULT_LOCAL_PLATFORM_API_GATEWAY_HTTP_URL;
   return normalizeHttpSdkBaseUrl(value);
 }
 
 export function resolveAiotEdgeIngressHttpBaseUrl(): string {
-  const value =
-    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL)
-    ?? resolveLocalDevEdgeIngressHttpBaseUrl()
-    ?? resolveSameOriginHttpBaseUrl()
-    ?? DEFAULT_LOCAL_EDGE_DEVICE_INGRESS_HTTP_URL;
+  const value = readFirstNonBlank([
+    readSdkBaseUrlEnvValue(VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL),
+    resolveLocalDevEdgeIngressHttpBaseUrl(),
+    resolveSameOriginHttpBaseUrl(),
+    DEFAULT_LOCAL_EDGE_DEVICE_INGRESS_HTTP_URL,
+  ]) ?? DEFAULT_LOCAL_EDGE_DEVICE_INGRESS_HTTP_URL;
   return normalizeHttpSdkBaseUrl(value);
 }
 

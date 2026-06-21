@@ -9,13 +9,13 @@ Platform standard: `../sdkwork-specs/APP_RUNTIME_TOPOLOGY_ADOPTION.md`
 `self-hosted.split-services.development` — start the split-service stack with:
 
 ```bash
-pnpm aiot:dev
+pnpm dev
 ```
 
 Cloud development profile:
 
 ```bash
-pnpm aiot:dev:cloud
+pnpm dev:server:sqlite:split-services:cloud
 ```
 
 ## Surfaces

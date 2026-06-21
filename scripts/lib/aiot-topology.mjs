@@ -28,6 +28,29 @@ export function resolveDevProfileId(hosting, serviceLayout = 'split-services') {
   return buildProfileId(hosting, serviceLayout, 'development');
 }
 
+export function resolveHostingFromDeploymentProfile(deploymentProfile) {
+  switch (deploymentProfile) {
+    case 'standalone':
+      return 'self-hosted';
+    case 'cloud':
+      return 'cloud-hosted';
+    default:
+      throw new Error(
+        `unsupported deployment profile "${deploymentProfile}"; use standalone or cloud`,
+      );
+  }
+}
+
+export function resolveDevProfileFromDeploymentProfile(
+  deploymentProfile,
+  serviceLayout = 'split-services',
+) {
+  return resolveDevProfileId(
+    resolveHostingFromDeploymentProfile(deploymentProfile),
+    serviceLayout,
+  );
+}
+
 export const loadProfile = runtime.loadProfile;
 export const applyProfileEnv = runtime.applyProfileEnv;
 export const mergeRuntimeEnv = runtime.mergeRuntimeEnv;

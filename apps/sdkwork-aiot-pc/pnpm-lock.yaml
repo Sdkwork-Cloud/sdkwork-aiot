@@ -29,6 +29,9 @@ importers:
 
   .:
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.2.2
+        version: 4.2.2(vite@8.0.3(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.9.2)(jiti@2.7.0))
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -62,6 +65,9 @@ importers:
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
+      tailwindcss:
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -248,6 +254,15 @@ importers:
         specifier: ^3.5.32
         version: 3.5.35(typescript@6.0.2)
 
+  ../../../sdkwork-utils/packages/sdkwork-utils-typescript:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   ../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript:
     dependencies:
       '@sdkwork/sdk-common':
@@ -261,11 +276,47 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
-  packages/sdkwork-aiot-pc-console-device:
+  ../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core:
     dependencies:
       '@sdkwork/aiot-app-sdk':
         specifier: workspace:*
         version: link:../../../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript
+      '@sdkwork/utils-typescript':
+        specifier: workspace:*
+        version: link:../../../../../sdkwork-utils/packages/sdkwork-utils-typescript
+
+  packages/sdkwork-aiot-pc-console-agent:
+    dependencies:
+      '@sdkwork/aiot-app-core':
+        specifier: workspace:*
+        version: link:../../../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core
+      '@sdkwork/aiot-app-sdk':
+        specifier: workspace:*
+        version: link:../../../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript
+      '@sdkwork/aiot-pc-core':
+        specifier: workspace:*
+        version: link:../sdkwork-aiot-pc-core
+      '@sdkwork/ui-pc-react':
+        specifier: workspace:*
+        version: link:../../../../../sdkwork-ui/sdkwork-ui-pc-react
+      react:
+        specifier: '>=18.2.0 <20.0.0'
+        version: 19.2.4
+      react-dom:
+        specifier: '>=18.2.0 <20.0.0'
+        version: 19.2.4(react@19.2.4)
+
+  packages/sdkwork-aiot-pc-console-device:
+    dependencies:
+      '@sdkwork/aiot-app-core':
+        specifier: workspace:*
+        version: link:../../../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core
+      '@sdkwork/aiot-app-sdk':
+        specifier: workspace:*
+        version: link:../../../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript
+      '@sdkwork/aiot-pc-core':
+        specifier: workspace:*
+        version: link:../sdkwork-aiot-pc-core
       '@sdkwork/core-pc-react':
         specifier: workspace:*
         version: link:../../../../../sdkwork-core/sdkwork-core-pc-react
@@ -284,9 +335,33 @@ importers:
       '@sdkwork/aiot-app-sdk':
         specifier: workspace:*
         version: link:../../../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript
+      '@sdkwork/aiot-pc-core':
+        specifier: workspace:*
+        version: link:../sdkwork-aiot-pc-core
       '@sdkwork/core-pc-react':
         specifier: workspace:*
         version: link:../../../../../sdkwork-core/sdkwork-core-pc-react
+      '@sdkwork/ui-pc-react':
+        specifier: workspace:*
+        version: link:../../../../../sdkwork-ui/sdkwork-ui-pc-react
+      react:
+        specifier: '>=18.2.0 <20.0.0'
+        version: 19.2.4
+      react-dom:
+        specifier: '>=18.2.0 <20.0.0'
+        version: 19.2.4(react@19.2.4)
+
+  packages/sdkwork-aiot-pc-console-voice:
+    dependencies:
+      '@sdkwork/aiot-app-core':
+        specifier: workspace:*
+        version: link:../../../sdkwork-aiot-shared/packages/sdkwork-aiot-app-core
+      '@sdkwork/aiot-app-sdk':
+        specifier: workspace:*
+        version: link:../../../../sdks/sdkwork-aiot-app-sdk/sdkwork-aiot-app-sdk-typescript
+      '@sdkwork/aiot-pc-core':
+        specifier: workspace:*
+        version: link:../sdkwork-aiot-pc-core
       '@sdkwork/ui-pc-react':
         specifier: workspace:*
         version: link:../../../../../sdkwork-ui/sdkwork-ui-pc-react
@@ -1720,6 +1795,9 @@ packages:
   '@types/mdurl@2.0.0':
     resolution: {integrity: sha512-RGdgjQUZba5p6QEFAVx2OGb8rQDL/cPRG7GiedRzMcJ1tYnUANBncjbSB1NRGwbvjcPeikRABz2nshyPk1bhWg==}
 
+  '@types/node@22.20.0':
+    resolution: {integrity: sha512-QWlFW2wf3nTjC13/DqRnBpR4ZO36VJH/JVBkA/vcnmbTBNQIlnObqyqZE1tUR7+Ni23Lda8R1BxMfbXRpCUx5g==}
+
   '@types/node@25.9.2':
     resolution: {integrity: sha512-G05zqtJhcDLb8uslf5EjCxXg9G1KQxiV8OS0R26IC//Eoyitzqe8z37I7cqvnZlrlSfgocQRfSn/AHBZJJFyGw==}
 
@@ -2707,6 +2785,9 @@ packages:
 
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
+
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
   undici-types@7.24.6:
     resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
@@ -4271,6 +4352,10 @@ snapshots:
 
   '@types/mdurl@2.0.0': {}
 
+  '@types/node@22.20.0':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/node@25.9.2':
     dependencies:
       undici-types: 7.24.6
@@ -5246,6 +5331,8 @@ snapshots:
   typescript@6.0.2: {}
 
   ufo@1.6.4: {}
+
+  undici-types@6.21.0: {}
 
   undici-types@7.24.6: {}
 

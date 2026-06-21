@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.SDKWORK_ACCESS_TOKEN': JSON.stringify(env.SDKWORK_ACCESS_TOKEN ?? ''),
     },
-      plugins: [react()],
+          plugins: [react()],
   resolve: {
     alias: {
       '@sdkwork/aiot-pc-console-agent': path.resolve(__dirname, 'packages/sdkwork-aiot-pc-console-agent/src/index.ts'),
@@ -25,4 +25,5 @@ export default defineConfig(({ mode }) => {
   server: {
     port: 5175,
   },
+  };
 });

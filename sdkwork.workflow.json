@@ -49,6 +49,13 @@
       "ref": "main",
       "refInput": "SDKWORK_APP_TOPOLOGY_REF",
       "tokenSecret": "SDKWORK_RELEASE_TOKEN"
+    },
+    {
+      "id": "sdkwork-utils",
+      "repository": "Sdkwork-Cloud/sdkwork-utils",
+      "ref": "main",
+      "refInput": "SDKWORK_UTILS_REF",
+      "tokenSecret": "SDKWORK_RELEASE_TOKEN"
     }
   ],
   "toolchains": {
@@ -89,7 +96,7 @@
       {
         "name": "Validate topology and OpenAPI contracts",
         "shell": "pwsh",
-        "run": "pnpm test:topology-validate; pnpm test:topology-baggage; pnpm test:app-openapi-context; pnpm test:openapi-web-context"
+        "run": "pnpm test:topology-validate; pnpm test:topology-baggage; pnpm api:check; pnpm sdk:check"
       }
     ]
   },

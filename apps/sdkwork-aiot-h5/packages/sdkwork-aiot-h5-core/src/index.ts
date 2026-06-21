@@ -3,36 +3,21 @@ import {
   type SdkworkAiotAppClient,
   type SdkworkAiotAppClientConfig,
 } from '@sdkwork/aiot-app-sdk';
-
-function normalizeBearerToken(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-}
-
-function readEnv(key: string, fallback: string): string {
-  const value = import.meta.env[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
-}
-
-function readPrivateEnv(key: string): string | undefined {
-  const processEnv = (
-    globalThis as typeof globalThis & {
-      process?: {
-        env?: Record<string, string | undefined>;
-      };
-    }
-  ).process?.env;
-
-  const value = processEnv?.[key];
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-}
+import {
+  readImportMetaEnvWithDefault,
+  readOptionalBearerToken,
+  readProcessEnv,
+} from '@sdkwork/aiot-app-core';
 
 let aiotAppSdkClient: SdkworkAiotAppClient | null = null;
 
 export function createAiotH5AppSdkClientConfig(): SdkworkAiotAppClientConfig {
   return {
-    accessToken: normalizeBearerToken(readPrivateEnv('SDKWORK_ACCESS_TOKEN')),
-    baseUrl: readEnv('VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL', 'http://127.0.0.1:8082'),
+    accessToken: readOptionalBearerToken(readProcessEnv('SDKWORK_ACCESS_TOKEN')),
+    baseUrl: readImportMetaEnvWithDefault(
+      'VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL',
+      'http://127.0.0.1:8082',
+    ),
     platform: 'h5',
   };
 }

@@ -1,222 +1,222 @@
-﻿{
-    "schemaVersion":  2,
-    "kind":  "sdkwork.app.topology",
-    "appId":  "sdkwork-aiot",
-    "archetype":  "application-rest-edge-device",
-    "profileRoot":  "configs/topology",
-    "profilePattern":  "{hosting}.{serviceLayout}.{environment}.env",
-    "vocabulary":  {
-                       "hosting":  {
-                                       "allowed":  [
-                                                       "self-hosted",
-                                                       "cloud-hosted"
-                                                   ]
-                                   },
-                       "serviceLayout":  {
-                                             "allowed":  [
-                                                             "split-services"
-                                                         ]
-                                         },
-                       "environment":  {
-                                           "allowed":  [
-                                                           "development",
-                                                           "production"
-                                                       ]
-                                       },
-                       "connectivityPlane":  {
-                                                 "allowed":  [
-                                                                 "application",
-                                                                 "platform",
-                                                                 "edge"
-                                                             ]
-                                             }
-                   },
-    "defaults":  {
-                     "developmentProfileId":  "self-hosted.split-services.development",
-                     "productionProfileId":  "cloud-hosted.split-services.production",
-                     "gatewayBind":  "127.0.0.1:3900"
-                 },
-    "profileFiles":  {
-                         "self-hosted.split-services.development":  "configs/topology/self-hosted.split-services.development.env",
-                         "cloud-hosted.split-services.development":  "configs/topology/cloud-hosted.split-services.development.env",
-                         "self-hosted.split-services.production":  "configs/topology/self-hosted.split-services.production.env",
-                         "cloud-hosted.split-services.production":  "configs/topology/cloud-hosted.split-services.production.env"
-                     },
-    "envKeys":  {
-                    "hosting":  "SDKWORK_AIOT_HOSTING",
-                    "serviceLayout":  "SDKWORK_AIOT_SERVICE_LAYOUT",
-                    "environment":  "SDKWORK_AIOT_ENVIRONMENT",
-                    "profileId":  "SDKWORK_AIOT_PROFILE_ID",
-                    "clientHosting":  "VITE_SDKWORK_AIOT_HOSTING",
-                    "gatewayAutostart":  "SDKWORK_AIOT_PLATFORM_API_GATEWAY_AUTOSTART",
-                    "cloudGatewayBind":  "SDKWORK_API_GATEWAY_BIND",
-                    "apiGatewayBaseUrl":  "SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
-                    "clientApiGatewayBaseUrl":  "VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL"
-                },
-    "surfaces":  {
-                     "application.app-http":  {
-                                                  "connectivityPlane":  "application",
-                                                  "protocols":  [
-                                                                    "http"
-                                                                ],
-                                                  "bindEnv":  "SDKWORK_AIOT_APPLICATION_APP_HTTP_BIND",
-                                                  "httpUrlEnv":  "SDKWORK_AIOT_APPLICATION_APP_HTTP_URL",
-                                                  "clientHttpEnv":  "VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL"
-                                              },
-                     "application.admin-http":  {
-                                                    "connectivityPlane":  "application",
-                                                    "protocols":  [
-                                                                      "http"
-                                                                  ],
-                                                    "bindEnv":  "SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_BIND",
-                                                    "httpUrlEnv":  "SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL",
-                                                    "clientHttpEnv":  "VITE_SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL"
-                                                },
-                     "edge.device-ingress":  {
-                                                 "connectivityPlane":  "edge",
-                                                 "protocols":  [
-                                                                   "http",
-                                                                   "websocket",
-                                                                   "mqtt",
-                                                                   "udp"
-                                                               ],
-                                                 "bindEnv":  "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_BIND",
-                                                 "httpUrlEnv":  "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL",
-                                                 "websocketUrlEnv":  "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_WEBSOCKET_URL",
-                                                 "clientHttpEnv":  "VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL",
-                                                 "clientWebsocketEnv":  "VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_WEBSOCKET_URL"
-                                             },
-                     "platform.api-gateway":  {
-                                                  "connectivityPlane":  "platform",
-                                                  "protocols":  [
-                                                                    "http"
-                                                                ],
-                                                  "owner":  "sdkwork-api-gateway",
-                                                  "bindEnv":  "SDKWORK_API_GATEWAY_BIND",
-                                                  "httpUrlEnv":  "SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
-                                                  "clientHttpEnv":  "VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
-                                                  "autostartEnv":  "SDKWORK_AIOT_PLATFORM_API_GATEWAY_AUTOSTART"
-                                              }
-                 },
-    "cloudPublicHosts":  {
-                             "application.app-http":  {
-                                                          "httpHost":  "aiot.sdkwork.com"
-                                                      },
-                             "application.admin-http":  {
-                                                            "httpHost":  "aiot-admin.sdkwork.com"
-                                                        },
-                             "edge.device-ingress":  {
-                                                         "httpHost":  "edge.aiot.sdkwork.com"
-                                                     },
-                             "platform.api-gateway":  {
-                                                          "httpHost":  "api.sdkwork.com"
-                                                      }
-                         },
-    "database":  {
-                     "appPrefix":  "SDKWORK_AIOT"
-                 },
-    "components":  {
-                       "edgeGateway":  {
-                                           "crate":  "sdkwork-aiot-gateway",
-                                           "binary":  "sdkwork-aiot-gateway"
-                                       },
-                       "appApi":  {
-                                      "crate":  "sdkwork-aiot-app-api",
-                                      "binary":  "sdkwork-aiot-app-api"
-                                  },
-                       "adminApi":  {
-                                        "crate":  "sdkwork-aiot-admin-api",
-                                        "binary":  "sdkwork-aiot-admin-api"
-                                    },
-                       "cloudGateway":  {
-                                            "crate":  "sdkwork-api-gateway-api-server",
-                                            "binary":  "sdkwork-api-gateway",
-                                            "repository":  "sdkwork-api-gateway"
-                                        }
-                   },
-    "orchestration":  {
-                          "profiles":  {
-                                           "self-hosted.split-services.development":  {
-                                                                                          "processes":  [
-                                                                                                            {
-                                                                                                                "id":  "application.app-http",
-                                                                                                                "crate":  "sdkwork-aiot-app-api",
-                                                                                                                "binary":  "sdkwork-aiot-app-api",
-                                                                                                                "required":  true
-                                                                                                            },
-                                                                                                            {
-                                                                                                                "id":  "application.admin-http",
-                                                                                                                "crate":  "sdkwork-aiot-admin-api",
-                                                                                                                "binary":  "sdkwork-aiot-admin-api",
-                                                                                                                "required":  true
-                                                                                                            },
-                                                                                                            {
-                                                                                                                "id":  "edge.device-ingress",
-                                                                                                                "crate":  "sdkwork-aiot-gateway",
-                                                                                                                "binary":  "sdkwork-aiot-gateway",
-                                                                                                                "required":  true
-                                                                                                            },
-                                                                                                            {
-                                                                                                                "id":  "platform.api-gateway",
-                                                                                                                "crate":  "sdkwork-api-gateway-api-server",
-                                                                                                                "binary":  "sdkwork-api-gateway",
-                                                                                                                "repository":  "sdkwork-api-gateway",
-                                                                                                                "required":  false
-                                                                                                            }
-                                                                                                        ],
-                                                                                          "healthSurfaces":  [
-                                                                                                                 "application.app-http",
-                                                                                                                 "application.admin-http",
-                                                                                                                 "edge.device-ingress"
-                                                                                                             ]
-                                                                                      },
-                                           "cloud-hosted.split-services.development":  {
-                                                                                           "processes":  [
-                                                                                                             {
-                                                                                                                 "id":  "platform.api-gateway",
-                                                                                                                 "crate":  "sdkwork-api-gateway-api-server",
-                                                                                                                 "binary":  "sdkwork-api-gateway",
-                                                                                                                 "repository":  "sdkwork-api-gateway",
-                                                                                                                 "required":  true
-                                                                                                             },
-                                                                                                             {
-                                                                                                                 "id":  "application.app-http",
-                                                                                                                 "crate":  "sdkwork-aiot-app-api",
-                                                                                                                 "binary":  "sdkwork-aiot-app-api",
-                                                                                                                 "required":  true
-                                                                                                             },
-                                                                                                             {
-                                                                                                                 "id":  "application.admin-http",
-                                                                                                                 "crate":  "sdkwork-aiot-admin-api",
-                                                                                                                 "binary":  "sdkwork-aiot-admin-api",
-                                                                                                                 "required":  true
-                                                                                                             },
-                                                                                                             {
-                                                                                                                 "id":  "edge.device-ingress",
-                                                                                                                 "crate":  "sdkwork-aiot-gateway",
-                                                                                                                 "binary":  "sdkwork-aiot-gateway",
-                                                                                                                 "required":  true
-                                                                                                             }
-                                                                                                         ],
-                                                                                           "healthSurfaces":  [
-                                                                                                                  "platform.api-gateway",
-                                                                                                                  "application.app-http",
-                                                                                                                  "application.admin-http",
-                                                                                                                  "edge.device-ingress"
-                                                                                                              ]
-                                                                                       }
-                                       }
-                      },
-    "scripts":  {
-                    "aiotDev":  "scripts/aiot-dev.mjs"
-                },
-    "retired":  {
-                    "envKeys":  [
-                                    "SDKWORK_AIOT_GATEWAY_BIND",
-                                    "SDKWORK_AIOT_APP_API_BIND",
-                                    "SDKWORK_AIOT_ADMIN_API_BIND",
-                                    "SDKWORK_AIOT_XIAOZHI_SIMULATOR_GATEWAY_HTTP"
-                                ],
-                    "notes":  "Delete retired keys from active code paths; list retained here for migration audits only."
-                }
+{
+  "schemaVersion": 2,
+  "kind": "sdkwork.app.topology",
+  "appId": "sdkwork-aiot",
+  "archetype": "application-rest-edge-device",
+  "profileRoot": "configs/topology",
+  "profilePattern": "{hosting}.{serviceLayout}.{environment}.env",
+  "vocabulary": {
+    "hosting": {
+      "allowed": [
+        "self-hosted",
+        "cloud-hosted"
+      ]
+    },
+    "serviceLayout": {
+      "allowed": [
+        "split-services"
+      ]
+    },
+    "environment": {
+      "allowed": [
+        "development",
+        "production"
+      ]
+    },
+    "connectivityPlane": {
+      "allowed": [
+        "application",
+        "platform",
+        "edge"
+      ]
+    }
+  },
+  "defaults": {
+    "developmentProfileId": "self-hosted.split-services.development",
+    "productionProfileId": "cloud-hosted.split-services.production",
+    "gatewayBind": "127.0.0.1:3900"
+  },
+  "profileFiles": {
+    "self-hosted.split-services.development": "configs/topology/self-hosted.split-services.development.env",
+    "cloud-hosted.split-services.development": "configs/topology/cloud-hosted.split-services.development.env",
+    "self-hosted.split-services.production": "configs/topology/self-hosted.split-services.production.env",
+    "cloud-hosted.split-services.production": "configs/topology/cloud-hosted.split-services.production.env"
+  },
+  "envKeys": {
+    "hosting": "SDKWORK_AIOT_HOSTING",
+    "serviceLayout": "SDKWORK_AIOT_SERVICE_LAYOUT",
+    "environment": "SDKWORK_AIOT_ENVIRONMENT",
+    "profileId": "SDKWORK_AIOT_PROFILE_ID",
+    "clientHosting": "VITE_SDKWORK_AIOT_HOSTING",
+    "gatewayAutostart": "SDKWORK_AIOT_PLATFORM_API_GATEWAY_AUTOSTART",
+    "cloudGatewayBind": "SDKWORK_API_GATEWAY_BIND",
+    "apiGatewayBaseUrl": "SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
+    "clientApiGatewayBaseUrl": "VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL"
+  },
+  "surfaces": {
+    "application.app-http": {
+      "connectivityPlane": "application",
+      "protocols": [
+        "http"
+      ],
+      "bindEnv": "SDKWORK_AIOT_APPLICATION_APP_HTTP_BIND",
+      "httpUrlEnv": "SDKWORK_AIOT_APPLICATION_APP_HTTP_URL",
+      "clientHttpEnv": "VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL"
+    },
+    "application.admin-http": {
+      "connectivityPlane": "application",
+      "protocols": [
+        "http"
+      ],
+      "bindEnv": "SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_BIND",
+      "httpUrlEnv": "SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL",
+      "clientHttpEnv": "VITE_SDKWORK_AIOT_APPLICATION_ADMIN_HTTP_URL"
+    },
+    "edge.device-ingress": {
+      "connectivityPlane": "edge",
+      "protocols": [
+        "http",
+        "websocket",
+        "mqtt",
+        "udp"
+      ],
+      "bindEnv": "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_BIND",
+      "httpUrlEnv": "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL",
+      "websocketUrlEnv": "SDKWORK_AIOT_EDGE_DEVICE_INGRESS_WEBSOCKET_URL",
+      "clientHttpEnv": "VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_HTTP_URL",
+      "clientWebsocketEnv": "VITE_SDKWORK_AIOT_EDGE_DEVICE_INGRESS_WEBSOCKET_URL"
+    },
+    "platform.api-gateway": {
+      "connectivityPlane": "platform",
+      "protocols": [
+        "http"
+      ],
+      "owner": "sdkwork-api-gateway",
+      "bindEnv": "SDKWORK_API_GATEWAY_BIND",
+      "httpUrlEnv": "SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
+      "clientHttpEnv": "VITE_SDKWORK_AIOT_PLATFORM_API_GATEWAY_HTTP_URL",
+      "autostartEnv": "SDKWORK_AIOT_PLATFORM_API_GATEWAY_AUTOSTART"
+    }
+  },
+  "cloudPublicHosts": {
+    "application.app-http": {
+      "httpHost": "aiot.sdkwork.com"
+    },
+    "application.admin-http": {
+      "httpHost": "aiot-admin.sdkwork.com"
+    },
+    "edge.device-ingress": {
+      "httpHost": "edge.aiot.sdkwork.com"
+    },
+    "platform.api-gateway": {
+      "httpHost": "api.sdkwork.com"
+    }
+  },
+  "database": {
+    "appPrefix": "SDKWORK_AIOT"
+  },
+  "components": {
+    "edgeGateway": {
+      "crate": "sdkwork-aiot-gateway",
+      "binary": "sdkwork-aiot-gateway"
+    },
+    "appApi": {
+      "crate": "sdkwork-aiot-app-api",
+      "binary": "sdkwork-aiot-app-api"
+    },
+    "adminApi": {
+      "crate": "sdkwork-aiot-admin-api",
+      "binary": "sdkwork-aiot-admin-api"
+    },
+    "cloudGateway": {
+      "crate": "sdkwork-api-gateway-api-server",
+      "binary": "sdkwork-api-gateway",
+      "repository": "sdkwork-api-gateway"
+    }
+  },
+  "orchestration": {
+    "profiles": {
+      "self-hosted.split-services.development": {
+        "processes": [
+          {
+            "id": "application.app-http",
+            "crate": "sdkwork-aiot-app-api",
+            "binary": "sdkwork-aiot-app-api",
+            "required": true
+          },
+          {
+            "id": "application.admin-http",
+            "crate": "sdkwork-aiot-admin-api",
+            "binary": "sdkwork-aiot-admin-api",
+            "required": true
+          },
+          {
+            "id": "edge.device-ingress",
+            "crate": "sdkwork-aiot-gateway",
+            "binary": "sdkwork-aiot-gateway",
+            "required": true
+          },
+          {
+            "id": "platform.api-gateway",
+            "crate": "sdkwork-api-gateway-api-server",
+            "binary": "sdkwork-api-gateway",
+            "repository": "sdkwork-api-gateway",
+            "required": false
+          }
+        ],
+        "healthSurfaces": [
+          "application.app-http",
+          "application.admin-http",
+          "edge.device-ingress"
+        ]
+      },
+      "cloud-hosted.split-services.development": {
+        "processes": [
+          {
+            "id": "platform.api-gateway",
+            "crate": "sdkwork-api-gateway-api-server",
+            "binary": "sdkwork-api-gateway",
+            "repository": "sdkwork-api-gateway",
+            "required": true
+          },
+          {
+            "id": "application.app-http",
+            "crate": "sdkwork-aiot-app-api",
+            "binary": "sdkwork-aiot-app-api",
+            "required": true
+          },
+          {
+            "id": "application.admin-http",
+            "crate": "sdkwork-aiot-admin-api",
+            "binary": "sdkwork-aiot-admin-api",
+            "required": true
+          },
+          {
+            "id": "edge.device-ingress",
+            "crate": "sdkwork-aiot-gateway",
+            "binary": "sdkwork-aiot-gateway",
+            "required": true
+          }
+        ],
+        "healthSurfaces": [
+          "platform.api-gateway",
+          "application.app-http",
+          "application.admin-http",
+          "edge.device-ingress"
+        ]
+      }
+    }
+  },
+  "scripts": {
+    "devOrchestrator": "scripts/aiot-dev.mjs"
+  },
+  "retired": {
+    "envKeys": [
+      "SDKWORK_AIOT_GATEWAY_BIND",
+      "SDKWORK_AIOT_APP_API_BIND",
+      "SDKWORK_AIOT_ADMIN_API_BIND",
+      "SDKWORK_AIOT_XIAOZHI_SIMULATOR_GATEWAY_HTTP"
+    ],
+    "notes": "Delete retired keys from active code paths; list retained here for migration audits only."
+  }
 }

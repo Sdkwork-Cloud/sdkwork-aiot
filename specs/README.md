@@ -43,7 +43,7 @@ Runtime registration uses the manifest plus `AiotProtocolRoute` metadata. The ru
 - Machine contract: `topology.spec.json` (`schemaVersion: 2`, archetype `application-rest-edge-device`)
 - Profile env: `../configs/topology/*.env`
 - Human summary: `../docs/topology-standard.md`
-- Dev entry: `pnpm aiot:dev`
+- Dev entry: `pnpm dev`
 
 ## Canonical Specs
 
@@ -64,3 +64,31 @@ This component narrows the root SDKWork standards:
 - `APP_RUNTIME_TOPOLOGY_SPEC.md`
 
 Standards alignment phases: `../docs/adr/004-standards-alignment-roadmap.md`
+
+## Project Structure
+
+- Shared Rust libraries live under `crates/`, including contracts, protocol, runtime, storage, security, observability, transport, HTTP routers, architecture checks, and the `sdkwork-aiot-adapter-xiaozhi` compatibility plugin.
+- Runnable services live under `services/`: `sdkwork-aiot-gateway`, `sdkwork-aiot-admin-api`, and `sdkwork-aiot-app-api`.
+- Tests are colocated in each crate or service under `tests/`, usually with `*_standard.rs` names.
+- Generated or packaged SDK artifacts live under `sdks/`; design and planning notes live under `docs/`.
+- The `external/` tree contains reference projects and submodules and should not be edited for normal product changes.
+
+## Build, Test, and Development Commands
+
+- `pnpm dev`: topology-aware dev entry for the default split-services profile with `--deployment-profile standalone`.
+- `pnpm dev:server:sqlite:split-services:cloud`: cloud deployment profile dev workflow.
+- `pnpm check`: workspace standard, database, API, SDK, topology, Rust fmt, and clippy gates.
+- `pnpm verify`: `pnpm check` plus `cargo test --workspace`.
+- `pnpm test:topology-validate`: validate `specs/topology.spec.json`.
+- `pnpm test:topology-baggage`: scan active paths for retired topology vocabulary.
+- `cargo build --workspace`: compile all workspace crates and services.
+- `cargo test -p sdkwork-aiot-gateway`: run tests for one package.
+- Optional persistent device DB: `$env:SDKWORK_AIOT_DEVICE_DB_PATH='D:\\data\\aiot-device.db'`.
+
+## Testing Guidelines
+
+Use Rust integration tests in each package's `tests/` directory. Name test files by behavior or standard surface, for example `xiaozhi_standard.rs`, `gateway_standard.rs`, or `transport_standard.rs`. Add focused tests for protocol compatibility, gateway routing, adapter parsing, and error cases before changing behavior. Run the narrow package test first, then `cargo test --workspace` before opening a pull request.
+
+## Security and Configuration
+
+Do not commit real device tokens, broker credentials, certificates, or local bind secrets. Prefer environment variables for service configuration. When changing Xiaozhi access paths, verify both real-device headers and browser simulator query-parameter compatibility.

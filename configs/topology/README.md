@@ -8,8 +8,8 @@ Platform standard: `../../sdkwork-specs/APP_RUNTIME_TOPOLOGY_ADOPTION.md`
 
 | Profile id | Command |
 | --- | --- |
-| `self-hosted.split-services.development` | `pnpm aiot:dev` |
-| `cloud-hosted.split-services.development` | `pnpm aiot:dev:cloud` |
+| `self-hosted.split-services.development` | `pnpm dev` |
+| `cloud-hosted.split-services.development` | `pnpm dev:server:sqlite:split-services:cloud` |
 | `self-hosted.split-services.production` | on-prem release wiring |
 | `cloud-hosted.split-services.production` | SaaS release wiring |
 

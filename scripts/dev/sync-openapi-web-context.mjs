@@ -22,10 +22,12 @@ const authorities = [
 ];
 
 let changed = 0;
+const checkOnly = process.argv.includes('--check');
 
 for (const authority of authorities) {
   const absolutePath = path.join(repoRoot, authority.relativePath);
-  const openapi = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+  const original = fs.readFileSync(absolutePath, 'utf8');
+  const openapi = JSON.parse(original.replace(/^\uFEFF/u, ''));
 
   for (const pathItem of Object.values(openapi.paths ?? {})) {
     for (const operation of Object.values(pathItem ?? {})) {
@@ -44,7 +46,21 @@ for (const authority of authorities) {
     }
   }
 
-  fs.writeFileSync(absolutePath, `${JSON.stringify(openapi, null, 2)}\n`, 'utf8');
+  const next = `${JSON.stringify(openapi, null, 2)}\n`;
+  if (checkOnly) {
+    if (next !== original.replace(/^\uFEFF/u, '')) {
+      console.error(`OpenAPI materialization drift detected in ${authority.relativePath}`);
+      process.exit(1);
+    }
+    continue;
+  }
+
+  fs.writeFileSync(absolutePath, next, 'utf8');
+}
+
+if (checkOnly) {
+  console.log('OpenAPI WebRequestContext extensions are materialized');
+  process.exit(0);
 }
 
 console.log(`OpenAPI WebRequestContext extensions updated (${changed} field writes)`);
