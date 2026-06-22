@@ -145,10 +145,7 @@ fn xiaozhi_gateway_pipeline_preserves_host_resolved_appbase_context_into_storage
     assert_eq!(snapshot.primary_writes.len(), 1);
     assert_eq!(snapshot.outbox_events.len(), 1);
     assert_eq!(snapshot.primary_writes[0].association.tenant_id, 100001);
-    assert_eq!(
-        snapshot.primary_writes[0].association.organization_id,
-        0
-    );
+    assert_eq!(snapshot.primary_writes[0].association.organization_id, 0);
     assert_eq!(snapshot.primary_writes[0].association.user_id, Some(30001));
     assert_eq!(snapshot.primary_writes[0].association.data_scope, 7);
     assert_eq!(snapshot.outbox_events[0].association.tenant_id, 100001);

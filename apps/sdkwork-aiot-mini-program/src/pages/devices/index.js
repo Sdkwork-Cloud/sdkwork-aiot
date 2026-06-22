@@ -7,7 +7,11 @@ Page({
   onShow() {
     api.listDevices().then((response) => {
       this.setData({ devices: Array.isArray(response.data) ? response.data : [] });
-    }).catch(() => {
+    }).catch((error) => {
+      wx.showToast({
+        title: error instanceof Error ? error.message : '设备列表加载失败',
+        icon: 'none',
+      });
       this.setData({ devices: [] });
     });
   },

@@ -50,7 +50,8 @@
     "defaultPlatform": "SERVER",
     "defaultArchitecture": "x64",
     "supportedDeploymentProfiles": [
-      "standalone"
+      "standalone",
+      "cloud"
     ],
     "defaultDeploymentProfile": "standalone"
   },
@@ -136,8 +137,10 @@
           "packageFormat": "TAR_GZ",
           "platform": "SERVER",
           "url": "https://cdn.sdkwork.com/apps/sdkwork-aiot/STABLE/0.1.0/linux/x64/server.tar.gz",
-          "enabled": true,
-          "metadata": {},
+          "enabled": false,
+          "metadata": {
+            "checksumPendingReleaseBuild": true
+          },
           "architecture": "x64",
           "checksumAlgorithm": "SHA-256",
           "checksum": "a2ff0d5da2ff0d5da2ff0d5da2ff0d5da2ff0d5da2ff0d5da2ff0d5da2ff0d5d",
@@ -151,8 +154,10 @@
           "packageFormat": "ZIP",
           "platform": "SERVER",
           "url": "https://cdn.sdkwork.com/apps/sdkwork-aiot/STABLE/0.1.0/windows/x64/server.zip",
-          "enabled": true,
-          "metadata": {},
+          "enabled": false,
+          "metadata": {
+            "checksumPendingReleaseBuild": true
+          },
           "architecture": "x64",
           "checksumAlgorithm": "SHA-256",
           "checksum": "f2a032a7f2a032a7f2a032a7f2a032a7f2a032a7f2a032a7f2a032a7f2a032a7",

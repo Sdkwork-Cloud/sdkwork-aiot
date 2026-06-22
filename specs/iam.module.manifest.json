@@ -207,7 +207,10 @@
         "replacementCode": null
       }
     ],
-    "openapiAuthorities": []
+    "openapiAuthorities": [
+      "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+      "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json"
+    ]
   },
   "roles": {
     "domainStandardRoles": [

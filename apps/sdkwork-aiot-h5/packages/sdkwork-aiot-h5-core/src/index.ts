@@ -7,13 +7,26 @@ import {
   readImportMetaEnvWithDefault,
   readOptionalBearerToken,
   readProcessEnv,
+  readFirstNonBlank,
+  readImportMetaEnv,
 } from '@sdkwork/aiot-app-core';
 
 let aiotAppSdkClient: SdkworkAiotAppClient | null = null;
 
 export function createAiotH5AppSdkClientConfig(): SdkworkAiotAppClientConfig {
   return {
-    accessToken: readOptionalBearerToken(readProcessEnv('SDKWORK_ACCESS_TOKEN')),
+    authToken: readOptionalBearerToken(
+      readFirstNonBlank([
+        readImportMetaEnv('VITE_SDKWORK_AUTH_TOKEN'),
+        readProcessEnv('SDKWORK_AUTH_TOKEN'),
+      ]),
+    ),
+    accessToken: readOptionalBearerToken(
+      readFirstNonBlank([
+        readImportMetaEnv('VITE_SDKWORK_ACCESS_TOKEN'),
+        readProcessEnv('SDKWORK_ACCESS_TOKEN'),
+      ]),
+    ),
     baseUrl: readImportMetaEnvWithDefault(
       'VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL',
       'http://127.0.0.1:8082',

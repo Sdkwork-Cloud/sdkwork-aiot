@@ -530,6 +530,7 @@ fn local_component_specs_exist_for_sdkwork_discovery() {
     assert!(manifest_text.contains("IAM_MODULE_MANIFEST_SPEC.md"));
     assert!(manifest_text.contains("SDK_WORKSPACE_GENERATION_SPEC.md"));
     assert!(manifest_text.contains(r#""iamModuleManifest": "specs/iam.module.manifest.json""#));
+    assert!(manifest_text.contains(r#""apis/app-api/iot/sdkwork-aiot-app-api.openapi.json""#));
 }
 
 #[test]
@@ -555,7 +556,9 @@ fn authored_crates_do_not_reimplement_crypto_primitives() {
     let mut source_files = Vec::new();
     for dir in ["crates", "services"] {
         for entry in walkdir_files(root.join(dir)) {
-            if entry.components().any(|component| component.as_os_str() == "src")
+            if entry
+                .components()
+                .any(|component| component.as_os_str() == "src")
                 && entry.extension().is_some_and(|ext| ext == "rs")
             {
                 source_files.push(entry);

@@ -32,6 +32,12 @@ const ACTIVATION_REGISTRY_STATS_PATH: &str = "/internal/xiaozhi/activation-regis
 const ACTIVATION_REGISTRY_METRICS_PATH: &str = "/internal/xiaozhi/activation-registry/metrics";
 
 fn main() {
+    if sdkwork_aiot_gateway::dev_mode_enabled() {
+        eprintln!(
+            "WARNING: SDKWORK_AIOT_DEV_MODE=1 bypasses device and internal route authentication; do not use in production"
+        );
+    }
+
     let running = Arc::new(AtomicBool::new(true));
     setup_shutdown_signal_handler(Arc::clone(&running));
 

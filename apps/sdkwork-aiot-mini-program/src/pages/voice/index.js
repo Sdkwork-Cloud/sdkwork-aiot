@@ -13,6 +13,11 @@ Page({
         devices,
         selectedDeviceId: devices[0] ? (devices[0].deviceId || devices[0].id) : '',
       });
+    }).catch((error) => {
+      wx.showToast({
+        title: error instanceof Error ? error.message : '设备列表加载失败',
+        icon: 'none',
+      });
     });
   },
   onInput(event) {
@@ -27,6 +32,11 @@ Page({
     api.sendSpeakCommand(this.data.selectedDeviceId, text).then(() => {
       wx.showToast({ title: '已发送语音命令', icon: 'success' });
       this.setData({ draft: '' });
+    }).catch((error) => {
+      wx.showToast({
+        title: error instanceof Error ? error.message : '语音命令发送失败',
+        icon: 'none',
+      });
     });
   },
 });

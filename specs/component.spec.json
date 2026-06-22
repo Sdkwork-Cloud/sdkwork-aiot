@@ -162,6 +162,10 @@
     "routeManifest": [
       "sdks/_route-manifests/app-api/sdkwork-aiot-app-api.route-manifest.json",
       "sdks/_route-manifests/backend-api/sdkwork-aiot-admin-api.route-manifest.json"
+    ],
+    "openapiAuthorities": [
+      "apis/app-api/iot/sdkwork-aiot-app-api.openapi.json",
+      "apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json"
     ]
   },
   "protocolPluginStandard": {

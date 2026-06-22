@@ -45,7 +45,7 @@ describe('aiot-app-core command service', () => {
 });
 
 describe('aiot-app-core agent service', () => {
-  it('creates a local assistant reply when command execution fails', async () => {
+  it('marks assistant messages failed when command execution fails', async () => {
     const service = createAiotAgentService({
       aiotClient: {
         iot: {
@@ -55,15 +55,19 @@ describe('aiot-app-core agent service', () => {
     });
 
     const session = service.createSession('dev-1');
-    const reply = await service.sendMessage({
-      deviceId: 'dev-1',
-      sessionId: session.id,
-      text: '打开客厅灯',
-    });
+    await expect(
+      service.sendMessage({
+        deviceId: 'dev-1',
+        sessionId: session.id,
+        text: '打开客厅灯',
+      }),
+    ).rejects.toThrow('offline');
 
-    expect(reply.role).toBe('assistant');
-    expect(reply.content).toContain('打开客厅灯');
-    expect(service.getMessages(session.id)).toHaveLength(2);
+    const messages = service.getMessages(session.id);
+    expect(messages).toHaveLength(2);
+    expect(messages[1]?.role).toBe('assistant');
+    expect(messages[1]?.status).toBe('failed');
+    expect(messages[1]?.content).toContain('offline');
   });
 });
 

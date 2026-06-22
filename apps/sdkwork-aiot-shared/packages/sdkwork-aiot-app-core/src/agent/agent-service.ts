@@ -133,10 +133,13 @@ export function createAiotAgentService(
         }
 
         return pendingAssistant;
-      } catch {
-        pendingAssistant.content = createLocalAssistantReply(input.text);
-        pendingAssistant.status = 'completed';
-        return pendingAssistant;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'AIoT command execution failed';
+        pendingAssistant.content = message;
+        pendingAssistant.status = 'failed';
+        pendingAssistant.createdAt = nowIso();
+        throw error;
       }
     },
   };

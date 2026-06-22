@@ -256,6 +256,10 @@ impl AiotCredentialRepository for SqliteCredentialRepositoryAdapter {
     }
 }
 
+pub fn dev_mode_enabled() -> bool {
+    std::env::var("SDKWORK_AIOT_DEV_MODE").as_deref() == Ok("1")
+}
+
 fn trust_proxy_headers_enabled() -> bool {
     std::env::var("SDKWORK_AIOT_TRUST_PROXY_HEADERS").as_deref() == Ok("1")
 }
@@ -446,6 +450,10 @@ fn has_sdkwork_proxy_context_headers(request: &HttpRequest) -> bool {
 }
 
 fn dev_fixture_dual_token_claims(request: &HttpRequest) -> Option<(JsonValue, JsonValue)> {
+    if !dev_mode_enabled() {
+        return None;
+    }
+
     let auth_token = bearer_token_from_request(request)?;
     let access_token = optional_header(request, "access-token")
         .map(str::trim)
@@ -546,6 +554,8 @@ fn parse_bearer_jwt_claims(token: &str) -> Result<JsonValue, &'static str> {
         if !verify_dev_hmac_token(token, &secret) {
             return Err("api.auth.invalid_bearer");
         }
+    } else if !dev_mode_enabled() {
+        return Err("api.auth.invalid_bearer");
     }
 
     let parts = token.split('.').collect::<Vec<_>>();
@@ -575,6 +585,10 @@ fn dev_auth_secret() -> Option<String> {
 }
 
 fn dev_permissions_from_env() -> Vec<String> {
+    if !dev_mode_enabled() {
+        return Vec::new();
+    }
+
     std::env::var("SDKWORK_AIOT_DEV_PERMISSIONS")
         .ok()
         .map(|value| {
@@ -679,7 +693,7 @@ fn apply_cors_headers(request: &HttpRequest, mut response: HttpResponse) -> Http
         .with_header("vary", "Origin")
         .with_header(
             "access-control-allow-headers",
-            "Authorization, Access-Token, Content-Type, Idempotency-Key, X-Sdkwork-Tenant-Id, X-Sdkwork-Organization-Id, X-Sdkwork-User-Id, X-Sdkwork-Data-Scope, X-Sdkwork-Permission-Scope",
+            "Authorization, Access-Token, Content-Type, Idempotency-Key",
         )
         .with_header(
             "access-control-allow-methods",
@@ -694,25 +708,22 @@ fn cors_preflight_response(request: &HttpRequest) -> Option<HttpResponse> {
         return None;
     }
     let origin = cors_allowed_origin(request)?;
-    Some(
-        apply_security_headers(
-            HttpResponse::new(HttpStatus::NoContent)
-                .with_header("access-control-allow-origin", origin)
-                .with_header("vary", "Origin")
-                .with_header(
-                    "access-control-allow-headers",
-                    optional_header(request, "access-control-request-headers").unwrap_or(
-                        "Authorization, Access-Token, Content-Type, Idempotency-Key, X-Sdkwork-Tenant-Id, X-Sdkwork-Organization-Id, X-Sdkwork-User-Id, X-Sdkwork-Data-Scope, X-Sdkwork-Permission-Scope",
-                    ),
-                )
-                .with_header(
-                    "access-control-allow-methods",
-                    optional_header(request, "access-control-request-method")
-                        .unwrap_or("GET, POST, PUT, PATCH, DELETE, OPTIONS"),
-                )
-                .with_header("access-control-max-age", "600"),
-        ),
-    )
+    Some(apply_security_headers(
+        HttpResponse::new(HttpStatus::NoContent)
+            .with_header("access-control-allow-origin", origin)
+            .with_header("vary", "Origin")
+            .with_header(
+                "access-control-allow-headers",
+                optional_header(request, "access-control-request-headers")
+                    .unwrap_or("Authorization, Access-Token, Content-Type, Idempotency-Key"),
+            )
+            .with_header(
+                "access-control-allow-methods",
+                optional_header(request, "access-control-request-method")
+                    .unwrap_or("GET, POST, PUT, PATCH, DELETE, OPTIONS"),
+            )
+            .with_header("access-control-max-age", "600"),
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

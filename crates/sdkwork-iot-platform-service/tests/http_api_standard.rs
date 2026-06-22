@@ -18,6 +18,7 @@ mod test_env {
 
     pub fn setup() {
         INIT.call_once(|| {
+            std::env::set_var("SDKWORK_AIOT_DEV_MODE", "1");
             std::env::set_var("SDKWORK_AIOT_TRUST_PROXY_HEADERS", "1");
             std::env::set_var(
                 "SDKWORK_AIOT_DEV_PERMISSIONS",
@@ -1403,7 +1404,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let create_tenant_b = handle_api_request_bytes(
         &admin,
-        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"scope-device-001\",\"displayName\":\"Scope Device B\",\"productId\":\"9201\"}",
+        b"POST /backend/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.write\r\n\r\n{\"deviceId\":\"scope-device-001\",\"displayName\":\"Scope Device B\",\"productId\":\"9201\"}",
     )
     .expect("create tenant B device");
     assert!(create_tenant_b.starts_with("HTTP/1.1 201"));
@@ -1436,7 +1437,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_retrieve_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001 HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app retrieve tenant B");
     assert!(app_retrieve_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1481,7 +1482,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_list_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app list tenant B");
     assert!(app_list_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1507,7 +1508,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let create_command_tenant_b = handle_api_request_bytes(
         &app,
-        b"POST /app/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: scope-cmd-b-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play-b\",\"payload\":{\"text\":\"b\"}}",
+        b"POST /app/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nContent-Type: application/json\r\nIdempotency-Key: scope-cmd-b-001\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.commands.execute\r\n\r\n{\"capabilityName\":\"speaker\",\"commandName\":\"play-b\",\"payload\":{\"text\":\"b\"}}",
     )
     .expect("create command tenant B");
     assert!(create_command_tenant_b.starts_with("HTTP/1.1 202"));
@@ -1533,7 +1534,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let admin_commands_tenant_b = handle_api_request_bytes(
         &admin,
-        b"GET /backend/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
+        b"GET /backend/v3/api/iot/devices/scope-device-001/commands HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.commands.read\r\n\r\n",
     )
     .expect("admin commands tenant B");
     assert!(admin_commands_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1594,7 +1595,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_events_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001/events HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.devices.read\r\n\r\n",
     )
     .expect("app events tenant B");
     assert!(app_events_tenant_b.starts_with("HTTP/1.1 200"));
@@ -1656,7 +1657,7 @@ fn app_and_admin_routes_isolate_state_between_tenants_and_organizations() {
 
     let app_twin_tenant_b = handle_api_request_bytes(
         &app,
-        b"GET /app/v3/api/iot/devices/scope-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 1\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
+        b"GET /app/v3/api/iot/devices/scope-device-001/twin HTTP/1.1\r\nHost: local\r\nAuthorization: Bearer app-token\r\nAccess-Token: user-token\r\nX-Sdkwork-Tenant-Id: 10002\r\nX-Sdkwork-Organization-Id: 20002\r\nX-Sdkwork-Permission-Scope: iot.twins.read\r\n\r\n",
     )
     .expect("app twin tenant B");
     assert!(app_twin_tenant_b.starts_with("HTTP/1.1 200"));
