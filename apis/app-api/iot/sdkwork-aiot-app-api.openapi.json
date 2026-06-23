@@ -30,7 +30,7 @@
         "security": [
           {
             "Authorization": [],
-            "AccessToken": []
+            "Access-Token": []
           }
         ],
         "responses": {
@@ -49,7 +49,54 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "app-api"
+        "x-sdkwork-api-surface": "app-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/app/v3/api/iot/devices/{deviceId}": {
@@ -65,7 +112,7 @@
         "security": [
           {
             "Authorization": [],
-            "AccessToken": []
+            "Access-Token": []
           }
         ],
         "parameters": [
@@ -105,7 +152,7 @@
         "security": [
           {
             "Authorization": [],
-            "AccessToken": []
+            "Access-Token": []
           }
         ],
         "parameters": [
@@ -158,7 +205,7 @@
         "security": [
           {
             "Authorization": [],
-            "AccessToken": []
+            "Access-Token": []
           }
         ],
         "parameters": [
@@ -198,12 +245,57 @@
         "security": [
           {
             "Authorization": [],
-            "AccessToken": []
+            "Access-Token": []
           }
         ],
         "parameters": [
           {
             "$ref": "#/components/parameters/DeviceId"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -234,7 +326,7 @@
         "bearerFormat": "JWT",
         "description": "Authorization: Bearer <auth_token>"
       },
-      "AccessToken": {
+      "Access-Token": {
         "type": "apiKey",
         "in": "header",
         "name": "Access-Token",
@@ -541,7 +633,8 @@
         "additionalProperties": false,
         "required": [
           "code",
-          "data"
+          "data",
+          "pageInfo"
         ],
         "properties": {
           "code": {
@@ -555,6 +648,9 @@
             "items": {
               "$ref": "#/components/schemas/AiotDevice"
             }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
           }
         }
       },
@@ -845,7 +941,8 @@
         "additionalProperties": false,
         "required": [
           "code",
-          "data"
+          "data",
+          "pageInfo"
         ],
         "properties": {
           "code": {
@@ -859,6 +956,9 @@
             "items": {
               "$ref": "#/components/schemas/AiotEvent"
             }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
           }
         }
       },
@@ -917,6 +1017,37 @@
             "type": "string"
           },
           "code": {
+            "type": "string"
+          }
+        }
+      },
+      "PageInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "page",
+          "pageSize",
+          "total",
+          "hasMore"
+        ],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
             "type": "string"
           }
         }

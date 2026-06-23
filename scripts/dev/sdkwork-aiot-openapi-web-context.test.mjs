@@ -10,12 +10,18 @@ const authorities = [
   {
     relativePath: 'apis/app-api/iot/sdkwork-aiot-app-api.openapi.json',
     apiSurface: 'app-api',
+    owner: 'sdkwork-aiot',
+    apiAuthority: 'sdkwork-aiot-app-api',
   },
   {
     relativePath: 'apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json',
     apiSurface: 'backend-api',
+    owner: 'sdkwork-aiot',
+    apiAuthority: 'sdkwork-aiot-backend-api',
   },
 ];
+
+const LIST_QUERY_NAMES = ['page', 'page_size', 'cursor', 'sort', 'q'];
 
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'));
@@ -40,8 +46,35 @@ for (const authority of authorities) {
         authority.apiSurface,
         `${authority.relativePath} operation ${operation.operationId} must declare x-sdkwork-api-surface`,
       );
+      assert.equal(
+        operation['x-sdkwork-owner'],
+        authority.owner,
+        `${authority.relativePath} operation ${operation.operationId} must declare x-sdkwork-owner`,
+      );
+      assert.equal(
+        operation['x-sdkwork-api-authority'],
+        authority.apiAuthority,
+        `${authority.relativePath} operation ${operation.operationId} must declare x-sdkwork-api-authority`,
+      );
+
+      if (!operation.operationId.endsWith('.list')) {
+        continue;
+      }
+
+      const parameterNames = new Set((operation.parameters ?? []).map((param) => param.name));
+      for (const name of LIST_QUERY_NAMES) {
+        assert.ok(
+          parameterNames.has(name),
+          `${authority.relativePath} operation ${operation.operationId} must declare list query parameter ${name}`,
+        );
+      }
     }
   }
+
+  assert.ok(
+    openapi.components?.schemas?.PageInfo,
+    `${authority.relativePath} must declare components.schemas.PageInfo`,
+  );
 }
 
 console.log('sdkwork-aiot OpenAPI WebRequestContext contract passed');

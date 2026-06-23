@@ -1,6 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
+mod outbox;
+
+pub use outbox::{
+    AiotOutboxPendingEvent, OutboxEventRepository, OutboxEventRepositoryError,
+    OUTBOX_STATUS_CLAIMED, OUTBOX_STATUS_FAILED, OUTBOX_STATUS_PENDING, OUTBOX_STATUS_PUBLISHED,
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AiotTable {
     pub name: &'static str,

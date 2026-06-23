@@ -13,14 +13,18 @@ This document tracks production readiness for the SDKWork AIoT server after the 
 | Structured trace logging | Done | `SDKWORK_AIOT_STRUCTURED_TRACE=1`, `sdkwork-aiot-observability`, gateway + HTTP API hooks |
 | OTLP HTTP trace export | Done | `SDKWORK_AIOT_OTLP_ENDPOINT`, OTLP/HTTP JSON in `sdkwork-aiot-observability` |
 | Protocol ingest persistence | Done | Gateway `protocol_ingest_from_env()` + `SqlxProtocolIngestUnitOfWork` |
+| Transactional outbox publish worker | Done | `SqliteOutboxEventRepository`, `AiotOutboxDispatcher`, gateway worker + `/readyz` lag probe |
+| Release package checksum sync | Done | `pnpm release:package` writes SHA-256 into `sdkwork.app.config.json` |
 | App/backend HTTP (Axum + web framework) | Done | `sdkwork-router-iot-app-api`, `sdkwork-router-iot-backend-api`, `resolve_api_request_from_web_context` |
 | Gateway device ingress HTTP | Done | `sdkwork-aiot-transport` minimal stack per ADR 002 |
 | CORS + security headers + rate limiting | Done | `sdkwork-iot-platform-service` |
 | Production device auth fail-closed | Done | Gateway dev/prod token rules |
 | Internal route token auth | Done | `internal_route_authorized` |
-| MQTT/UDP multi-session bridge | Done | Per-device session map in gateway |
+| MQTT/UDP multi-session bridge | Done | Per-device session map in gateway; `/readyz` includes MQTT bridge probe when `SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE=1` |
 | Route manifest + OpenAPI alignment | Done | `sdks/_route-manifests/*`, architecture tests |
-| Workspace verification | Done | `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test --workspace` |
+| Workspace verification | Done | `pnpm check`, `pnpm verify`, targeted `cargo test` crates |
+| Production topology guardrails | Done | `pnpm check:production-topology`, production env profiles |
+| Postgres device persistence (cloud HA) | Planned | Phase K — `SDKWORK_AIOT_DEVICE_DATABASE_*` with async repositories |
 
 ## Shared SQLite Without Persistent Path
 
@@ -36,11 +40,30 @@ These items are closed for this repository scope with explicit architecture reco
 | Axum/Tokio HTTP stack | Gateway retains minimal transport; app/backend APIs use `sdkwork-web-framework` per ADR 004 | `docs/adr/002-http-transport-evolution.md`, `docs/adr/004-standards-alignment-roadmap.md` |
 | Horizontal clustering | Sticky sessions + `SDKWORK_AIOT_GATEWAY_NODE_ID` | `docs/adr/003-gateway-horizontal-scaling.md` |
 
+## Commercial Deployment Gates
+
+Run before promoting a release candidate:
+
+```powershell
+pnpm check
+pnpm verify
+pnpm check:production-topology
+pnpm release:validate
+```
+
+Release artifacts remain disabled in `sdkwork.app.config.json` until `pnpm release:build` and `pnpm release:package` publish real checksums.
+
 ## Production Environment Checklist
 
 ```powershell
 $env:SDKWORK_AIOT_DEVICE_DB_PATH='D:\data\aiot-device.db'
 $env:SDKWORK_AIOT_INTERNAL_TOKEN='<random-internal-token>'
+# Outbox dispatch runs on edge gateway by default when the device DB path is set.
+# Optional webhook sink (standalone http:// only):
+# $env:SDKWORK_AIOT_OUTBOX_WEBHOOK_URL='http://127.0.0.1:8090/iot/outbox'
+# Optional explicit dispatcher toggle (admin/app-api default off unless set to 1):
+# $env:SDKWORK_AIOT_OUTBOX_DISPATCHER_ENABLED='1'
+# $env:SDKWORK_AIOT_OUTBOX_LAG_READY_THRESHOLD='10000'
 # Optional legacy static token fallback when credential rows are not used:
 # $env:SDKWORK_AIOT_XIAOZHI_DEVICE_TOKEN='<legacy-device-token>'
 $env:SDKWORK_AIOT_CORS_ALLOWED_ORIGINS='https://console.example.com'

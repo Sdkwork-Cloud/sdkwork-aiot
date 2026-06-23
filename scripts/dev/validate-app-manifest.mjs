@@ -21,6 +21,11 @@ function isPlaceholderChecksum(checksum) {
 
 function validateReleasePackages(manifest) {
   const packages = manifest.artifacts?.installConfig?.packages ?? [];
+  const releaseManifestPath = path.join(repoRoot, 'artifacts/release/release-packages.manifest.json');
+  let releaseManifest = null;
+  if (fs.existsSync(releaseManifestPath)) {
+    releaseManifest = JSON.parse(fs.readFileSync(releaseManifestPath, 'utf8'));
+  }
   for (const pkg of packages) {
     if (!pkg.enabled) {
       continue;
@@ -36,8 +41,18 @@ function validateReleasePackages(manifest) {
     );
     assert.ok(
       !isPlaceholderChecksum(pkg.checksum),
-      `${pkg.id} must not use placeholder checksum values; disable the package until release:build publishes real artifacts`,
+      `${pkg.id} must not use placeholder checksum values; disable the package until release:package publishes real artifacts`,
     );
+    if (releaseManifest) {
+      const released = releaseManifest.packages?.find((entry) => entry.id === pkg.id);
+      if (released) {
+        assert.equal(
+          pkg.checksum,
+          released.checksum,
+          `${pkg.id} checksum must match artifacts/release/release-packages.manifest.json`,
+        );
+      }
+    }
   }
 }
 

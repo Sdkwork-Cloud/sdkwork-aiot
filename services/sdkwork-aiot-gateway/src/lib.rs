@@ -1,9 +1,16 @@
+mod mqtt_bridge_readiness;
+
+pub use mqtt_bridge_readiness::{
+    mqtt_bridge_health_status, mqtt_bridge_readiness_probe, MqttBridgeRuntimeSnapshot,
+    MqttBridgeRuntimeState, ENV_MQTT_BRIDGE_ENABLE,
+};
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -20,13 +27,15 @@ use sdkwork_aiot_protocol::{MessageClass, MessageCodec, ProtocolEnvelope};
 use sdkwork_aiot_service_host::{AiotRuntime, AiotRuntimePressure, BackpressureAction};
 use sdkwork_aiot_storage::{AiotProtocolIngestUnitOfWork, InMemoryProtocolIngestUnitOfWork};
 use sdkwork_aiot_storage_sqlx::{
-    BlockingSqlitePool, SqlDialect, SqlProtocolIngestPlanner, SqliteSqlxCredentialRepository,
-    SqlxPoolSqlStatementExecutor, SqlxProtocolIngestUnitOfWork, StorageSqliteError,
+    outbox_readiness_probe,
+    start_outbox_dispatcher_worker as start_storage_outbox_dispatcher_worker, BlockingSqlitePool,
+    SqliteSqlxCredentialRepository, SqlxPoolSqlStatementExecutor, StorageSqliteError,
 };
 use sdkwork_aiot_transport::{
     websocket_frame_to_inbound_frame, HttpRequest, HttpResponse, HttpStatus, TransportError,
     TransportServer, WebSocketFrame, WebSocketOpcode,
 };
+use sdkwork_utils_rust::{secure_compare, sha256_hash};
 
 thread_local! {
     static SQLITE_POOL_REGISTRY: RefCell<HashMap<PathBuf, BlockingSqlitePool>> =
@@ -327,8 +336,8 @@ impl FileBackedXiaozhiActivationChallengeRegistry {
 }
 
 impl SqliteXiaozhiActivationChallengeRegistry {
-    pub fn new(path: PathBuf) -> Self {
-        let db = blocking_sqlite_pool_for_path(&path);
+    pub fn try_new(path: PathBuf) -> Result<Self, String> {
+        let db = blocking_sqlite_pool_for_path(&path)?;
         let registry = Self { path, db };
         if let Err(error) = registry.ensure_schema() {
             eprintln!(
@@ -336,7 +345,11 @@ impl SqliteXiaozhiActivationChallengeRegistry {
                 registry.path.display()
             );
         }
-        registry
+        Ok(registry)
+    }
+
+    pub fn new(path: PathBuf) -> Self {
+        Self::try_new(path).expect("sqlite activation registry must open in tests")
     }
 
     fn ensure_schema(&self) -> Result<(), sqlx::Error> {
@@ -1262,10 +1275,7 @@ fn protocol_ingest_from_env() -> Arc<dyn AiotProtocolIngestUnitOfWork> {
     };
 
     match SqlxPoolSqlStatementExecutor::open(path) {
-        Ok(executor) => Arc::new(SqlxProtocolIngestUnitOfWork::with_planner(
-            executor,
-            SqlProtocolIngestPlanner::for_dialect(SqlDialect::Sqlite),
-        )),
+        Ok(executor) => Arc::new(executor.protocol_ingest_unit_of_work()),
         Err(error) => {
             eprintln!("sdkwork-aiot-gateway protocol_ingest_sqlite_open_error={error}");
             Arc::new(InMemoryProtocolIngestUnitOfWork::new())
@@ -1282,6 +1292,25 @@ fn log_protocol_ingest_receipt(receipt: &sdkwork_aiot_storage::AiotStorageWriteR
         "sdkwork-aiot-gateway protocol_ingest_error accepted={} duplicate={} reason={:?}",
         receipt.accepted, receipt.duplicate, receipt.dead_letter_reason
     );
+}
+
+pub fn start_outbox_dispatcher_worker(running: Arc<AtomicBool>, outbox_lag: Arc<AtomicU64>) {
+    start_storage_outbox_dispatcher_worker(running, Some(outbox_lag), true);
+}
+
+pub fn attach_gateway_readiness_probe(
+    mut server: TransportServer,
+    outbox_lag: Arc<AtomicU64>,
+    mqtt_bridge: Option<Arc<MqttBridgeRuntimeState>>,
+) -> TransportServer {
+    let mut health = server
+        .health
+        .with_readiness_probe(outbox_readiness_probe(outbox_lag));
+    if let Some(bridge_state) = mqtt_bridge {
+        health = health.and_readiness_probe(mqtt_bridge_readiness_probe(bridge_state));
+    }
+    server.health = health;
+    server
 }
 
 pub fn standard_gateway_server() -> Result<TransportServer, TransportError> {
@@ -1375,12 +1404,14 @@ fn build_standard_gateway_transport_server(
     challenge_registry: Arc<dyn XiaozhiActivationChallengeRegistry>,
 ) -> Result<TransportServer, TransportError> {
     let activation_verifier_alias = Arc::clone(&activation_verifier);
+    let credential_repository = device_credential_repository_from_env();
     Ok(TransportServer::standard_standalone()?
         .with_http_compatibility_route(XIAOZHI_OTA_PATH, move |request| {
-            xiaozhi_ota_http_handler_with_provider_and_registry(
+            xiaozhi_ota_http_handler_full(
                 request,
                 ota_provider.as_ref(),
                 challenge_registry.as_ref(),
+                credential_repository.as_deref(),
             )
         })
         .with_http_compatibility_route(XIAOZHI_ACTIVATE_PATH, move |request| {
@@ -1415,37 +1446,65 @@ pub fn xiaozhi_ota_http_handler_with_provider_and_registry(
     provider: &dyn XiaozhiOtaProfileProvider,
     challenge_registry: &dyn XiaozhiActivationChallengeRegistry,
 ) -> HttpResponse {
+    xiaozhi_ota_http_handler_full(
+        request,
+        provider,
+        challenge_registry,
+        device_credential_repository_from_env().as_deref(),
+    )
+}
+
+pub fn xiaozhi_ota_http_handler_full(
+    request: &HttpRequest,
+    provider: &dyn XiaozhiOtaProfileProvider,
+    challenge_registry: &dyn XiaozhiActivationChallengeRegistry,
+    credential_repository: Option<&SqliteSqlxCredentialRepository>,
+) -> HttpResponse {
     if request.method != "POST" && request.method != "GET" {
         return problem_response(HttpStatus::BadRequest, "gateway.xiaozhi.ota.method");
     }
 
     let host = request.header("host").unwrap_or("localhost");
     let ws_scheme = websocket_scheme(request);
-    let Some(token) = configured_device_token() else {
-        return problem_response(
-            HttpStatus::ServiceUnavailable,
-            "gateway.xiaozhi.ota.token_not_configured",
-        );
-    };
     let version = request
         .header("protocol-version")
         .and_then(|value| value.parse::<u32>().ok())
         .unwrap_or(3);
+    let server_time = XiaozhiOtaMetadata::new().with_server_time(
+        current_unix_time_millis(),
+        env_i32(
+            ENV_XIAOZHI_SERVER_TIMEZONE_OFFSET_MINUTES,
+            DEFAULT_SERVER_TIMEZONE_OFFSET_MINUTES,
+        ),
+    );
 
-    let metadata = XiaozhiOtaMetadata::new()
-        .with_websocket(
+    let mut metadata = match resolve_ota_websocket_token(request, credential_repository) {
+        OtaWebsocketTokenResolution::Token(token) => server_time.with_websocket(
             format!("{ws_scheme}://{host}{XIAOZHI_WS_PATH}"),
             token,
             version,
-        )
-        .with_server_time(
-            current_unix_time_millis(),
-            env_i32(
-                ENV_XIAOZHI_SERVER_TIMEZONE_OFFSET_MINUTES,
-                DEFAULT_SERVER_TIMEZONE_OFFSET_MINUTES,
+        ),
+        OtaWebsocketTokenResolution::ProvisioningRequired => server_time.with_activation_challenge(
+            env_string(ENV_XIAOZHI_ACTIVATION_MESSAGE)
+                .unwrap_or_else(|| DEFAULT_ACTIVATION_MESSAGE.to_string()),
+            generate_ota_provisioning_challenge(request),
+            env_u32(
+                ENV_XIAOZHI_ACTIVATION_TIMEOUT_MS,
+                DEFAULT_ACTIVATION_TIMEOUT_MS,
             ),
-        );
-    let metadata = provider.enrich(request, metadata);
+        ),
+        OtaWebsocketTokenResolution::Unauthorized => {
+            return problem_response(HttpStatus::Unauthorized, "gateway.xiaozhi.ota.unauthorized");
+        }
+        OtaWebsocketTokenResolution::LegacyNotConfigured => {
+            return problem_response(
+                HttpStatus::ServiceUnavailable,
+                "gateway.xiaozhi.ota.token_not_configured",
+            );
+        }
+    };
+
+    metadata = provider.enrich(request, metadata);
     register_activation_challenge_if_present(challenge_registry, request, &metadata);
 
     HttpResponse::new(HttpStatus::Ok)
@@ -1819,12 +1878,13 @@ pub fn xiaozhi_websocket_session_reply_with_mcp_tool_provider_and_invoker(
 pub fn ws_backpressure_rejects_new_connection(
     runtime: &AiotRuntime,
     active_ws_connections: u64,
+    outbox_lag: u64,
 ) -> bool {
     let pressure = AiotRuntimePressure {
         node_connections: active_ws_connections,
         tenant_sessions: 0,
         device_inflight: 0,
-        outbox_lag: 0,
+        outbox_lag,
     };
     matches!(
         runtime.capacity_policy().backpressure_action(&pressure),
@@ -2108,6 +2168,37 @@ pub fn dev_mode_enabled() -> bool {
     std::env::var("SDKWORK_AIOT_DEV_MODE").as_deref() == Ok("1")
 }
 
+const PRODUCTION_MIN_SECRET_LENGTH: usize = 32;
+
+pub fn assert_production_environment_safety() {
+    if std::env::var("SDKWORK_AIOT_ENVIRONMENT").as_deref() != Ok("production") {
+        return;
+    }
+
+    if dev_mode_enabled() {
+        eprintln!(
+            "FATAL: SDKWORK_AIOT_DEV_MODE=1 is forbidden when SDKWORK_AIOT_ENVIRONMENT=production"
+        );
+        std::process::exit(1);
+    }
+
+    let pepper = std::env::var("SDKWORK_AIOT_CREDENTIAL_PEPPER").unwrap_or_default();
+    if pepper.trim().len() < PRODUCTION_MIN_SECRET_LENGTH {
+        eprintln!(
+            "FATAL: SDKWORK_AIOT_CREDENTIAL_PEPPER must be at least {PRODUCTION_MIN_SECRET_LENGTH} characters when SDKWORK_AIOT_ENVIRONMENT=production"
+        );
+        std::process::exit(1);
+    }
+
+    let internal_token = std::env::var("SDKWORK_AIOT_INTERNAL_TOKEN").unwrap_or_default();
+    if internal_token.trim().len() < PRODUCTION_MIN_SECRET_LENGTH {
+        eprintln!(
+            "FATAL: SDKWORK_AIOT_INTERNAL_TOKEN must be at least {PRODUCTION_MIN_SECRET_LENGTH} characters when SDKWORK_AIOT_ENVIRONMENT=production"
+        );
+        std::process::exit(1);
+    }
+}
+
 pub fn xiaozhi_device_token_valid(request: &HttpRequest, options: &XiaozhiSessionOptions) -> bool {
     if dev_mode_enabled() {
         return true;
@@ -2121,13 +2212,24 @@ pub fn xiaozhi_device_token_valid(request: &HttpRequest, options: &XiaozhiSessio
         let Some(device_id) = extract_device_id(request) else {
             return false;
         };
-        return repository.verify_bearer_token(&device_id, &token);
+        let tenant_id = request
+            .header("tenant-id")
+            .and_then(|value| value.parse().ok());
+        let organization_id = request
+            .header("organization-id")
+            .and_then(|value| value.parse().ok());
+        return repository.verify_bearer_token_scoped(
+            tenant_id,
+            organization_id,
+            &device_id,
+            &token,
+        );
     }
 
     let Some(expected) = env_string(ENV_XIAOZHI_DEVICE_TOKEN) else {
         return false;
     };
-    token == expected
+    secure_compare(&token, &expected)
 }
 
 fn extract_device_id(request: &HttpRequest) -> Option<String> {
@@ -2149,6 +2251,68 @@ fn configured_device_token() -> Option<String> {
     env_string(ENV_XIAOZHI_DEVICE_TOKEN)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum OtaWebsocketTokenResolution {
+    Token(String),
+    ProvisioningRequired,
+    Unauthorized,
+    LegacyNotConfigured,
+}
+
+fn resolve_ota_websocket_token(
+    request: &HttpRequest,
+    credential_repository: Option<&SqliteSqlxCredentialRepository>,
+) -> OtaWebsocketTokenResolution {
+    if dev_mode_enabled() {
+        return configured_device_token()
+            .map(OtaWebsocketTokenResolution::Token)
+            .unwrap_or(OtaWebsocketTokenResolution::LegacyNotConfigured);
+    }
+
+    if let Some(repository) = credential_repository {
+        let Some(device_id) = extract_device_id(request) else {
+            return OtaWebsocketTokenResolution::ProvisioningRequired;
+        };
+        let tenant_id = request
+            .header("tenant-id")
+            .and_then(|value| value.parse().ok());
+        let organization_id = request
+            .header("organization-id")
+            .and_then(|value| value.parse().ok());
+
+        if let Some(bearer) = extract_device_token(request) {
+            if repository.verify_bearer_token_scoped(
+                tenant_id,
+                organization_id,
+                &device_id,
+                &bearer,
+            ) {
+                return OtaWebsocketTokenResolution::Token(bearer);
+            }
+            return OtaWebsocketTokenResolution::Unauthorized;
+        }
+
+        if repository.device_has_active_credential(&device_id) {
+            return OtaWebsocketTokenResolution::Unauthorized;
+        }
+        return OtaWebsocketTokenResolution::ProvisioningRequired;
+    }
+
+    env_string(ENV_XIAOZHI_DEVICE_TOKEN)
+        .map(OtaWebsocketTokenResolution::Token)
+        .unwrap_or(OtaWebsocketTokenResolution::LegacyNotConfigured)
+}
+
+fn generate_ota_provisioning_challenge(request: &HttpRequest) -> String {
+    let device_id = extract_device_id(request).unwrap_or_default();
+    let client_id = request
+        .header("client-id")
+        .or_else(|| request.query_param("client_id"))
+        .unwrap_or_default();
+    let seed = format!("{}:{}:{}", device_id, client_id, current_unix_time_millis());
+    sha256_hash(seed.as_bytes())
+}
+
 pub fn internal_route_authorized(request: &HttpRequest) -> bool {
     if dev_mode_enabled() {
         return true;
@@ -2165,7 +2329,7 @@ pub fn internal_route_authorized(request: &HttpRequest) -> bool {
     request
         .header("sdkwork-aiot-internal-token")
         .or_else(|| request.header("x-sdkwork-internal-token"))
-        .map(|value| value == expected)
+        .map(|value| secure_compare(value, expected.as_str()))
         .unwrap_or(false)
 }
 
@@ -2694,9 +2858,14 @@ fn activation_challenge_registry_from_env() -> Arc<dyn XiaozhiActivationChalleng
             .as_deref()
             .is_some_and(|value| value.eq_ignore_ascii_case("sqlite"))
         {
-            return Arc::new(SqliteXiaozhiActivationChallengeRegistry::new(
-                PathBuf::from(path),
-            ));
+            match SqliteXiaozhiActivationChallengeRegistry::try_new(PathBuf::from(path.clone())) {
+                Ok(registry) => return Arc::new(registry),
+                Err(error) => {
+                    eprintln!(
+                        "sdkwork-aiot-gateway activation_registry_sqlite_open_error path={path} error={error} fallback=file"
+                    );
+                }
+            }
         }
         return Arc::new(FileBackedXiaozhiActivationChallengeRegistry::new(
             PathBuf::from(path),
@@ -3680,24 +3849,24 @@ fn activation_registry_record_consume_outcome(consumed: bool) {
     }
 }
 
-fn blocking_sqlite_pool_for_path(path: &Path) -> BlockingSqlitePool {
+fn blocking_sqlite_pool_for_path(path: &Path) -> Result<BlockingSqlitePool, String> {
     SQLITE_POOL_REGISTRY.with(|registry| {
         let mut registry = registry.borrow_mut();
         if let Some(existing) = registry.get(path) {
-            return existing.clone();
+            return Ok(existing.clone());
         }
         let url = format!(
             "sqlite:{}?mode=rwc",
             path.display().to_string().replace('\\', "/")
         );
-        let pool = BlockingSqlitePool::connect(&url).unwrap_or_else(|error| {
-            panic!(
+        let pool = BlockingSqlitePool::connect(&url).map_err(|error| {
+            format!(
                 "failed to open sqlite activation registry at {}: {error}",
                 path.display()
             )
-        });
+        })?;
         registry.insert(path.to_path_buf(), pool.clone());
-        pool
+        Ok(pool)
     })
 }
 

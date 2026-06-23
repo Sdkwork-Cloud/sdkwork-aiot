@@ -1,0 +1,16 @@
+<view class="card">
+  <view class="title">智能体</view>
+  <picker mode="selector" range="{{devices}}" range-key="displayName" bindchange="onDeviceChange">
+    <view class="muted">选择设备：{{selectedDeviceId || '未选择'}}</view>
+  </picker>
+  <view class="card" style="margin-top: 24rpx; min-height: 320rpx;">
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="card" style="margin: 12rpx 0 0; {{item.role === 'user' ? 'text-align: right;' : ''}}">
+        <view>{{item.content}}</view>
+      </view>
+    </block>
+    <view wx:if="{{messages.length === 0}}" class="muted">开始与智能体对话</view>
+  </view>
+  <textarea class="card" placeholder="向智能体提问..." value="{{draft}}" bindinput="onInput" />
+  <button class="button-primary" bindtap="onSend" loading="{{isSending}}" disabled="{{isSending}}">发送</button>
+</view>

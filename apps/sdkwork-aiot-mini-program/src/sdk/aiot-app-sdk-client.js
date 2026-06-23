@@ -9,7 +9,7 @@ const STORAGE_KEYS = {
   accessToken: 'SDKWORK_ACCESS_TOKEN',
 };
 
-const DEFAULT_APP_API_BASE_URL = 'http://127.0.0.1:8082';
+const DEFAULT_APP_API_BASE_URL = 'http://127.0.0.1:18082';
 
 let cachedClient = null;
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, Cpu, Mic, RadioTower } from 'lucide-react';
 import { SdkworkAgentPage } from '@sdkwork/aiot-pc-console-agent';
 import { SdkworkDevicePage } from '@sdkwork/aiot-pc-console-device';
@@ -15,12 +15,29 @@ const NAV_ITEMS: Array<{ icon: typeof Cpu; id: AiotRoute; label: string }> = [
   { icon: Bot, id: '/agent', label: '智能体' },
 ];
 
+function resolveRouteIntent(route: string): AiotRoute {
+  if (route.startsWith('/iot')) {
+    return '/iot';
+  }
+  if (route.startsWith('/voice')) {
+    return '/voice';
+  }
+  if (route.startsWith('/agent')) {
+    return '/agent';
+  }
+  return '/devices';
+}
+
 export function App() {
   const [route, setRoute] = useState<AiotRoute>('/devices');
 
-  useMemo(() => {
+  useEffect(() => {
     initAiotAppSdkClient();
   }, []);
+
+  const handleNavigate = (targetRoute: string) => {
+    setRoute(resolveRouteIntent(targetRoute));
+  };
 
   return (
     <div className="flex min-h-screen bg-zinc-50">
@@ -68,8 +85,8 @@ export function App() {
           </div>
         </div>
 
-        {route === '/devices' ? <SdkworkDevicePage /> : null}
-        {route === '/iot' ? <SdkworkIotPage /> : null}
+        {route === '/devices' ? <SdkworkDevicePage onNavigate={handleNavigate} /> : null}
+        {route === '/iot' ? <SdkworkIotPage onNavigate={handleNavigate} /> : null}
         {route === '/voice' ? <SdkworkVoicePage /> : null}
         {route === '/agent' ? <SdkworkAgentPage /> : null}
       </main>

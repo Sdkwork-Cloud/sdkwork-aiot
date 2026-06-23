@@ -936,41 +936,44 @@ fn sql_statement_plans_use_bind_values_instead_of_interpolating_runtime_values()
     }
 
     assert_eq!(executed[0].statement_kind, "idempotency_guard");
-    assert_eq!(executed[0].binds[0], SqlBindValue::Int64(0));
+    assert!(matches!(executed[0].binds[0], SqlBindValue::Text(_)));
     assert_eq!(executed[0].binds[1], SqlBindValue::Int64(0));
     assert_eq!(executed[0].binds[2], SqlBindValue::Int64(0));
+    assert_eq!(executed[0].binds[3], SqlBindValue::Int64(0));
     assert_eq!(
-        executed[0].binds[3],
+        executed[0].binds[4],
         SqlBindValue::Text("xiaozhi.websocket".to_string())
     );
     assert_eq!(
-        executed[0].binds[4],
+        executed[0].binds[5],
         SqlBindValue::Text("xiaozhi".to_string())
     );
     assert_eq!(
-        executed[0].binds[5],
+        executed[0].binds[6],
         SqlBindValue::Text(suspicious_device_id.to_string())
     );
     assert_eq!(
-        executed[0].binds[6],
+        executed[0].binds[7],
         SqlBindValue::Text("msg-'quoted".to_string())
     );
     assert_eq!(
-        executed[0].binds[7],
+        executed[0].binds[8],
         SqlBindValue::Text("corr-004".to_string())
     );
-    assert_eq!(executed[0].binds[8], SqlBindValue::Null);
     assert_eq!(executed[0].binds[9], SqlBindValue::Null);
     assert_eq!(executed[0].binds[10], SqlBindValue::Null);
+    assert_eq!(executed[0].binds[11], SqlBindValue::Null);
     assert_eq!(
-        executed[0].binds[11],
+        executed[0].binds[12],
         SqlBindValue::Text("idem-004".to_string())
     );
     assert_eq!(
-        executed[0].binds[12],
+        executed[0].binds[13],
         SqlBindValue::Text("trace-004".to_string())
     );
-    assert_eq!(executed[0].binds.last(), Some(&SqlBindValue::Int64(0)));
+    assert_eq!(executed[0].binds[14], SqlBindValue::Int64(0));
+    assert!(matches!(executed[0].binds[15], SqlBindValue::Text(_)));
+    assert!(matches!(executed[0].binds[16], SqlBindValue::Text(_)));
 
     assert_eq!(executed[1].statement_kind, "primary_write");
     assert_eq!(executed[1].binds[0], SqlBindValue::Int64(1));
@@ -1080,7 +1083,8 @@ fn sql_protocol_ingest_planner_renders_postgres_and_sqlite_dialects() {
     assert!(!sqlite.guard.sql.contains("$1"));
     assert!(postgres.guard.sql.contains("ON CONFLICT DO NOTHING"));
     assert!(sqlite.guard.sql.contains("ON CONFLICT DO NOTHING"));
-    assert_eq!(postgres.guard.binds, sqlite.guard.binds);
+    assert_eq!(postgres.guard.binds.len(), sqlite.guard.binds.len());
+    assert_eq!(&postgres.guard.binds[1..=14], &sqlite.guard.binds[1..=14]);
 }
 
 #[test]
@@ -1676,4 +1680,58 @@ async fn device_database_memory_pool_uses_sdkwork_database_sqlx() {
         .await
         .expect("memory pool");
     assert!(pool.as_sqlite().is_some());
+}
+
+#[test]
+fn sqlite_outbox_repository_publishes_pending_events() {
+    use sdkwork_aiot_service_host::{
+        AiotOutboxDispatcher, AiotOutboxDispatcherConfig, StructuredLogOutboxPublisher,
+    };
+    use sdkwork_aiot_storage::{
+        AiotOutboxWriteIntent, AiotProtocolStorageCommand, AiotStorageWriteKind,
+        OutboxEventRepository,
+    };
+    use sdkwork_aiot_storage_sqlx::{SqliteOutboxEventRepository, SqlxPoolSqlStatementExecutor};
+    use std::sync::Arc;
+
+    let unique_suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let db_uri = format!("file:outbox-repo-test-{unique_suffix}?mode=memory&cache=shared");
+
+    let executor = SqlxPoolSqlStatementExecutor::open(&db_uri).expect("sqlite executor");
+    let uow = executor.protocol_ingest_unit_of_work();
+    let command = AiotProtocolStorageCommand::new(
+        "xiaozhi.websocket",
+        "xiaozhi",
+        "device-outbox-001",
+        AiotStorageWriteKind::OpenSession,
+        "iot_device_session",
+    )
+    .with_session_id("session-outbox-001")
+    .with_idempotency_key("outbox-idem-001")
+    .with_outbox(AiotOutboxWriteIntent::new(
+        "iot.device.session.started",
+        "device_session",
+        "session-outbox-001",
+        "iot.protocol.ingested",
+    ));
+    let receipt = uow.execute_protocol_command(&command);
+    assert!(
+        receipt.accepted,
+        "protocol ingest failed: {:?}",
+        receipt.dead_letter_reason
+    );
+
+    let repo = SqliteOutboxEventRepository::open(&db_uri).expect("outbox repo");
+    assert_eq!(repo.pending_lag_count(), 1);
+
+    let dispatcher = AiotOutboxDispatcher::new(
+        Arc::new(repo),
+        Arc::new(StructuredLogOutboxPublisher),
+        AiotOutboxDispatcherConfig::default(),
+    );
+    assert_eq!(dispatcher.run_once(), 1);
+    assert_eq!(dispatcher.pending_lag_count(), 0);
 }

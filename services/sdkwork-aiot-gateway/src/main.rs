@@ -32,6 +32,7 @@ const ACTIVATION_REGISTRY_STATS_PATH: &str = "/internal/xiaozhi/activation-regis
 const ACTIVATION_REGISTRY_METRICS_PATH: &str = "/internal/xiaozhi/activation-registry/metrics";
 
 fn main() {
+    sdkwork_aiot_gateway::assert_production_environment_safety();
     if sdkwork_aiot_gateway::dev_mode_enabled() {
         eprintln!(
             "WARNING: SDKWORK_AIOT_DEV_MODE=1 bypasses device and internal route authentication; do not use in production"
@@ -41,8 +42,20 @@ fn main() {
     let running = Arc::new(AtomicBool::new(true));
     setup_shutdown_signal_handler(Arc::clone(&running));
 
+    let outbox_lag = Arc::new(AtomicU64::new(0));
+    let bridge_state = sdkwork_aiot_gateway::MqttBridgeRuntimeState::from_env();
     let (server, session_options) =
         sdkwork_aiot_gateway::standard_gateway_server_and_session_options()
+            .map(|(server, session_options)| {
+                (
+                    sdkwork_aiot_gateway::attach_gateway_readiness_probe(
+                        server,
+                        Arc::clone(&outbox_lag),
+                        Some(Arc::clone(&bridge_state)),
+                    ),
+                    session_options,
+                )
+            })
             .expect("gateway transport server");
 
     println!(
@@ -58,10 +71,12 @@ fn main() {
 
     let server = Arc::new(server);
     let active_ws_connections = Arc::new(AtomicU64::new(0));
-    let bridge_enabled =
-        std::env::var("SDKWORK_AIOT_GATEWAY_MQTT_BRIDGE_ENABLE").as_deref() == Ok("1");
+    sdkwork_aiot_gateway::start_outbox_dispatcher_worker(
+        Arc::clone(&running),
+        Arc::clone(&outbox_lag),
+    );
+    let bridge_enabled = bridge_state.bridge_enabled();
     let bridge_stats = Arc::new(BridgeStats::new(current_unix_time_millis()));
-    let bridge_state = Arc::new(BridgeRuntimeState::new(bridge_enabled));
     let bridge_control = if bridge_enabled {
         start_mqtt_udp_bridge(
             Arc::clone(&server),
@@ -107,20 +122,15 @@ fn main() {
 
         let server = Arc::clone(&server);
         let session_options = session_options.clone();
-        let bridge_stats = Arc::clone(&bridge_stats);
-        let bridge_state = Arc::clone(&bridge_state);
-        let bridge_control = Arc::clone(&bridge_control);
-        let active_ws_connections = Arc::clone(&active_ws_connections);
+        let context = ClientConnectionContext {
+            bridge_stats: Arc::clone(&bridge_stats),
+            bridge_state: Arc::clone(&bridge_state),
+            bridge_control: Arc::clone(&bridge_control),
+            active_ws_connections: Arc::clone(&active_ws_connections),
+            outbox_lag: Arc::clone(&outbox_lag),
+        };
         std::thread::spawn(move || {
-            handle_client_connection(
-                &server,
-                &session_options,
-                stream,
-                bridge_stats,
-                bridge_state,
-                bridge_control,
-                active_ws_connections,
-            )
+            handle_client_connection(&server, &session_options, stream, context)
         });
     }
 }
@@ -471,46 +481,6 @@ struct BridgeStatsSnapshot {
     udp_uplink_replies: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BridgeRuntimeSnapshot {
-    bridge_enabled: bool,
-    mqtt_loop_running: bool,
-    mqtt_session_active: bool,
-    udp_loop_running: bool,
-    udp_socket_bound: bool,
-}
-
-#[derive(Debug)]
-struct BridgeRuntimeState {
-    bridge_enabled: bool,
-    mqtt_loop_running: AtomicBool,
-    mqtt_session_active: AtomicBool,
-    udp_loop_running: AtomicBool,
-    udp_socket_bound: AtomicBool,
-}
-
-impl BridgeRuntimeState {
-    fn new(bridge_enabled: bool) -> Self {
-        Self {
-            bridge_enabled,
-            mqtt_loop_running: AtomicBool::new(false),
-            mqtt_session_active: AtomicBool::new(false),
-            udp_loop_running: AtomicBool::new(false),
-            udp_socket_bound: AtomicBool::new(false),
-        }
-    }
-
-    fn snapshot(&self) -> BridgeRuntimeSnapshot {
-        BridgeRuntimeSnapshot {
-            bridge_enabled: self.bridge_enabled,
-            mqtt_loop_running: self.mqtt_loop_running.load(Ordering::Relaxed),
-            mqtt_session_active: self.mqtt_session_active.load(Ordering::Relaxed),
-            udp_loop_running: self.udp_loop_running.load(Ordering::Relaxed),
-            udp_socket_bound: self.udp_socket_bound.load(Ordering::Relaxed),
-        }
-    }
-}
-
 struct BridgeControlInner {
     session_state: Arc<Mutex<SessionState>>,
     mqtt_publisher: Arc<MqttBridgePublisher>,
@@ -700,7 +670,7 @@ fn start_mqtt_udp_bridge(
     session_options: sdkwork_aiot_gateway::XiaozhiSessionOptions,
     running: Arc<AtomicBool>,
     stats: Arc<BridgeStats>,
-    state: Arc<BridgeRuntimeState>,
+    state: Arc<sdkwork_aiot_gateway::MqttBridgeRuntimeState>,
 ) -> Arc<BridgeControlHandle> {
     let mqtt_config = MqttBridgeConfig::from_env();
     let udp_config = UdpBridgeConfig::from_env();
@@ -770,11 +740,11 @@ fn run_mqtt_bridge_loop(
     running: Arc<AtomicBool>,
     config: MqttBridgeConfig,
     stats: Arc<BridgeStats>,
-    state: Arc<BridgeRuntimeState>,
+    state: Arc<sdkwork_aiot_gateway::MqttBridgeRuntimeState>,
     udp_socket: Arc<UdpSocket>,
     mqtt_publisher: Arc<MqttBridgePublisher>,
 ) {
-    state.mqtt_loop_running.store(true, Ordering::Relaxed);
+    state.mqtt_loop_running().store(true, Ordering::Relaxed);
     let mut reconnect_attempt = 0u32;
     while running.load(Ordering::Relaxed) {
         if reconnect_attempt > 0 {
@@ -788,7 +758,7 @@ fn run_mqtt_bridge_loop(
         if let Err(error) = client.subscribe(config.subscribe_topic.clone(), QoS::AtMostOnce) {
             mqtt_publisher.set_client(None);
             eprintln!("sdkwork-aiot-gateway mqtt_subscribe_error={error}");
-            state.mqtt_session_active.store(false, Ordering::Relaxed);
+            state.mqtt_session_active().store(false, Ordering::Relaxed);
             sleep_reconnect_delay(
                 reconnect_attempt,
                 config.reconnect_base_delay,
@@ -799,7 +769,7 @@ fn run_mqtt_bridge_loop(
         }
 
         reconnect_attempt = 0;
-        state.mqtt_session_active.store(true, Ordering::Relaxed);
+        state.mqtt_session_active().store(true, Ordering::Relaxed);
         loop {
             let event = match connection.iter().next() {
                 Some(Ok(event)) => {
@@ -867,7 +837,7 @@ fn run_mqtt_bridge_loop(
             stats.maybe_log_snapshot(config.stats_log_interval);
         }
         mqtt_publisher.set_client(None);
-        state.mqtt_session_active.store(false, Ordering::Relaxed);
+        state.mqtt_session_active().store(false, Ordering::Relaxed);
 
         sleep_reconnect_delay(
             reconnect_attempt,
@@ -876,8 +846,8 @@ fn run_mqtt_bridge_loop(
         );
         reconnect_attempt = reconnect_attempt.saturating_add(1);
     }
-    state.mqtt_session_active.store(false, Ordering::Relaxed);
-    state.mqtt_loop_running.store(false, Ordering::Relaxed);
+    state.mqtt_session_active().store(false, Ordering::Relaxed);
+    state.mqtt_loop_running().store(false, Ordering::Relaxed);
 }
 
 fn run_udp_bridge_loop(
@@ -885,12 +855,12 @@ fn run_udp_bridge_loop(
     running: Arc<AtomicBool>,
     config: UdpBridgeConfig,
     stats: Arc<BridgeStats>,
-    state: Arc<BridgeRuntimeState>,
+    state: Arc<sdkwork_aiot_gateway::MqttBridgeRuntimeState>,
     udp_socket: Arc<UdpSocket>,
     mqtt_publisher: Arc<MqttBridgePublisher>,
 ) {
-    state.udp_loop_running.store(true, Ordering::Relaxed);
-    state.udp_socket_bound.store(true, Ordering::Relaxed);
+    state.udp_loop_running().store(true, Ordering::Relaxed);
+    state.udp_socket_bound().store(true, Ordering::Relaxed);
 
     let mut buf = [0u8; 2048];
     while running.load(Ordering::Relaxed) {
@@ -984,8 +954,8 @@ fn run_udp_bridge_loop(
         eprintln!("sdkwork-aiot-gateway udp_decode_error=transport.udp.decode_failed from={from}");
         stats.maybe_log_snapshot(config.stats_log_interval);
     }
-    state.udp_socket_bound.store(false, Ordering::Relaxed);
-    state.udp_loop_running.store(false, Ordering::Relaxed);
+    state.udp_socket_bound().store(false, Ordering::Relaxed);
+    state.udp_loop_running().store(false, Ordering::Relaxed);
 }
 
 fn setup_shutdown_signal_handler(running: Arc<AtomicBool>) {
@@ -1000,14 +970,19 @@ fn install_ctrlc_handler(running: Arc<AtomicBool>) {
     }
 }
 
+struct ClientConnectionContext {
+    bridge_stats: Arc<BridgeStats>,
+    bridge_state: Arc<sdkwork_aiot_gateway::MqttBridgeRuntimeState>,
+    bridge_control: Arc<BridgeControlHandle>,
+    active_ws_connections: Arc<AtomicU64>,
+    outbox_lag: Arc<AtomicU64>,
+}
+
 fn handle_client_connection(
     server: &sdkwork_aiot_transport::TransportServer,
     session_options: &sdkwork_aiot_gateway::XiaozhiSessionOptions,
     mut stream: TcpStream,
-    bridge_stats: Arc<BridgeStats>,
-    bridge_state: Arc<BridgeRuntimeState>,
-    bridge_control: Arc<BridgeControlHandle>,
-    active_ws_connections: Arc<AtomicU64>,
+    context: ClientConnectionContext,
 ) {
     let _ = stream.set_read_timeout(Some(HTTP_READ_TIMEOUT));
 
@@ -1038,25 +1013,28 @@ fn handle_client_connection(
         }
 
         if request.method == "GET" && request.path == BRIDGE_HEALTH_PATH {
-            let response = bridge_health_response(bridge_state.as_ref(), bridge_stats.as_ref());
+            let response = bridge_health_response(
+                context.bridge_state.as_ref(),
+                context.bridge_stats.as_ref(),
+            );
             let response = format_response(&response);
             let _ = stream.write_all(response.as_bytes());
             return;
         }
         if request.method == "GET" && request.path == BRIDGE_STATS_PATH {
-            let response = bridge_stats_response(bridge_stats.as_ref());
+            let response = bridge_stats_response(context.bridge_stats.as_ref());
             let response = format_response(&response);
             let _ = stream.write_all(response.as_bytes());
             return;
         }
         if request.method == "GET" && request.path == BRIDGE_METRICS_PATH {
-            let response = bridge_metrics_response(bridge_stats.as_ref());
+            let response = bridge_metrics_response(context.bridge_stats.as_ref());
             let response = format_response(&response);
             let _ = stream.write_all(response.as_bytes());
             return;
         }
         if request.method == "GET" && request.path == BRIDGE_SESSIONS_PATH {
-            let response = bridge_sessions_response(bridge_control.as_ref());
+            let response = bridge_sessions_response(context.bridge_control.as_ref());
             let response = format_response(&response);
             let _ = stream.write_all(response.as_bytes());
             return;
@@ -1064,8 +1042,8 @@ fn handle_client_connection(
         if request.method == "DELETE" {
             if let Some(session_id) = bridge_session_id_from_path(&request.path) {
                 let response = bridge_session_disconnect_response(
-                    bridge_control.as_ref(),
-                    bridge_stats.as_ref(),
+                    context.bridge_control.as_ref(),
+                    context.bridge_stats.as_ref(),
                     session_id,
                 );
                 let response = format_response(&response);
@@ -1101,10 +1079,11 @@ fn handle_client_connection(
                 return;
             }
 
-            let projected_connections = active_ws_connections.load(Ordering::Relaxed) + 1;
+            let projected_connections = context.active_ws_connections.load(Ordering::Relaxed) + 1;
             if sdkwork_aiot_gateway::ws_backpressure_rejects_new_connection(
                 &server.runtime,
                 projected_connections,
+                context.outbox_lag.load(Ordering::Relaxed),
             ) {
                 let response =
                     service_unavailable_response("gateway.xiaozhi.websocket.backpressure");
@@ -1116,9 +1095,11 @@ fn handle_client_connection(
                 Ok(response) => {
                     let response = format_response(&response);
                     if stream.write_all(response.as_bytes()).is_ok() {
-                        active_ws_connections.fetch_add(1, Ordering::Relaxed);
+                        context
+                            .active_ws_connections
+                            .fetch_add(1, Ordering::Relaxed);
                         let _guard = ActiveWsConnectionGuard {
-                            counter: Arc::clone(&active_ws_connections),
+                            counter: Arc::clone(&context.active_ws_connections),
                         };
                         handle_xiaozhi_websocket_session(
                             server,
@@ -1293,7 +1274,7 @@ fn format_response(response: &sdkwork_aiot_transport::HttpResponse) -> String {
 }
 
 fn bridge_health_response(
-    runtime_state: &BridgeRuntimeState,
+    runtime_state: &sdkwork_aiot_gateway::MqttBridgeRuntimeState,
     stats: &BridgeStats,
 ) -> sdkwork_aiot_transport::HttpResponse {
     let runtime_snapshot = runtime_state.snapshot();
@@ -1436,16 +1417,10 @@ sdkwork_aiot_xiaozhi_activation_registry_backend{{backend=\"{}\"}} 1\n",
 }
 
 fn bridge_health_snapshot_json(
-    runtime: &BridgeRuntimeSnapshot,
+    runtime: &sdkwork_aiot_gateway::MqttBridgeRuntimeSnapshot,
     stats: &BridgeStatsSnapshot,
 ) -> String {
-    let status = if !runtime.bridge_enabled {
-        "disabled"
-    } else if runtime.mqtt_loop_running && runtime.udp_loop_running && runtime.udp_socket_bound {
-        "ok"
-    } else {
-        "degraded"
-    };
+    let status = sdkwork_aiot_gateway::mqtt_bridge_health_status(runtime);
     let stats_json = bridge_stats_snapshot_json(stats);
     format!(
         r#"{{"status":"{}","bridge_enabled":{},"mqtt":{{"loop_running":{},"session_active":{}}},"udp":{{"loop_running":{},"socket_bound":{}}},"stats":{}}}"#,
@@ -1834,7 +1809,7 @@ mod tests {
 
     #[test]
     fn bridge_health_snapshot_json_reports_runtime_status_and_stats() {
-        let runtime = BridgeRuntimeSnapshot {
+        let runtime = sdkwork_aiot_gateway::MqttBridgeRuntimeSnapshot {
             bridge_enabled: true,
             mqtt_loop_running: true,
             mqtt_session_active: true,
@@ -1866,7 +1841,7 @@ mod tests {
 
     #[test]
     fn bridge_health_snapshot_json_reports_disabled_when_bridge_is_off() {
-        let runtime = BridgeRuntimeSnapshot {
+        let runtime = sdkwork_aiot_gateway::MqttBridgeRuntimeSnapshot {
             bridge_enabled: false,
             mqtt_loop_running: false,
             mqtt_session_active: false,

@@ -164,6 +164,12 @@ impl DeviceAuthDecision {
                 .as_ref()
                 .is_some_and(|value| !value.trim().is_empty());
 
+        if request.mode != DeviceAuthMode::BearerToken {
+            return Err(DeviceAuthError::new(
+                "security.device_auth.mode_not_implemented",
+            ));
+        }
+
         if request.mode == DeviceAuthMode::BearerToken && has_association_context {
             verify_bearer_token_evidence(&request)?;
         }

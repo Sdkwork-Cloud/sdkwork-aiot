@@ -39,7 +39,7 @@ fn device_auth_request_is_protocol_scoped_not_user_session_scoped() {
 }
 
 #[test]
-fn device_auth_decision_builds_principal_without_iam_user_identity() {
+fn device_auth_decision_rejects_unimplemented_non_bearer_modes() {
     let request = DeviceAuthRequest::new("mqtt.v5", "device-001")
         .with_tenant("t1")
         .with_organization("o1")
@@ -47,18 +47,8 @@ fn device_auth_decision_builds_principal_without_iam_user_identity() {
         .with_credential("credential-001")
         .with_mode(DeviceAuthMode::BrokerCredential);
 
-    let decision = DeviceAuthDecision::allow(request).expect("decision");
-    let principal = decision.principal.expect("principal");
-
-    assert!(decision.allowed);
-    assert_eq!(principal.tenant_id, "t1");
-    assert_eq!(principal.organization_id, "o1");
-    assert_eq!(principal.product_id, "prod1");
-    assert_eq!(principal.device_id, "device-001");
-    assert_eq!(principal.auth_level, DeviceAuthMode::BrokerCredential);
-    assert_eq!(principal.credential_id.as_deref(), Some("credential-001"));
-    assert_eq!(principal.actor_ref().actor_type, "device");
-    assert_eq!(principal.actor_ref().actor_id, "device-001");
+    let error = DeviceAuthDecision::allow(request).expect_err("non-bearer mode must fail");
+    assert_eq!(error.code, "security.device_auth.mode_not_implemented");
 }
 
 #[test]

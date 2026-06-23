@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
+    sdkwork_iot_platform_service::assert_production_environment_safety();
     let device_db_path = sdkwork_iot_platform_service::configured_device_db_path(
         "SDKWORK_AIOT_ADMIN_API_DEVICE_DB_PATH",
     );

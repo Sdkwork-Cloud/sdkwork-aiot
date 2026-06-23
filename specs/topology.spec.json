@@ -113,7 +113,15 @@
     }
   },
   "database": {
-    "appPrefix": "SDKWORK_AIOT"
+    "appPrefix": "SDKWORK_AIOT",
+    "devicePath": "SDKWORK_AIOT_DEVICE_DB_PATH",
+    "deviceEngine": "SDKWORK_AIOT_DEVICE_DATABASE_ENGINE",
+    "deviceTablePrefix": "SDKWORK_AIOT_DEVICE_DATABASE_TABLE_PREFIX",
+    "deviceMode": "SDKWORK_AIOT_DEVICE_DATABASE_MODE",
+    "outboxDispatcherEnabled": "SDKWORK_AIOT_OUTBOX_DISPATCHER_ENABLED",
+    "outboxDispatchIntervalMs": "SDKWORK_AIOT_OUTBOX_DISPATCH_INTERVAL_MS",
+    "outboxLagReadyThreshold": "SDKWORK_AIOT_OUTBOX_LAG_READY_THRESHOLD",
+    "outboxWebhookUrl": "SDKWORK_AIOT_OUTBOX_WEBHOOK_URL"
   },
   "components": {
     "edgeGateway": {

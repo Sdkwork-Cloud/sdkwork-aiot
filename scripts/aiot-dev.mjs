@@ -18,6 +18,11 @@ import {
   shouldAutostartGateway,
   waitForHttpHealthy,
 } from './lib/aiot-topology.mjs';
+import {
+  assertSupportedDevDatabaseEngine,
+  mergeDeviceDatabaseEnv,
+  mergeProcessRuntimeEnv,
+} from './lib/aiot-device-database.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -178,7 +183,7 @@ function buildProcessEntries(profileId, env, { withSimulator = false } = {}) {
           label: processSpec.id,
           packageName: processSpec.crate,
           binary: processSpec.binary,
-          env,
+          env: mergeProcessRuntimeEnv(processSpec, env),
         }),
       );
     }
@@ -231,15 +236,20 @@ async function main() {
     process.exit(0);
   }
 
+  assertSupportedDevDatabaseEngine(settings.database);
+
   const profileId = resolveDevProfileFromDeploymentProfile(
     settings.deploymentProfile,
     settings.serviceLayout,
   ) || DEFAULT_DEV_PROFILE_ID;
   const profileEnv = loadProfile(profileId);
-  const runtimeEnv = mergeRuntimeEnv(process.env, profileEnv, {
-    SDKWORK_AIOT_PROFILE_ID: profileId,
-    SDKWORK_AIOT_DEV_MODE: '1',
-  });
+  const runtimeEnv = mergeDeviceDatabaseEnv(
+    mergeRuntimeEnv(process.env, profileEnv, {
+      SDKWORK_AIOT_PROFILE_ID: profileId,
+      SDKWORK_AIOT_DEV_MODE: '1',
+    }),
+    { databaseEngine: settings.database },
+  );
 
   const processes = buildProcessEntries(profileId, runtimeEnv, {
     withSimulator: settings.withSimulator,

@@ -29,7 +29,7 @@ export function createAiotH5AppSdkClientConfig(): SdkworkAiotAppClientConfig {
     ),
     baseUrl: readImportMetaEnvWithDefault(
       'VITE_SDKWORK_AIOT_APPLICATION_APP_HTTP_URL',
-      'http://127.0.0.1:8082',
+      'http://127.0.0.1:18082',
     ),
     platform: 'h5',
   };

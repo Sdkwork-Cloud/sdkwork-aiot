@@ -4,7 +4,7 @@ Canonical lifecycle assets for `sdkwork-aiot` per `DATABASE_FRAMEWORK_SPEC.md`.
 
 - moduleId: `aiot`
 - serviceCode: `AIOT_DEVICE`
-- tablePrefix: `aiot_`
+- tablePrefix: `iot_`
 
 ## Commands
 

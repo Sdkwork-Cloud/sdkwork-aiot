@@ -128,6 +128,25 @@ fn openapi_authorities_declare_web_request_context_extensions() {
             openapi.contains(&format!(r#""x-sdkwork-api-surface": "{expected_surface}""#)),
             "{relative_path} must declare x-sdkwork-api-surface"
         );
+        assert!(
+            openapi.contains(r#""x-sdkwork-owner": "sdkwork-aiot""#),
+            "{relative_path} must declare x-sdkwork-owner"
+        );
+        let expected_authority = if expected_surface == "app-api" {
+            "sdkwork-aiot-app-api"
+        } else {
+            "sdkwork-aiot-backend-api"
+        };
+        assert!(
+            openapi.contains(&format!(
+                r#""x-sdkwork-api-authority": "{expected_authority}""#
+            )),
+            "{relative_path} must declare x-sdkwork-api-authority"
+        );
+        assert!(
+            openapi.contains(r#""PageInfo""#),
+            "{relative_path} must declare PageInfo schema for list pagination"
+        );
     }
 }
 
@@ -1229,4 +1248,69 @@ fn committed_route_manifests_match_http_api_contracts() {
             route.path
         );
     }
+}
+
+#[test]
+fn gateway_readiness_wires_outbox_and_optional_mqtt_bridge_probes() {
+    let root = workspace_root();
+    let gateway_lib = fs::read_to_string(root.join("services/sdkwork-aiot-gateway/src/lib.rs"))
+        .expect("gateway lib");
+    let gateway_main = fs::read_to_string(root.join("services/sdkwork-aiot-gateway/src/main.rs"))
+        .expect("gateway main");
+    let bridge_module = root.join("services/sdkwork-aiot-gateway/src/mqtt_bridge_readiness.rs");
+
+    assert!(
+        bridge_module.exists(),
+        "gateway must expose mqtt bridge readiness module"
+    );
+    assert!(
+        gateway_lib.contains("attach_gateway_readiness_probe"),
+        "gateway lib must attach readiness probes"
+    );
+    assert!(
+        gateway_lib.contains("mqtt_bridge_readiness_probe"),
+        "gateway lib must chain mqtt bridge readiness"
+    );
+    assert!(
+        gateway_main.contains("MqttBridgeRuntimeState::from_env"),
+        "gateway main must bootstrap shared mqtt bridge runtime state"
+    );
+}
+
+#[test]
+fn service_host_supports_chained_readiness_probes() {
+    let root = workspace_root();
+    let source = fs::read_to_string(root.join("crates/sdkwork-aiot-service-host/src/lib.rs"))
+        .expect("service-host lib");
+    assert!(
+        source.contains("fn and_readiness_probe"),
+        "AiotHealthCheck must support chained readiness probes"
+    );
+}
+
+#[test]
+fn device_database_bootstrap_fails_fast_on_postgres_until_phase_k() {
+    let root = workspace_root();
+    let bootstrap =
+        fs::read_to_string(root.join("crates/sdkwork-aiot-storage-sqlx/src/database_bootstrap.rs"))
+            .expect("database bootstrap");
+    assert!(
+        bootstrap.contains("POSTGRES_DEVICE_PERSISTENCE_DEFERRED"),
+        "device database bootstrap must fail fast on postgres until Phase K"
+    );
+}
+
+#[test]
+fn production_topology_profiles_are_guarded() {
+    let root = workspace_root();
+    let package_json = fs::read_to_string(root.join("package.json")).expect("package.json");
+    assert!(
+        package_json.contains("\"check:production-topology\""),
+        "package.json must expose production topology validation"
+    );
+    assert!(
+        root.join("scripts/dev/validate-production-topology.mjs")
+            .exists(),
+        "production topology validator script is required"
+    );
 }

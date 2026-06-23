@@ -47,6 +47,7 @@ The AIoT server already aligns on API contracts, SDK workspaces, topology, secur
 | H | API/SDK/gateway command surface | `api:*`, `sdk:*`, `gateway:*` root scripts; `tools/aiot_sdk_generate.mjs`; client runtime env helpers | Done |
 | I | Repository script standard compliance | Remove `aiot:*` public scripts; `--deployment-profile` dev axis; workspace standard test; root `plugins/` dictionary | Done |
 | J | Agent/workflow entrypoint compliance | `AGENTS.md` v2 progressive loading; `PNPM_SCRIPT_SPEC.md` + `GITHUB_WORKFLOW_SPEC.md` references; `check:agent-workflow-standard`; `sdkwork_utils_ref` in `package.yml`; durable local guidance in `specs/README.md` | Done |
+| K | Postgres device persistence | `SDKWORK_AIOT_DEVICE_DATABASE_*` env wiring; async sqlx repositories; dev `--database postgres` orchestration | In progress — config resolution + fail-fast guardrails landed; repositories pending |
 
 ## Consequences
 

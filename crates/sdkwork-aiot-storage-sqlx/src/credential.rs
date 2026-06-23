@@ -4,8 +4,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use sdkwork_aiot_storage::AiotStorageAssociation;
 use sqlx::Row;
 
-use sdkwork_utils_rust::{is_blank, sha256_hash};
+use sdkwork_utils_rust::is_blank;
 
+use crate::credential_hash::{hash_device_credential_secret, verify_device_credential_secret};
 use crate::schema::ensure_device_schema;
 use crate::sqlite_sync::{
     read_optional_timestamp_column, read_timestamp_column, sqlite_connect_url, BlockingSqlitePool,
@@ -69,22 +70,73 @@ impl SqliteSqlxCredentialRepository {
     }
 
     pub fn verify_bearer_token(&self, device_id: &str, token: &str) -> bool {
+        self.verify_bearer_token_scoped(None, None, device_id, token)
+    }
+
+    pub fn verify_bearer_token_scoped(
+        &self,
+        tenant_id: Option<i64>,
+        organization_id: Option<i64>,
+        device_id: &str,
+        token: &str,
+    ) -> bool {
         if is_blank(Some(device_id)) || is_blank(Some(token)) {
             return false;
         }
-        let token_hash = sha256_hash(token.as_bytes());
+        let now = current_rfc3339_timestamp();
+        self.db
+            .run::<_, bool, sqlx::Error>(async {
+                let mut query = String::from(
+                    "SELECT credential_hash FROM iot_device_credential
+                     WHERE device_id = ?1
+                       AND status = ?2
+                       AND (expires_at IS NULL OR expires_at > ?3)",
+                );
+                if tenant_id.is_some() {
+                    query.push_str(" AND tenant_id = ?4");
+                }
+                if organization_id.is_some() {
+                    query.push_str(" AND organization_id = ?5");
+                }
+
+                let mut sql_query = sqlx::query(&query)
+                    .bind(device_id)
+                    .bind(CREDENTIAL_STATUS_ACTIVE)
+                    .bind(&now);
+                if let Some(tenant_id) = tenant_id {
+                    sql_query = sql_query.bind(tenant_id);
+                }
+                if let Some(organization_id) = organization_id {
+                    sql_query = sql_query.bind(organization_id);
+                }
+
+                let rows = sql_query.fetch_all(self.db.pool()).await?;
+                Ok(rows.into_iter().any(|row| {
+                    row.try_get::<String, _>("credential_hash")
+                        .ok()
+                        .filter(|stored| !stored.is_empty())
+                        .is_some_and(|stored| {
+                            verify_device_credential_secret(&stored, token.as_bytes())
+                        })
+                }))
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn device_has_active_credential(&self, device_id: &str) -> bool {
+        if is_blank(Some(device_id)) {
+            return false;
+        }
         let now = current_rfc3339_timestamp();
         self.db
             .run::<_, bool, sqlx::Error>(async {
                 let count: i64 = sqlx::query_scalar(
                     "SELECT COUNT(1) FROM iot_device_credential
                      WHERE device_id = ?1
-                       AND credential_hash = ?2
-                       AND status = ?3
-                       AND (expires_at IS NULL OR expires_at > ?4)",
+                       AND status = ?2
+                       AND (expires_at IS NULL OR expires_at > ?3)",
                 )
                 .bind(device_id)
-                .bind(token_hash)
                 .bind(CREDENTIAL_STATUS_ACTIVE)
                 .bind(now)
                 .fetch_one(self.db.pool())
@@ -109,7 +161,7 @@ impl SqliteSqlxCredentialRepository {
                 .map_err(|_| SqliteCredentialRepositoryError::PersistenceFailure)?;
                 let credential_id = format!("credential-{next_id:04}");
                 let issued_secret = generate_device_secret(&command.device_id, next_id);
-                let credential_hash = sha256_hash(issued_secret.as_bytes());
+                let credential_hash = hash_device_credential_secret(issued_secret.as_bytes());
 
                 sqlx::query(
                     "INSERT INTO iot_device_credential (
@@ -264,6 +316,7 @@ fn credential_status_label(status: i32) -> &'static str {
 }
 
 fn generate_device_secret(device_id: &str, sequence: i64) -> String {
+    use sdkwork_utils_rust::sha256_hash;
     let seed = format!(
         "{}:{}:{}",
         device_id,

@@ -11,3 +11,4 @@ sdkwork-aiot-protocol.workspace = true
 sdkwork-aiot-security.workspace = true
 sdkwork-aiot-storage.workspace = true
 sdkwork-utils-rust.workspace = true
+ureq = { version = "2.12", default-features = false, features = ["tls"] }

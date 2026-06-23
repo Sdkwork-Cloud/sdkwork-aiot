@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Ensures OpenAPI authorities declare WebRequestContext and api-surface extensions
- * required by WEB_FRAMEWORK_SPEC.md section 7.
+ * Materializes SDKWork OpenAPI contract extensions required by WEB_FRAMEWORK_SPEC.md
+ * and API_SPEC.md (ownership, request context, api surface, list pagination).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,12 +14,119 @@ const authorities = [
   {
     relativePath: 'apis/app-api/iot/sdkwork-aiot-app-api.openapi.json',
     apiSurface: 'app-api',
+    owner: 'sdkwork-aiot',
+    apiAuthority: 'sdkwork-aiot-app-api',
   },
   {
     relativePath: 'apis/backend-api/iot/sdkwork-aiot-backend-api.openapi.json',
     apiSurface: 'backend-api',
+    owner: 'sdkwork-aiot',
+    apiAuthority: 'sdkwork-aiot-backend-api',
   },
 ];
+
+const LIST_QUERY_PARAMETERS = [
+  {
+    name: 'page',
+    in: 'query',
+    description: 'One-based page index.',
+    schema: { type: 'integer', minimum: 1, default: 1 },
+  },
+  {
+    name: 'page_size',
+    in: 'query',
+    description: 'Page size (max 200).',
+    schema: { type: 'integer', minimum: 1, maximum: 200, default: 20 },
+  },
+  {
+    name: 'cursor',
+    in: 'query',
+    description: 'Opaque cursor for cursor pagination.',
+    schema: { type: 'string' },
+  },
+  {
+    name: 'sort',
+    in: 'query',
+    description: 'Comma-separated sort fields, prefix with - for descending.',
+    schema: { type: 'string' },
+  },
+  {
+    name: 'q',
+    in: 'query',
+    description: 'Free-text search keyword.',
+    schema: { type: 'string' },
+  },
+];
+
+const PAGE_INFO_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['page', 'pageSize', 'total', 'hasMore'],
+  properties: {
+    page: { type: 'integer', minimum: 1 },
+    pageSize: { type: 'integer', minimum: 1, maximum: 200 },
+    total: { type: 'integer', minimum: 0 },
+    hasMore: { type: 'boolean' },
+    nextCursor: { type: 'string' },
+  },
+};
+
+function mergeListParameters(existing = []) {
+  const names = new Set(existing.map((param) => param.name));
+  const merged = [...existing];
+  for (const param of LIST_QUERY_PARAMETERS) {
+    if (!names.has(param.name)) {
+      merged.push(param);
+    }
+  }
+  return merged;
+}
+
+function ensurePageInfoOnListSchemas(openapi) {
+  openapi.components ??= {};
+  openapi.components.schemas ??= {};
+  openapi.components.schemas.PageInfo = PAGE_INFO_SCHEMA;
+
+  for (const [name, schema] of Object.entries(openapi.components.schemas)) {
+    if (!name.endsWith('ListResponse') && name !== 'StandardCollectionResponse') {
+      continue;
+    }
+    if (!schema.properties?.data) {
+      continue;
+    }
+    schema.properties.pageInfo = { $ref: '#/components/schemas/PageInfo' };
+    if (!schema.required?.includes('pageInfo')) {
+      schema.required = [...(schema.required ?? []), 'pageInfo'];
+    }
+  }
+}
+
+function normalizeAppSecuritySchemes(openapi) {
+  if (!openapi.components?.securitySchemes) {
+    return;
+  }
+  const schemes = openapi.components.securitySchemes;
+  if (schemes.AccessToken && !schemes['Access-Token']) {
+    schemes['Access-Token'] = {
+      ...schemes.AccessToken,
+      name: 'Access-Token',
+    };
+    delete schemes.AccessToken;
+  }
+  for (const pathItem of Object.values(openapi.paths ?? {})) {
+    for (const operation of Object.values(pathItem ?? {})) {
+      if (!operation?.security) {
+        continue;
+      }
+      for (const requirement of operation.security) {
+        if (Object.prototype.hasOwnProperty.call(requirement, 'AccessToken')) {
+          requirement['Access-Token'] = requirement.AccessToken;
+          delete requirement.AccessToken;
+        }
+      }
+    }
+  }
+}
 
 let changed = 0;
 const checkOnly = process.argv.includes('--check');
@@ -43,7 +150,28 @@ for (const authority of authorities) {
         operation['x-sdkwork-api-surface'] = authority.apiSurface;
         changed += 1;
       }
+      if (operation['x-sdkwork-owner'] !== authority.owner) {
+        operation['x-sdkwork-owner'] = authority.owner;
+        changed += 1;
+      }
+      if (operation['x-sdkwork-api-authority'] !== authority.apiAuthority) {
+        operation['x-sdkwork-api-authority'] = authority.apiAuthority;
+        changed += 1;
+      }
+
+      if (operation.operationId.endsWith('.list')) {
+        const nextParameters = mergeListParameters(operation.parameters ?? []);
+        if (JSON.stringify(nextParameters) !== JSON.stringify(operation.parameters ?? [])) {
+          operation.parameters = nextParameters;
+          changed += 1;
+        }
+      }
     }
+  }
+
+  ensurePageInfoOnListSchemas(openapi);
+  if (authority.apiSurface === 'app-api') {
+    normalizeAppSecuritySchemes(openapi);
   }
 
   const next = `${JSON.stringify(openapi, null, 2)}\n`;
@@ -63,4 +191,4 @@ if (checkOnly) {
   process.exit(0);
 }
 
-console.log(`OpenAPI WebRequestContext extensions updated (${changed} field writes)`);
+console.log(`OpenAPI contract extensions updated (${changed} field writes)`);

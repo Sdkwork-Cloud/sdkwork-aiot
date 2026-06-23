@@ -17,6 +17,13 @@ use sdkwork_iot_device_service::{
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+mod outbox_dispatcher;
+
+pub use outbox_dispatcher::{
+    outbox_publisher_from_env, AiotOutboxDispatcher, AiotOutboxDispatcherConfig,
+    OutboxEventPublisher, StructuredLogOutboxPublisher, WebhookOutboxPublisher,
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeMode {
     Embedded,
@@ -929,7 +936,7 @@ impl AiotStorageBundle {
                 "TwinRepository",
                 "TelemetryRepository",
                 "FirmwareRepository",
-                "OutboxRepository",
+                "OutboxEventRepository",
             ],
         }
     }
@@ -1051,6 +1058,15 @@ impl AiotHealthCheck {
         probe: impl Fn() -> bool + Send + Sync + 'static,
     ) -> Self {
         self.readiness_probe = Some(Arc::new(probe));
+        self
+    }
+
+    pub fn and_readiness_probe(mut self, probe: impl Fn() -> bool + Send + Sync + 'static) -> Self {
+        let next_probe = Arc::new(probe);
+        self.readiness_probe = Some(match self.readiness_probe.take() {
+            None => next_probe,
+            Some(existing) => Arc::new(move || existing() && next_probe()),
+        });
         self
     }
 
@@ -1256,4 +1272,24 @@ pub fn standard_aiot_integration_bundle(
         protocol_catalog: standard_protocol_catalog(),
         sdk_families: standard_sdk_families(),
     })
+}
+
+#[cfg(test)]
+mod health_check_tests {
+    use super::AiotHealthCheck;
+
+    #[test]
+    fn and_readiness_probe_requires_all_probes_to_pass() {
+        let ready = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let ready_for_probe = std::sync::Arc::clone(&ready);
+        let health = AiotHealthCheck::ready("probe-chain")
+            .with_readiness_probe(move || {
+                ready_for_probe.load(std::sync::atomic::Ordering::Relaxed)
+            })
+            .and_readiness_probe(|| true);
+        assert!(health.is_ready());
+
+        ready.store(false, std::sync::atomic::Ordering::Relaxed);
+        assert!(!health.is_ready());
+    }
 }

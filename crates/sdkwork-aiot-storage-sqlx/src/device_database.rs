@@ -46,3 +46,8 @@ pub fn open_aiot_device_database(
 ) -> Result<AiotDeviceDatabase, PoolError> {
     AiotDeviceDatabase::open(device_db_path)
 }
+
+/// Opens the device database using path args, env path, explicit SQLite database env, or memory default.
+pub fn open_aiot_device_database_from_env() -> Result<AiotDeviceDatabase, PoolError> {
+    open_aiot_device_database(None)
+}

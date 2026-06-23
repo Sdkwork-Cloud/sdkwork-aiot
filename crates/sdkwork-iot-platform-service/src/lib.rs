@@ -1,9 +1,12 @@
 #![allow(private_interfaces)]
 
+mod pagination;
+
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use pagination::{paginated_collection_body, PageQuery};
 use sdkwork_aiot_contract::{
     AiotRequestContext, IOT_PERMISSION_COMMANDS_CANCEL, IOT_PERMISSION_COMMANDS_EXECUTE,
     IOT_PERMISSION_COMMANDS_READ, IOT_PERMISSION_DEVICES_DELETE, IOT_PERMISSION_DEVICES_READ,
@@ -258,6 +261,38 @@ impl AiotCredentialRepository for SqliteCredentialRepositoryAdapter {
 
 pub fn dev_mode_enabled() -> bool {
     std::env::var("SDKWORK_AIOT_DEV_MODE").as_deref() == Ok("1")
+}
+
+const PRODUCTION_MIN_SECRET_LENGTH: usize = 32;
+
+/// Refuses to start when production environment enables dev-mode auth bypass or weak secrets.
+pub fn assert_production_environment_safety() {
+    if std::env::var("SDKWORK_AIOT_ENVIRONMENT").as_deref() != Ok("production") {
+        return;
+    }
+
+    if dev_mode_enabled() {
+        eprintln!(
+            "FATAL: SDKWORK_AIOT_DEV_MODE=1 is forbidden when SDKWORK_AIOT_ENVIRONMENT=production"
+        );
+        std::process::exit(1);
+    }
+
+    let pepper = std::env::var("SDKWORK_AIOT_CREDENTIAL_PEPPER").unwrap_or_default();
+    if pepper.trim().len() < PRODUCTION_MIN_SECRET_LENGTH {
+        eprintln!(
+            "FATAL: SDKWORK_AIOT_CREDENTIAL_PEPPER must be at least {PRODUCTION_MIN_SECRET_LENGTH} characters when SDKWORK_AIOT_ENVIRONMENT=production"
+        );
+        std::process::exit(1);
+    }
+
+    let internal_token = std::env::var("SDKWORK_AIOT_INTERNAL_TOKEN").unwrap_or_default();
+    if internal_token.trim().len() < PRODUCTION_MIN_SECRET_LENGTH {
+        eprintln!(
+            "FATAL: SDKWORK_AIOT_INTERNAL_TOKEN must be at least {PRODUCTION_MIN_SECRET_LENGTH} characters when SDKWORK_AIOT_ENVIRONMENT=production"
+        );
+        std::process::exit(1);
+    }
 }
 
 fn trust_proxy_headers_enabled() -> bool {
@@ -1323,7 +1358,9 @@ impl AiotApiServer {
     }
 
     fn is_ready(&self) -> bool {
-        !self.runtime.component_names().is_empty() && self.device_repository.storage_ready()
+        !self.runtime.component_names().is_empty()
+            && self.device_repository.storage_ready()
+            && sdkwork_aiot_storage_sqlx::outbox_ready_from_env()
     }
 
     fn create_product(
@@ -2236,9 +2273,13 @@ pub fn handle_resolved_api_request(
     };
 
     match (server.surface, route.operation_id) {
-        (AiotApiSurface::Admin, "protocolAdapters.list") => HttpResponse::new(HttpStatus::Ok)
-            .with_header("content-type", "application/json")
-            .with_body(protocol_adapters_json(server.runtime())),
+        (AiotApiSurface::Admin, "protocolAdapters.list") => {
+            let page_query = PageQuery::from_request(request);
+            let items = protocol_adapter_item_json(server.runtime());
+            let total = items.len();
+            let (start, end) = page_query.slice_bounds(total);
+            json_collection_response(&items[start..end].join(","), page_query, total)
+        }
         (AiotApiSurface::Admin, "runtime.capacity.retrieve") => HttpResponse::new(HttpStatus::Ok)
             .with_header("content-type", "application/json")
             .with_body(runtime_capacity_json()),
@@ -2251,7 +2292,12 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_products(context) {
-                Ok(records) => standard_product_collection_response(&records),
+                Ok(records) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = records.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_product_collection_response(&records[start..end], page_query, total)
+                }
                 Err(problem) => problem,
             }
         }
@@ -2327,7 +2373,16 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_hardware_profiles(context) {
-                Ok(records) => standard_hardware_profile_collection_response(&records),
+                Ok(records) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = records.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_hardware_profile_collection_response(
+                        &records[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2409,7 +2464,16 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_protocol_profiles(context) {
-                Ok(records) => standard_protocol_profile_collection_response(&records),
+                Ok(records) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = records.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_protocol_profile_collection_response(
+                        &records[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2491,7 +2555,16 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_capability_models(context) {
-                Ok(records) => standard_capability_model_collection_response(&records),
+                Ok(records) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = records.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_capability_model_collection_response(
+                        &records[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2523,7 +2596,12 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_devices(context) {
-                Ok(devices) => standard_device_collection_response(&devices),
+                Ok(devices) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = devices.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_device_collection_response(&devices[start..end], page_query, total)
+                }
                 Err(problem) => problem,
             }
         }
@@ -2537,7 +2615,16 @@ pub fn handle_resolved_api_request(
             };
             let device_id = device_id.as_deref().unwrap_or("unknown-device");
             match server.list_device_sessions(context, device_id) {
-                Ok(sessions) => standard_device_session_collection_response(&sessions),
+                Ok(sessions) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = sessions.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_device_session_collection_response(
+                        &sessions[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2566,7 +2653,16 @@ pub fn handle_resolved_api_request(
             };
             let device_id = device_id.as_deref().unwrap_or("unknown-device");
             match server.list_device_capabilities(context, device_id) {
-                Ok(capabilities) => standard_device_capability_collection_response(&capabilities),
+                Ok(capabilities) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = capabilities.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_device_capability_collection_response(
+                        &capabilities[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2580,7 +2676,12 @@ pub fn handle_resolved_api_request(
             };
             let device_id = device_id.as_deref().unwrap_or("unknown-device");
             match server.list_commands(context, device_id) {
-                Ok(commands) => standard_command_collection_response(&commands),
+                Ok(commands) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = commands.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_command_collection_response(&commands[start..end], page_query, total)
+                }
                 Err(problem) => problem,
             }
         }
@@ -2608,7 +2709,12 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_events(context, None) {
-                Ok(events) => standard_event_collection_response(&events),
+                Ok(events) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = events.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_event_collection_response(&events[start..end], page_query, total)
+                }
                 Err(problem) => problem,
             }
         }
@@ -2622,7 +2728,12 @@ pub fn handle_resolved_api_request(
             };
             let device_id = device_id.as_deref().unwrap_or("unknown-device");
             match server.list_events(context, Some(device_id)) {
-                Ok(events) => standard_event_collection_response(&events),
+                Ok(events) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = events.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_event_collection_response(&events[start..end], page_query, total)
+                }
                 Err(problem) => problem,
             }
         }
@@ -2751,7 +2862,16 @@ pub fn handle_resolved_api_request(
             };
             let device_id = device_id.as_deref().unwrap_or("unknown-device");
             match server.list_device_credentials(context, device_id) {
-                Ok(credentials) => standard_device_credential_collection_response(&credentials),
+                Ok(credentials) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = credentials.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_device_credential_collection_response(
+                        &credentials[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2863,7 +2983,16 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_firmware_artifacts(context) {
-                Ok(artifacts) => standard_firmware_artifact_collection_response(&artifacts),
+                Ok(artifacts) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = artifacts.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_firmware_artifact_collection_response(
+                        &artifacts[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -2939,7 +3068,16 @@ pub fn handle_resolved_api_request(
                 );
             };
             match server.list_firmware_rollouts(context) {
-                Ok(rollouts) => standard_firmware_rollout_collection_response(&rollouts),
+                Ok(rollouts) => {
+                    let page_query = PageQuery::from_request(request);
+                    let total = rollouts.len();
+                    let (start, end) = page_query.slice_bounds(total);
+                    standard_firmware_rollout_collection_response(
+                        &rollouts[start..end],
+                        page_query,
+                        total,
+                    )
+                }
                 Err(problem) => problem,
             }
         }
@@ -3281,8 +3419,8 @@ fn catalog_repository_error_to_response(error: AiotCatalogRepositoryError) -> Ht
     }
 }
 
-fn protocol_adapters_json(runtime: &AiotRuntime) -> String {
-    let adapters = runtime
+fn protocol_adapter_item_json(runtime: &AiotRuntime) -> Vec<String> {
+    runtime
         .protocol_routes()
         .iter()
         .map(|route| {
@@ -3329,10 +3467,7 @@ fn protocol_adapters_json(runtime: &AiotRuntime) -> String {
                 route_kind_name(route.kind)
             )
         })
-        .collect::<Vec<_>>()
-        .join(",");
-
-    format!(r#"{{"code":"0","data":[{adapters}]}}"#)
+        .collect()
 }
 
 fn runtime_capacity_json() -> String {
@@ -3526,15 +3661,27 @@ fn standard_capability_model_records() -> Vec<AiotCapabilityModelRecord> {
         .collect()
 }
 
-fn standard_product_collection_response(products: &[AiotProductRecord]) -> HttpResponse {
+fn json_collection_response(
+    items_joined: &str,
+    page_query: PageQuery,
+    total: usize,
+) -> HttpResponse {
+    HttpResponse::new(HttpStatus::Ok)
+        .with_header("content-type", "application/json")
+        .with_body(paginated_collection_body(items_joined, page_query, total))
+}
+
+fn standard_product_collection_response(
+    products: &[AiotProductRecord],
+    page_query: PageQuery,
+    total: usize,
+) -> HttpResponse {
     let items = products
         .iter()
         .map(product_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn standard_product_response(status: HttpStatus, product: &AiotProductRecord) -> HttpResponse {
@@ -3543,15 +3690,15 @@ fn standard_product_response(status: HttpStatus, product: &AiotProductRecord) ->
 
 fn standard_hardware_profile_collection_response(
     profiles: &[AiotHardwareProfileRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = profiles
         .iter()
         .map(hardware_profile_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn standard_hardware_profile_response(
@@ -3563,15 +3710,15 @@ fn standard_hardware_profile_response(
 
 fn standard_protocol_profile_collection_response(
     profiles: &[AiotProtocolProfileRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = profiles
         .iter()
         .map(protocol_profile_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn standard_protocol_profile_response(
@@ -3583,15 +3730,15 @@ fn standard_protocol_profile_response(
 
 fn standard_capability_model_collection_response(
     models: &[AiotCapabilityModelRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = models
         .iter()
         .map(capability_model_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn standard_capability_model_record_response(
@@ -5619,15 +5766,17 @@ fn standard_command_response(status: HttpStatus, command: &AiotCommandRecord) ->
     standard_resource_response(status, command_resource_json(command))
 }
 
-fn standard_command_collection_response(commands: &[AiotCommandRecord]) -> HttpResponse {
+fn standard_command_collection_response(
+    commands: &[AiotCommandRecord],
+    page_query: PageQuery,
+    total: usize,
+) -> HttpResponse {
     let items = commands
         .iter()
         .map(command_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn command_resource_json(command: &AiotCommandRecord) -> String {
@@ -5670,15 +5819,17 @@ fn command_result_json(result: &sdkwork_aiot_storage::AiotCommandResultRecord) -
     )
 }
 
-fn standard_event_collection_response(events: &[AiotDeviceEventRecord]) -> HttpResponse {
+fn standard_event_collection_response(
+    events: &[AiotDeviceEventRecord],
+    page_query: PageQuery,
+    total: usize,
+) -> HttpResponse {
     let items = events
         .iter()
         .map(event_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn event_resource_json(event: &AiotDeviceEventRecord) -> String {
@@ -5722,15 +5873,15 @@ fn standard_twin_response(snapshot: &AiotDeviceTwinSnapshot) -> HttpResponse {
 
 fn standard_device_session_collection_response(
     sessions: &[AiotDeviceSessionRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = sessions
         .iter()
         .map(device_session_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn device_session_resource_json(session: &AiotDeviceSessionRecord) -> String {
@@ -5747,15 +5898,15 @@ fn device_session_resource_json(session: &AiotDeviceSessionRecord) -> String {
 
 fn standard_device_capability_collection_response(
     capabilities: &[AiotDeviceCapabilityRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = capabilities
         .iter()
         .map(device_capability_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn standard_device_credential_response(
@@ -5767,15 +5918,15 @@ fn standard_device_credential_response(
 
 fn standard_device_credential_collection_response(
     credentials: &[AiotDeviceCredentialRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = credentials
         .iter()
         .map(device_credential_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn device_credential_resource_json(credential: &AiotDeviceCredentialRecord) -> String {
@@ -5815,15 +5966,15 @@ fn standard_firmware_artifact_response(
 
 fn standard_firmware_artifact_collection_response(
     artifacts: &[AiotFirmwareArtifactRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = artifacts
         .iter()
         .map(firmware_artifact_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn firmware_artifact_resource_json(artifact: &AiotFirmwareArtifactRecord) -> String {
@@ -5852,15 +6003,15 @@ fn standard_firmware_rollout_response(
 
 fn standard_firmware_rollout_collection_response(
     rollouts: &[AiotFirmwareRolloutRecord],
+    page_query: PageQuery,
+    total: usize,
 ) -> HttpResponse {
     let items = rollouts
         .iter()
         .map(firmware_rollout_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn firmware_rollout_resource_json(rollout: &AiotFirmwareRolloutRecord) -> String {
@@ -5899,15 +6050,17 @@ fn standard_device_response(status: HttpStatus, device: &AiotDeviceRecord) -> Ht
     )
 }
 
-fn standard_device_collection_response(devices: &[AiotDeviceRecord]) -> HttpResponse {
+fn standard_device_collection_response(
+    devices: &[AiotDeviceRecord],
+    page_query: PageQuery,
+    total: usize,
+) -> HttpResponse {
     let items = devices
         .iter()
         .map(device_resource_json)
         .collect::<Vec<_>>()
         .join(",");
-    HttpResponse::new(HttpStatus::Ok)
-        .with_header("content-type", "application/json")
-        .with_body(format!(r#"{{"code":"0","data":[{items}]}}"#))
+    json_collection_response(&items, page_query, total)
 }
 
 fn device_resource_json(device: &AiotDeviceRecord) -> String {

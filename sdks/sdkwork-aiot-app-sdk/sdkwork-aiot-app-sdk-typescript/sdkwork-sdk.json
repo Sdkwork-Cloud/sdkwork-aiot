@@ -7,5 +7,5 @@
   "apiPrefix": "/app/v3/api",
   "primaryClient": "SdkworkAiotAppClient",
   "resourceStyle": true,
-  "authHeaders": ["AuthToken", "AccessToken"]
+  "authHeaders": ["Authorization", "Access-Token"]
 }

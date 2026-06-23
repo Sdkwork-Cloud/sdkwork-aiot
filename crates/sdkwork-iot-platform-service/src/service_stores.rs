@@ -3,7 +3,10 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use sdkwork_aiot_storage_sqlx::{open_aiot_device_database, DEFAULT_SHARED_SQLITE_MEMORY_URI};
+use sdkwork_aiot_storage_sqlx::{
+    open_aiot_device_database, resolve_device_database_config_from_env,
+    DEFAULT_SHARED_SQLITE_MEMORY_URI,
+};
 
 use crate::{
     AiotCatalogRepositoryHandle, AiotCredentialRepository, AiotFirmwareRepositoryHandle,
@@ -36,6 +39,9 @@ pub fn open_app_service_stores(
     service_label: &str,
 ) -> Result<AiotAppServiceStores, String> {
     log_device_database_target(device_db_path, service_label);
+    if let Some(path) = device_db_path {
+        ensure_parent_directory_exists(path);
+    }
     let database = open_aiot_device_database(device_db_path).map_err(|error| error.to_string())?;
     let entity_store = Arc::new(
         database
@@ -63,6 +69,9 @@ pub fn open_admin_service_stores(
     service_label: &str,
 ) -> Result<AiotAdminServiceStores, String> {
     log_device_database_target(device_db_path, service_label);
+    if let Some(path) = device_db_path {
+        ensure_parent_directory_exists(path);
+    }
     let database = open_aiot_device_database(device_db_path).map_err(|error| error.to_string())?;
     let entity_store = Arc::new(
         database
@@ -91,11 +100,16 @@ pub fn open_admin_service_stores(
 }
 
 fn log_device_database_target(device_db_path: Option<&str>, service_label: &str) {
-    if let Some(path) = device_db_path {
-        ensure_parent_directory_exists(path);
-        println!("{service_label} device-db=sqlite file={path}");
-    } else {
-        println!("{service_label} device-db=sqlite uri={DEFAULT_SHARED_SQLITE_MEMORY_URI}");
+    match resolve_device_database_config_from_env(device_db_path) {
+        Ok(config) if config.url.contains("mode=memory") => {
+            println!("{service_label} device-db=sqlite uri={DEFAULT_SHARED_SQLITE_MEMORY_URI}");
+        }
+        Ok(config) => {
+            println!("{service_label} device-db=sqlite url={}", config.url);
+        }
+        Err(error) => {
+            eprintln!("{service_label} device-db=error={error}");
+        }
     }
 }
 

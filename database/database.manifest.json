@@ -6,10 +6,11 @@
   "displayName": "AIOT_DEVICE Database",
   "owner": "aiot-platform",
   "engines": [
-    "postgres"
+    "postgres",
+    "sqlite"
   ],
   "defaultEngine": "postgres",
-  "tablePrefix": "aiot_",
+  "tablePrefix": "iot_",
   "contractVersion": "1.0.0",
   "baselineStrategy": "baseline-plus-migrations",
   "modules": [],

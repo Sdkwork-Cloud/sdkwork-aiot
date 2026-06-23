@@ -16,7 +16,7 @@
     "test": "node --test tests/aiot-workspace-standard.test.mjs && node --test scripts/dev/*.test.mjs && cargo test -p sdkwork-aiot-architecture && cargo test -p sdkwork-iot-platform-service",
     "test:rust": "cargo test --workspace",
     "test:workspace-standard": "node --test tests/aiot-workspace-standard.test.mjs",
-    "check": "pnpm test:workspace-standard && pnpm check:pnpm-script-standard && pnpm check:agent-workflow-standard && pnpm check:iam-module-manifest && pnpm check:app-manifest && pnpm db:validate && pnpm api:check && pnpm sdk:check && pnpm test:topology-validate && pnpm test:topology-baggage && cargo fmt --all -- --check && cargo clippy --workspace --tests -- -D warnings",
+    "check": "pnpm test:workspace-standard && pnpm test:device-database && pnpm test:production-topology && pnpm check:pnpm-script-standard && pnpm check:agent-workflow-standard && pnpm check:iam-module-manifest && pnpm check:app-manifest && pnpm check:production-topology && pnpm db:validate && pnpm api:check && pnpm sdk:check && pnpm test:topology-validate && pnpm test:topology-baggage && cargo fmt --all -- --check && cargo clippy --workspace --tests -- -D warnings",
     "check:pnpm-script-standard": "node ../sdkwork-specs/tools/check-pnpm-script-standard.mjs --root . --application-code-prefix aiot",
     "check:agent-workflow-standard": "node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .",
     "verify": "pnpm check && cargo test --workspace",
@@ -32,6 +32,7 @@
     "gateway:run": "cargo run -p sdkwork-aiot-gateway",
     "gateway:build": "cargo build --release -p sdkwork-aiot-gateway",
     "gateway:package": "node scripts/gateway-package.mjs",
+    "release:package": "node scripts/release-package.mjs",
     "gateway:validate": "cargo build -p sdkwork-aiot-gateway && cargo test -p sdkwork-aiot-gateway",
     "gateway:plan": "pnpm topology:plan",
     "release:build": "pnpm build",
@@ -42,6 +43,8 @@
     "sbom:generate": "node scripts/sbom-generate.mjs",
     "sbom:check": "node scripts/sbom-check.mjs",
     "test:topology-baggage": "node --test scripts/dev/sdkwork-aiot-topology-baggage.test.mjs",
+    "test:device-database": "node --test scripts/dev/sdkwork-aiot-device-database.test.mjs",
+    "test:production-topology": "node --test scripts/dev/sdkwork-aiot-production-topology.test.mjs",
     "test:app-openapi-context": "node --test scripts/dev/sdkwork-aiot-app-openapi-context.test.mjs",
     "test:openapi-web-context": "node --test scripts/dev/sdkwork-aiot-openapi-web-context.test.mjs",
     "test:topology-validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root .",
@@ -56,6 +59,7 @@
     "db:drift:check": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . drift-check",
     "db:bootstrap": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . bootstrap",
     "check:iam-module-manifest": "node scripts/dev/validate-iam-module-manifest.mjs",
-    "check:app-manifest": "node scripts/dev/validate-app-manifest.mjs"
+    "check:app-manifest": "node scripts/dev/validate-app-manifest.mjs",
+    "check:production-topology": "node scripts/dev/validate-production-topology.mjs"
   }
 }

@@ -47,7 +47,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -88,7 +137,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/products/{productId}": {
@@ -126,7 +177,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -172,7 +225,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -201,7 +256,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/hardware_profiles": {
@@ -234,7 +291,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -275,7 +381,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/hardware_profiles/{hardwareProfileId}": {
@@ -313,7 +421,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -359,7 +469,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -388,7 +500,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/protocol_profiles": {
@@ -421,7 +535,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -462,7 +625,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/protocol_profiles/{protocolProfileId}": {
@@ -500,7 +665,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -546,7 +713,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -575,7 +744,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/capability_models": {
@@ -608,7 +779,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -649,7 +869,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/capability_models/{capabilityModelId}": {
@@ -690,7 +912,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -736,7 +960,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -765,7 +991,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices": {
@@ -798,7 +1026,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -844,7 +1121,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}": {
@@ -882,7 +1161,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -931,7 +1212,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -960,7 +1243,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/credentials": {
@@ -980,6 +1265,51 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/DeviceId"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -998,7 +1328,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "post": {
         "tags": [
@@ -1047,7 +1379,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/credentials/{credentialId}": {
@@ -1088,7 +1422,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -1120,7 +1456,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/sessions": {
@@ -1140,6 +1478,51 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/DeviceId"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1158,7 +1541,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/sessions/{sessionId}": {
@@ -1192,7 +1577,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/capabilities": {
@@ -1212,6 +1599,51 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/DeviceId"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1230,7 +1662,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/commands": {
@@ -1250,6 +1684,51 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/DeviceId"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1268,7 +1747,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/commands/{commandId}/cancel": {
@@ -1309,7 +1790,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/devices/{deviceId}/twin": {
@@ -1357,7 +1840,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "get": {
         "tags": [
@@ -1393,7 +1878,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_artifacts": {
@@ -1426,7 +1913,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -1472,7 +2008,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_artifacts/{artifactId}": {
@@ -1510,7 +2048,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -1556,7 +2096,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -1585,7 +2127,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_rollouts": {
@@ -1618,7 +2162,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -1664,7 +2257,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/firmware_rollouts/{rolloutId}": {
@@ -1702,7 +2297,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "put": {
         "tags": [
@@ -1748,7 +2345,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       },
       "delete": {
         "tags": [
@@ -1777,7 +2376,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     },
     "/backend/v3/api/iot/events": {
@@ -1810,7 +2411,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/backend/v3/api/iot/protocol_adapters": {
@@ -1843,7 +2493,56 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page index.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size (max 200).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for cursor pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated sort fields, prefix with - for descending.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free-text search keyword.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/backend/v3/api/iot/runtime/capacity": {
@@ -1876,7 +2575,9 @@
           }
         },
         "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api"
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-owner": "sdkwork-aiot",
+        "x-sdkwork-api-authority": "sdkwork-aiot-backend-api"
       }
     }
   },
@@ -2578,7 +3279,8 @@
         "additionalProperties": false,
         "required": [
           "code",
-          "data"
+          "data",
+          "pageInfo"
         ],
         "properties": {
           "code": {
@@ -2592,6 +3294,9 @@
             "items": {
               "$ref": "#/components/schemas/AiotCommand"
             }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
           }
         }
       },
@@ -2868,7 +3573,8 @@
         "additionalProperties": false,
         "required": [
           "code",
-          "data"
+          "data",
+          "pageInfo"
         ],
         "properties": {
           "code": {
@@ -2882,6 +3588,9 @@
             "items": {
               "$ref": "#/components/schemas/AiotEvent"
             }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
           }
         }
       },
@@ -3096,7 +3805,8 @@
         "additionalProperties": false,
         "required": [
           "code",
-          "data"
+          "data",
+          "pageInfo"
         ],
         "properties": {
           "code": {
@@ -3110,6 +3820,9 @@
             "items": {
               "$ref": "#/components/schemas/AiotProtocolAdapter"
             }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
           }
         }
       },
@@ -3366,7 +4079,8 @@
         "additionalProperties": false,
         "required": [
           "code",
-          "data"
+          "data",
+          "pageInfo"
         ],
         "properties": {
           "code": {
@@ -3380,6 +4094,9 @@
             "items": {
               "$ref": "#/components/schemas/JsonValue"
             }
+          },
+          "pageInfo": {
+            "$ref": "#/components/schemas/PageInfo"
           }
         }
       },
@@ -3457,6 +4174,37 @@
             "type": "string"
           },
           "code": {
+            "type": "string"
+          }
+        }
+      },
+      "PageInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "page",
+          "pageSize",
+          "total",
+          "hasMore"
+        ],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
             "type": "string"
           }
         }
